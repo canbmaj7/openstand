@@ -5,8 +5,9 @@ import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, type Timeline } from './engine/timeline'
 import { parseIrealLinks } from './formats/ireal'
 import { irealLink } from './formats/irealWrite'
-import { chartFromHash, shareUrl } from './formats/share'
+import { chartFromHash, labFromHash, shareUrl, styleShareUrl } from './formats/share'
 import { addTunes, loadTunes, removePlaylist, removeTune, saveTune } from './library/db'
+import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/myStyles'
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName } from './music/chords'
 import { emptyChart } from './music/edit'
@@ -110,6 +111,15 @@ export default function App() {
   const labRef = useRef<LabStyle | null>(null)
   const [labUndo, setLabUndo] = useState<LabStyle | null>(null)
   const [labCopy, setLabCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [labShare, setLabShare] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [labSaved, setLabSaved] = useState<'idle' | 'saved'>('idle')
+  const [myStyles, setMyStylesState] = useState<LabStyle[]>(loadMyStyles)
+  const myStylesRef = useRef(myStyles)
+  const openSharedStyleRef = useRef<(lab: LabStyle) => void>(() => {})
+  const setMyStyles = (next: LabStyle[]) => {
+    myStylesRef.current = next
+    setMyStylesState(next)
+  }
   useEffect(() => {
     styleRef.current = styleId
   }, [styleId])
@@ -132,9 +142,14 @@ export default function App() {
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
   const chart = draft?.chart ?? tune.chart
   // The lab's style is rebuilt from the grid each time it is needed
-  const resolveStyle = (id: string): StyleDefinition =>
-    id === LAB_STYLE && labRef.current ? { ...styleFromLab(labRef.current), id: LAB_STYLE } : getStyle(id)
-  const style = draft ? getStyle(draft.chart.style) : styleId === LAB_STYLE && lab ? styleFromLab(lab) : getStyle(styleId)
+  // Saved styles are chosen as "my:<id>"
+  const styleFor = (id: string, current: LabStyle | null, mine: LabStyle[]): StyleDefinition => {
+    if (id === LAB_STYLE && current) return { ...styleFromLab(current), id }
+    const saved = id.startsWith('my:') ? mine.find((m) => myStyleId(m) === id) : undefined
+    return saved ? { ...styleFromLab(saved), id } : getStyle(id)
+  }
+  const resolveStyle = (id: string) => styleFor(id, labRef.current, myStylesRef.current)
+  const style = draft ? getStyle(draft.chart.style) : styleFor(styleId, lab, myStyles)
   const keyPc = (chart.key + transpose + 12) % 12
 
   // During practice the chorus decides the key on the stand and the tempo
@@ -285,6 +300,8 @@ export default function App() {
       const saved = await loadTunes().catch(() => [] as Tune[])
       let all = [...EXAMPLES, ...saved]
       const shared = await chartFromHash(window.location.hash)
+      const sharedStyle = await labFromHash(window.location.hash)
+      if (sharedStyle) openSharedStyleRef.current(sharedStyle)
       let open: Tune | undefined
       if (shared) {
         const [added] = await addTunes([shared], 'link', 'Shared with me')
@@ -306,6 +323,11 @@ export default function App() {
   // A share link opened while the app is already open only changes the URL fragment
   useEffect(() => {
     const onHash = async () => {
+      const sharedStyle = await labFromHash(window.location.hash)
+      if (sharedStyle) {
+        openSharedStyleRef.current(sharedStyle)
+        return
+      }
       const shared = await chartFromHash(window.location.hash)
       if (!shared) return
       const [added] = await addTunes([shared], 'link', 'Shared with me')
@@ -388,6 +410,17 @@ export default function App() {
     setLabUndo(null)
     changeArrangement({ styleId: current.base })
   }
+
+  // A style link: the style is saved to My styles and opened in the lab
+  useEffect(() => {
+    openSharedStyleRef.current = (shared: LabStyle) => {
+      setMyStyles(saveMyStyle(myStylesRef.current, shared))
+      setLabUndo(null)
+      setLab(shared)
+      setStyleId(LAB_STYLE)
+      history.replaceState(null, '', window.location.pathname)
+    }
+  })
 
   const labStep = (() => {
     if (!lab || !position || position.countIn || position.ending) return null
@@ -589,7 +622,23 @@ export default function App() {
           }}
           onStartFrom={(id) => {
             setLabUndo(lab)
-            setLab(labFromStyle(getStyle(id)))
+            const saved = myStyles.find((m) => myStyleId(m) === id)
+            setLab(saved ?? labFromStyle(getStyle(id)))
+          }}
+          myStyles={myStyles.map((m) => ({ id: myStyleId(m), name: m.name }))}
+          isSaved={myStyles.some((m) => myStyleId(m) === myStyleId(lab))}
+          onSave={() => {
+            setMyStyles(saveMyStyle(myStyles, lab))
+            setLabSaved('saved')
+            setTimeout(() => setLabSaved('idle'), 2200)
+          }}
+          saveState={labSaved}
+          onShare={() => void copy(() => styleShareUrl(lab), setLabShare)}
+          shareState={labShare}
+          onDelete={() => {
+            const id = myStyleId(lab)
+            setMyStyles(removeMyStyle(myStyles, id))
+            if (styleId === id) changeArrangement({ styleId: LAB_STYLE })
           }}
           canUndo={labUndo !== null}
           onUndo={() => {
@@ -609,7 +658,10 @@ export default function App() {
         onToggle={toggle}
         position={readout}
         styleId={styleId}
-        extraStyles={lab ? [{ id: LAB_STYLE, name: lab.name.trim() || 'My style' }] : []}
+        extraStyles={[
+          ...(lab ? [{ id: LAB_STYLE, name: `${lab.name.trim() || 'My style'} (style lab)` }] : []),
+          ...myStyles.map((m) => ({ id: myStyleId(m), name: m.name })),
+        ]}
         onStyle={(id) => {
           setBpm(resolveStyle(id).tempo.default)
           changeArrangement({ styleId: id })

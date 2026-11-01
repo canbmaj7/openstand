@@ -47,7 +47,7 @@ The same three commands run on every pull request.
 
 A style describes what the bass, the piano (or guitar) and the drums play. The engine does the rest: it follows the chart, transposes, picks voicings that move smoothly, and fits the patterns to chords of different lengths.
 
-**The easy way: the style lab.** Open [OpenStand](https://openstand-eta.vercel.app), press **Style lab**, pick the closest style to start from, and change the drums, the bass line and the chord rhythm on a grid while the band plays. When it sounds right, press **Send to OpenStand**: the style is copied as a file and GitHub opens a page where you paste it and propose it. No setup, no code. We'll take it from there (registering the style, fine-tuning the parts the grid doesn't cover, such as fills and patterns for shorter chords).
+**The easy way: the style lab.** Open [OpenStand](https://openstand-eta.vercel.app), press **Style lab**, pick the closest style to start from, and change the drums, the bass line and the chord rhythm on a grid while the band plays. **Share link** sends the groove to a friend or a band mate: the link opens it in their style lab. When it sounds right, press **Send to OpenStand**: the style is copied as a file and GitHub opens a page where you paste it and propose it. No setup, no code. We'll take it from there (registering the style, fine-tuning the parts the grid doesn't cover, such as fills and patterns for shorter chords).
 
 **The full way: editing a style file.** Everything the lab can't do — several alternative grooves, fills, patterns for chords of two beats, the count-in and the ending — is in the style files:
 

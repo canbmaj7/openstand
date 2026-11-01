@@ -67,12 +67,23 @@ interface StyleLabProps {
   onUndo: () => void
   step: number | null // sixteenth being heard within the drum groove, while playing
   onCopy: () => void
-  copyState: 'idle' | 'copied' | 'failed'
+  copyState: CopyState
   onSend: () => void
   onClose: () => void
+  myStyles: { id: string; name: string }[] // saved in this browser
+  isSaved: boolean // a style with this name is in My styles
+  onSave: () => void
+  saveState: 'idle' | 'saved'
+  onShare: () => void
+  shareState: CopyState
+  onDelete: () => void
 }
 
-export function StyleLab({ lab, onChange, onStartFrom, canUndo, onUndo, step, onCopy, copyState, onSend, onClose }: StyleLabProps) {
+type CopyState = 'idle' | 'copied' | 'failed'
+
+export function StyleLab(props: StyleLabProps) {
+  const { lab, onChange, onStartFrom, canUndo, onUndo, step, onCopy, copyState, onSend, onClose } = props
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [tab, setTab] = useState<Tab>('drums')
   const [maybeMode, setMaybeMode] = useState(false) // clicks mark hits that play only sometimes
   const steps = drumSteps(lab)
@@ -106,11 +117,22 @@ export function StyleLab({ lab, onChange, onStartFrom, canUndo, onUndo, step, on
         <label className="field">
           <span className="label">Start from</span>
           <select className="select" value={lab.base} onChange={(e) => onStartFrom(e.target.value)}>
-            {STYLES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
+            <optgroup label="Styles">
+              {STYLES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </optgroup>
+            {props.myStyles.length > 0 && (
+              <optgroup label="My styles">
+                {props.myStyles.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </label>
         {canUndo && (
@@ -137,6 +159,25 @@ export function StyleLab({ lab, onChange, onStartFrom, canUndo, onUndo, step, on
           </span>
         </label>
         <span className="editor-spacer" />
+        {props.isSaved && (
+          <button
+            className={confirmDelete ? 'chip chip-danger' : 'chip'}
+            onClick={() => (confirmDelete ? props.onDelete() : setConfirmDelete(true))}
+            onBlur={() => setConfirmDelete(false)}
+          >
+            {confirmDelete ? 'Delete style?' : 'Delete'}
+          </button>
+        )}
+        <button
+          className="chip"
+          onClick={props.onSave}
+          title="Keep this style in My styles, in this browser, and choose it from the style menu"
+        >
+          {props.saveState === 'saved' ? 'Saved' : props.isSaved ? 'Save changes' : 'Save'}
+        </button>
+        <button className="chip" onClick={props.onShare} title="Copy a link that opens this style in OpenStand">
+          {props.shareState === 'copied' ? 'Link copied' : props.shareState === 'failed' ? 'Copy failed' : 'Share link'}
+        </button>
         <button className="chip" onClick={onCopy}>
           {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy code'}
         </button>

@@ -216,3 +216,55 @@ export function styleSource(style: StyleDefinition, baseName: string): string {
 export const ${name}: StyleDefinition = ${body}
 `
 }
+
+const isTone = (t: unknown): t is BassTone => typeof t === 'string' && (BASS_ROWS as string[]).includes(t)
+const isDrum = (d: string): d is DrumName => (DRUM_ROWS as string[]).includes(d)
+const clampNum = (v: unknown, lo: number, hi: number, fallback: number) =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : fallback
+
+// Checks a lab style that came from outside (a link, storage) and repairs what it can.
+// Anything unknown is dropped, so a broken or hostile link can't break the app.
+export function normalizeLab(value: unknown): LabStyle | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  const base = typeof v.base === 'string' && getStyle(v.base).id === v.base ? v.base : null
+  if (!base) return null
+  const beats: 3 | 4 = v.beats === 3 ? 3 : 4
+  const bars: 1 | 2 = v.bars === 2 ? 2 : 1
+  const steps = bars * beats * STEPS_PER_BEAT
+  const one = beats * STEPS_PER_BEAT
+
+  const drums: LabStyle['drums'] = {}
+  if (v.drums && typeof v.drums === 'object') {
+    for (const [drum, row] of Object.entries(v.drums as Record<string, unknown>)) {
+      if (!isDrum(drum) || !Array.isArray(row)) continue
+      drums[drum] = Array.from({ length: steps }, (_, i) => {
+        const c = row[i] as Record<string, unknown> | null | undefined
+        if (!c || typeof c !== 'object') return null
+        const cell: DrumCell = { vel: Math.round(clampNum(c.vel, 1, 127, 90)) }
+        if (c.chance !== undefined) cell.chance = clampNum(c.chance, 0, 1, 1)
+        if (c.dur !== undefined) cell.dur = clampNum(c.dur, 0.05, 8, 0.25)
+        return cell
+      })
+    }
+  }
+
+  const bass = (v.bass ?? {}) as Record<string, unknown>
+  const bassSteps = Array.isArray(bass.steps) ? bass.steps : []
+  const comp = Array.isArray(v.comp) ? v.comp : []
+
+  return {
+    base,
+    name: typeof v.name === 'string' ? v.name.slice(0, 60) : 'My style',
+    swing: clampNum(v.swing, 0.5, 0.75, 0.5),
+    beats,
+    bars,
+    fills: v.fills !== false,
+    drums,
+    bass: {
+      walking: bass.walking === true,
+      steps: Array.from({ length: one }, (_, i) => (isTone(bassSteps[i]) ? bassSteps[i] : null)),
+    },
+    comp: Array.from({ length: one }, (_, i) => comp[i] === true),
+  }
+}
