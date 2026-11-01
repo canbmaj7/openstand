@@ -323,12 +323,10 @@ export default function App() {
   // A share link opened while the app is already open only changes the URL fragment
   useEffect(() => {
     const onHash = async () => {
+      // A style link may carry a tune too; read both before the fragment is cleared
       const sharedStyle = await labFromHash(window.location.hash)
-      if (sharedStyle) {
-        openSharedStyleRef.current(sharedStyle)
-        return
-      }
       const shared = await chartFromHash(window.location.hash)
+      if (sharedStyle) openSharedStyleRef.current(sharedStyle)
       if (!shared) return
       const [added] = await addTunes([shared], 'link', 'Shared with me')
       setTunes((all) => [...all.filter((t) => t.id !== added.id), added])
@@ -633,7 +631,7 @@ export default function App() {
             setTimeout(() => setLabSaved('idle'), 2200)
           }}
           saveState={labSaved}
-          onShare={() => void copy(() => styleShareUrl(lab), setLabShare)}
+          onShare={() => void copy(() => styleShareUrl(lab, chart), setLabShare)}
           shareState={labShare}
           onDelete={() => {
             const id = myStyleId(lab)

@@ -175,7 +175,7 @@ export function StyleLab(props: StyleLabProps) {
         >
           {props.saveState === 'saved' ? 'Saved' : props.isSaved ? 'Save changes' : 'Save'}
         </button>
-        <button className="chip" onClick={props.onShare} title="Copy a link that opens this style in OpenStand">
+        <button className="chip" onClick={props.onShare} title="Copy a link that opens this style in OpenStand, with the tune on screen to hear it on">
           {props.shareState === 'copied' ? 'Link copied' : props.shareState === 'failed' ? 'Copy failed' : 'Share link'}
         </button>
         <button className="chip" onClick={onCopy}>

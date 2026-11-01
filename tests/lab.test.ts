@@ -110,5 +110,11 @@ describe('style links', () => {
     expect(url.length).toBeLessThan(2500)
     expect(await labFromHash(new URL(url).hash)).toEqual(lab)
     expect(await labFromHash('#style=garbage')).toBeNull()
+
+    // With a tune to hear it on
+    const { chartFromHash } = await import('../src/formats/share')
+    const withTune = await styleShareUrl(lab, tune)
+    expect(await labFromHash(new URL(withTune).hash)).toEqual(lab)
+    expect((await chartFromHash(new URL(withTune).hash))?.title).toBe('Lab')
   })
 })

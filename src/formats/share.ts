@@ -44,17 +44,19 @@ export async function decodeChart(value: string): Promise<Chart | null> {
   return chart && chart.format === 'openstand-chart' && Array.isArray(chart.bars) ? chart : null
 }
 
-function linkWith(param: string, value: string): string {
+function linkWith(params: Record<string, string>): string {
   const url = new URL(window.location.href)
   url.search = ''
-  url.hash = `${param}=${value}`
+  url.hash = Object.entries(params)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&')
   return url.toString()
 }
 
 const fromHash = (hash: string, param: string) => new URLSearchParams(hash.replace(/^#/, '')).get(param)
 
 export async function shareUrl(chart: Chart): Promise<string> {
-  return linkWith(PARAM, await encodeChart(chart))
+  return linkWith({ [PARAM]: await encodeChart(chart) })
 }
 
 export async function chartFromHash(hash: string): Promise<Chart | null> {
@@ -62,9 +64,9 @@ export async function chartFromHash(hash: string): Promise<Chart | null> {
   return value ? decodeChart(value) : null
 }
 
-// A style made in the style lab travels the same way
-export async function styleShareUrl(lab: LabStyle): Promise<string> {
-  return linkWith(STYLE_PARAM, await encodeJson(lab))
+// A style made in the style lab travels the same way, with a tune to hear it on
+export async function styleShareUrl(lab: LabStyle, chart?: Chart): Promise<string> {
+  return linkWith({ [STYLE_PARAM]: await encodeJson(lab), ...(chart ? { [PARAM]: await encodeChart(chart) } : {}) })
 }
 
 export async function labFromHash(hash: string): Promise<LabStyle | null> {
