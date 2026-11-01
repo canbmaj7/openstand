@@ -153,6 +153,12 @@ OpenStand is meant to grow as a community project, and musicians are as welcome 
 
 [CONTRIBUTING.md](CONTRIBUTING.md) explains the setup, how to write a style, and what a pull request needs.
 
+## Privacy
+
+Your tunes, settings and library stay in your browser. There is no account and no server that stores them, and a shared tune travels inside the link itself.
+
+The live site counts visitors with [Vercel Web Analytics](https://vercel.com/docs/analytics/privacy-policy), so we can tell whether people find and use it. It uses no cookies and stores nothing on your device, and the counts are anonymous totals: pages viewed, country, browser and device type. Before anything is sent, the address is cut at `?` and `#`, so the tunes in share links never leave your browser. Copies of OpenStand that others run from this code send us nothing; on your own computer (`npm run dev`) nothing is counted at all.
+
 ## Credits
 
 - [SpessaSynth](https://github.com/spessasus/spessasynth_lib) by spessasus — SoundFont synthesizer and MIDI sequencer (Apache-2.0)
