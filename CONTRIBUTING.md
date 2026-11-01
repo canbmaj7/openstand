@@ -102,7 +102,8 @@ The same process applies to everyone, maintainers included.
    - New features and anything you can see or hear (layout, styles, sound) are approved by the project owner after trying the preview.
    - Bug fixes, tests, documentation and internal changes can be merged by a maintainer once the checks pass.
 6. **Merging to `main` deploys** to <https://openstand-eta.vercel.app>.
-7. **Releases** collect the merged changes every few weeks under a version number (`v0.2.0`…) with release notes.
+7. **Dependencies** are kept up to date by Dependabot: a pull request every Monday with minor and patch updates, one per major version, and security fixes as soon as they are published. They go through the same checks.
+8. **Releases** collect the merged changes every few weeks under a version number (`v0.2.0`…) with release notes.
 
 ## Sending a pull request
 
