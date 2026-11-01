@@ -67,3 +67,17 @@ describe('styles', () => {
     }
   })
 })
+
+describe('warm-up', () => {
+  test('every style has a warm-up file that selects its instruments', async () => {
+    const { warmUpMidi } = await import('../src/engine/warmup')
+    for (const style of STYLES) {
+      const midi = warmUpMidi(style)
+      const hasProgram = (channel: number, program: number) =>
+        midi.some((b, i) => b === (0xc0 | channel) && midi[i + 1] === program)
+      expect(hasProgram(0, style.bass.program), style.id).toBe(true)
+      expect(hasProgram(1, style.comp.program), style.id).toBe(true)
+      expect(hasProgram(9, style.drums.kit), style.id).toBe(true)
+    }
+  })
+})

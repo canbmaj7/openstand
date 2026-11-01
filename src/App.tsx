@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Player } from './audio/player'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
+import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, type Timeline } from './engine/timeline'
 import { parseIrealLinks } from './formats/ireal'
 import { irealLink } from './formats/irealWrite'
@@ -10,7 +11,7 @@ import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName } from './music/chords'
 import { emptyChart } from './music/edit'
 import { EXAMPLES, type Tune } from './music/songs'
-import { getStyle } from './styles'
+import { getStyle, STYLES } from './styles'
 import { Chart } from './ui/Chart'
 import { Editor, EditorHeader } from './ui/Editor'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
@@ -86,6 +87,10 @@ export default function App() {
   const [tunes, setTunes] = useState<Tune[]>(EXAMPLES)
   const [songId, setSongId] = useState(EXAMPLES[0].id)
   const [styleId, setStyleId] = useState(EXAMPLES[0].chart.style)
+  const styleRef = useRef(styleId)
+  useEffect(() => {
+    styleRef.current = styleId
+  }, [styleId])
   const [transpose, setTranspose] = useState(0)
   const [bpm, setBpm] = useState(EXAMPLES[0].chart.bpm)
   const [importOpen, setImportOpen] = useState(false)
@@ -123,7 +128,13 @@ export default function App() {
     }
     player
       .init((progress) => active && setReadiness({ kind: 'loading', progress }))
-      .then(() => active && setReadiness({ kind: 'ready' }))
+      .then(() => {
+        if (!active) return
+        setReadiness({ kind: 'ready' })
+        // Decode the sounds in the background, the style on screen first
+        const first = getStyle(styleRef.current)
+        void player.warmUp([first, ...STYLES.filter((s) => s !== first)].map(warmUpMidi))
+      })
       .catch((err: unknown) => active && setReadiness({ kind: 'error', message: String(err) }))
     return () => {
       active = false
@@ -216,7 +227,7 @@ export default function App() {
     const tick = () => {
       const player = playerRef.current
       const timeline = timelineRef.current
-      if (player && timeline) setPosition(positionAt(timeline, (player.position * BASE_BPM) / 60))
+      if (player && timeline) setPosition(positionAt(timeline, (player.heardPosition * BASE_BPM) / 60))
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
