@@ -20,6 +20,7 @@ import { Popover } from './ui/Popover'
 import { NO_PRACTICE, type PracticeSettings } from './music/practice'
 import { Practice } from './ui/Practice'
 import { Transport, type Readiness } from './ui/Transport'
+import { handlePracticeShortcut, type PracticeShortcuts } from './ui/shortcuts'
 
 interface Position {
   measure: number // -1 during the count-in and the ending
@@ -181,24 +182,32 @@ export default function App() {
   }
 
   const toggle = () => (playing ? stop() : void start({ styleId, transpose, choruses, practice }))
-  const toggleRef = useRef(toggle)
+  const shortcuts: PracticeShortcuts = {
+    toggle: () => {
+      if (readiness.kind === 'ready') toggle()
+    },
+    tempo: (delta) => setBpm((current) => clampBpm(current + delta)),
+    transpose: (delta) => changeArrangement({ transpose: offsetToKey(chart.key, (keyPc + delta + 12) % 12) }),
+    clearLoop: () => {
+      setPicking(null)
+      if (practice.loop) changePractice({ ...practice, loop: null })
+    },
+  }
+  const shortcutsRef = useRef(shortcuts)
   useEffect(() => {
-    toggleRef.current = toggle
+    shortcutsRef.current = shortcuts
   })
 
-  // Space toggles playback unless a form control has focus or a chart is being edited
+  // The registered listener uses the latest arrangement without accumulating handlers.
   const editing = draft !== null
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
       if (e.key === 'Escape') setPicking(null)
-      if (e.code !== 'Space' || editing || target.closest('input, select, textarea, button, [role="button"]')) return
-      e.preventDefault()
-      if (readiness.kind === 'ready') toggleRef.current()
+      handlePracticeShortcut(e, editing, shortcutsRef.current)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [readiness.kind, editing])
+  }, [editing])
 
   // Follow the audio clock to highlight the current bar
   useEffect(() => {
