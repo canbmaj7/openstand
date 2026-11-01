@@ -132,12 +132,13 @@ export class Player {
   }
 
   // Position of what can be heard right now: the output (phone speaker, Bluetooth) plays a little
-  // behind the synthesizer, so the chart follows the ears rather than the synthesizer
+  // behind the synthesizer, so the chart follows the ears rather than the synthesizer.
+  // The audio clock moves in steps; the smoothed clock keeps the chart's highlight gliding.
   get heardPosition(): number {
     const seq = this.seq
     if (!seq) return 0
     const latency = (this.ctx.outputLatency || 0) + (this.ctx.baseLatency || 0)
-    return Math.max(0, seq.currentTime - latency * seq.playbackRate)
+    return Math.max(0, seq.currentHighResolutionTime - latency * seq.playbackRate)
   }
 
   setRate(rate: number): void {
