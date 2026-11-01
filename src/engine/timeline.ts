@@ -2,37 +2,47 @@ import { beatsPerBar, isCompound, playbackOrder, type Chart, type TimeSignature 
 import { parseChord, transposeChord, type Chord } from '../music/chords'
 import { PULSE } from './meter'
 
-// One click of the count-in: where it falls, the number shown, and whether it starts a bar
+// One click of the count-in: where it falls, the number shown, and how strong it is
+// (the start of a bar, a beat or pulse, or an eighth in between)
 export interface Click {
   at: number
   count: number
-  accent: boolean
+  level: 'bar' | 'beat' | 'sub'
 }
 
 // The count-in follows the tune's meter, the way a band leader counts off:
 // 4/4 "1 . 2 . | 1 2 3 4", 3/4 "1 . . | 1 2 3", 2/4 "1 2 | 1 2",
-// 6/8 "1 . 2 . | 1 2 3 4 5 6" (eighths, accents on the pulses), and one bar of pulses or
-// beats in longer meters (12/8, 9/8, 5/4, 6/4).
+// 6/8 "1 . 2 . | 1 2 3 4 5 6" (eighths, stronger on the pulses), 12/8 and 9/8 one bar of
+// eighths counted on the pulses ("1 & a 2 & a 3 & a 4 & a"), 5/4 (3+2) and 6/4 (3+3) one bar.
 export function countInClicks(chart: Chart): Click[] {
   const beats = beatsPerBar(chart.time)
-  const clicks = (list: [at: number, count: number][], accents: number[] = [0]): Click[] =>
-    list.map(([at, count]) => ({ at, count, accent: accents.some((a) => Math.abs(a - at) < 1e-9) }))
+  const click = (at: number, count: number, level: Click['level']): Click => ({ at, count, level })
   if (isCompound(chart.time)) {
-    if (beats === 2 * PULSE) {
-      const eighths = Array.from({ length: 6 }, (_, i): [number, number] => [beats + i / 2, i + 1])
-      return clicks([[0, 1], [PULSE, 2], ...eighths], [0, beats, beats + PULSE])
-    }
-    const pulses = Math.round(beats / PULSE)
-    return clicks(Array.from({ length: pulses }, (_, i): [number, number] => [i * PULSE, i + 1]))
+    const eighths = (start: number, counted: (i: number) => number) =>
+      Array.from({ length: Math.round(beats * 2) }, (_, i) =>
+        click(start + i / 2, counted(i), i === 0 ? 'bar' : i % 3 === 0 ? 'beat' : 'sub'),
+      )
+    if (beats === 2 * PULSE) return [click(0, 1, 'bar'), click(PULSE, 2, 'beat'), ...eighths(beats, (i) => i + 1)]
+    return eighths(0, (i) => Math.floor(i / 3) + 1)
   }
-  if (beats === 4) return clicks([[0, 1], [2, 2], [4, 1], [5, 2], [6, 3], [7, 4]], [0, 4])
-  if (beats === 3) return clicks([[0, 1], [3, 1], [4, 2], [5, 3]], [0, 3])
-  if (beats === 2) return clicks([[0, 1], [1, 2], [2, 1], [3, 2]], [0, 2])
+  const bars = (list: number[][]) =>
+    list.flatMap((counts, b) => counts.map((at, i) => click(b * beats + at, i + 1, at === 0 ? 'bar' : 'beat')))
+  if (beats === 4)
+    return bars([
+      [0, 2],
+      [0, 1, 2, 3],
+    ])
+  if (beats === 3) return bars([[0], [0, 1, 2]])
+  if (beats === 2)
+    return bars([
+      [0, 1],
+      [0, 1],
+    ])
   if (Number.isInteger(beats) && beats > 4) {
-    // Accent where the bar divides: 5/4 as 3+2, 6/4 as 3+3
-    return clicks(Array.from({ length: beats }, (_, i): [number, number] => [i, i + 1]), [0, 3])
+    // Stronger where the bar divides: 5/4 as 3+2, 6/4 as 3+3
+    return Array.from({ length: beats }, (_, i) => click(i, i + 1, i === 0 ? 'bar' : i === 3 ? 'beat' : 'sub'))
   }
-  return clicks([[0, 1], [1, 2], [2, 3], [3, 4]])
+  return [0, 1, 2, 3].map((at) => click(at, at + 1, at === 0 ? 'bar' : 'beat'))
 }
 
 // Count-in length in beats: two bars of short meters, one bar of long ones
@@ -122,7 +132,12 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
   const countIn = countInBeats(chart)
   let beat = countIn
 
-  const carried = practice.loop ? (chart.bars.slice(0, order[0]).flatMap((b) => b.chords).at(-1)?.symbol ?? null) : null
+  const carried = practice.loop
+    ? (chart.bars
+        .slice(0, order[0])
+        .flatMap((b) => b.chords)
+        .at(-1)?.symbol ?? null)
+    : null
 
   for (let chorus = 0; chorus < choruses; chorus++) {
     // A blank bar keeps the chord that was sounding at the end of the previous one;

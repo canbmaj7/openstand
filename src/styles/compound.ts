@@ -148,7 +148,7 @@ function popBar(): DrumHit[] {
 
 function compoundDrums(feel: Feel, own: DrumPart): DrumPart {
   const { countIn } = own // the count-in follows the meter (engine/timeline.ts)
-  const crash: DrumHit = [0, 'crash', 90, 0.7, 2]
+  const crash: DrumHit = [0, 'crash', 90, 1, 2] // always: it takes the place of the downbeat's hi-hat
 
   if (feel === 'jazz') {
     const bar = jazzBar()
@@ -192,7 +192,8 @@ function compoundDrums(feel: Feel, own: DrumPart): DrumPart {
         { bars: 2, beats: 3, hits: [...bar, ...shifted(bar, 3), [2.5, 'kick', 70, 0.5], [5, 'kick', 66, 0.4]] },
         { bars: 2, beats: 3, hits: [...bar, ...shifted(bar, 3), [1, 'kick', 72, 0.6], [5.5, 'snare', 50, 0.4]] },
       ],
-      first: [{ bars: 1, beats: 3, hits: [...bar.filter(([, d]) => d !== 'hhClosed'), crash, [1, 'hhClosed', 58], [2, 'hhClosed', 58]] }],
+      // The crash takes the place of the first hi-hat; the rest of the bar plays as usual
+      first: [{ bars: 1, beats: 3, hits: [...bar.filter(([at, d]) => !(d === 'hhClosed' && at === 0)), crash] }],
       last: [
         {
           bars: 1,

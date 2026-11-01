@@ -96,16 +96,18 @@ describe('meters', () => {
   })
 
   test('the count-in follows the meter', () => {
+    // > starts a bar, + a beat or pulse, plain is an eighth in between
     const counts = (time: TimeSignature) => {
       const { clicks, countIn } = buildTimeline(tune(time), 0, 1)
-      return `${countIn}: ${clicks.map((c) => `${c.accent ? '>' : ''}${c.count}@${c.at}`).join(' ')}`
+      const mark = { bar: '>', beat: '+', sub: '' }
+      return `${countIn}: ${clicks.map((c) => `${mark[c.level]}${c.count}@${c.at}`).join(' ')}`
     }
-    expect(counts([4, 4])).toBe('8: >1@0 2@2 >1@4 2@5 3@6 4@7')
-    expect(counts([3, 4])).toBe('6: >1@0 >1@3 2@4 3@5')
-    expect(counts([2, 4])).toBe('4: >1@0 2@1 >1@2 2@3')
-    expect(counts([6, 8])).toBe('6: >1@0 2@1.5 >1@3 2@3.5 3@4 >4@4.5 5@5 6@5.5')
-    expect(counts([12, 8])).toBe('6: >1@0 2@1.5 3@3 4@4.5')
-    expect(counts([5, 4])).toBe('5: >1@0 2@1 3@2 >4@3 5@4')
+    expect(counts([4, 4])).toBe('8: >1@0 +2@2 >1@4 +2@5 +3@6 +4@7')
+    expect(counts([3, 4])).toBe('6: >1@0 >1@3 +2@4 +3@5')
+    expect(counts([2, 4])).toBe('4: >1@0 +2@1 >1@2 +2@3')
+    expect(counts([6, 8])).toBe('6: >1@0 +2@1.5 >1@3 2@3.5 3@4 +4@4.5 5@5 6@5.5')
+    expect(counts([12, 8])).toBe('6: >1@0 1@0.5 1@1 +2@1.5 2@2 2@2.5 +3@3 3@3.5 3@4 +4@4.5 4@5 4@5.5')
+    expect(counts([5, 4])).toBe('5: >1@0 2@1 3@2 +4@3 5@4')
   })
 
   test('6/8 counts in on its pulses, then its eighths, and the bars are 6/8 bars', () => {
@@ -115,6 +117,7 @@ describe('meters', () => {
     const drums = generateDrums(timeline.bars, style.drums, style.swing, timeline.clicks)
     const countIn = drums.filter((e) => e.tick < 6 * PPQ - 20).map((e) => Math.round((e.tick / PPQ) * 4) / 4)
     expect(countIn).toEqual([0, 1.5, 3, 3.5, 4, 4.5, 5, 5.5])
+    expect(drums.filter((e) => e.tick < 6 * PPQ - 20).every((e) => e.note === DRUM_NOTES.sidestick)).toBe(true)
   })
 
   test('in 6/8 every style plays straight eighths, with the bass on the pulses', () => {
@@ -185,6 +188,25 @@ describe('example tunes', () => {
       const written = chart.bars.map((b) => b.chords.reduce((a, c) => a + c.beats, 0))
       expect(new Set(written).size, id).toBe(1)
       expect(timeline.bars.length, id).toBe(chart.bars.length + 1)
+    }
+  })
+})
+
+describe('the first and last bars', () => {
+  test('in 6/8 and 12/8 the opening bar keeps the full hi-hat, with the crash on the downbeat only', () => {
+    for (const id of ['ballad-68-c', 'slow-blues-128-g']) {
+      const chart = EXAMPLES.find((t) => t.id === id)!.chart
+      const base = getStyle(chart.style)
+      const timeline = buildTimeline(chart, 0, 1)
+      const drums = generateDrums(timeline.bars, base.drums, base.swing, timeline.clicks, compoundStyle(base).drums)
+      const [first] = onsets(drums, timeline, (e) => e.note === DRUM_NOTES.hhClosed || e.note === DRUM_NOTES.crash)
+      const eighths = Array.from({ length: timeline.bars[0].beats * 2 }, (_, i) => i / 2)
+      expect(new Set(first.map((at) => Math.round(at * 2) / 2)), id).toEqual(new Set(eighths))
+      const crashes = onsets(drums, timeline, (e) => e.note === DRUM_NOTES.crash)[0]
+      expect(
+        crashes.map((at) => Math.abs(Math.round(at))),
+        id,
+      ).toEqual([0])
     }
   })
 })

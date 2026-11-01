@@ -28,6 +28,9 @@ async function fetchWithProgress(url: string, onProgress: (ratio: number) => voi
   return out.buffer
 }
 
+// About +10 dB: brings the band from around -28 dBFS (RMS) to the level of other music
+const MASTER_GAIN = 3.2
+
 // Thin layer over SpessaSynth: sound bank loading, MIDI playback, mixer
 export class Player {
   private ctx: AudioContext
@@ -55,13 +58,22 @@ export class Player {
     for (const type of UNLOCK_EVENTS) window.addEventListener(type, unlock, true)
   }
 
+  // The output stage: the General MIDI sound bank plays well below full scale, so the band is
+  // raised by about 10 dB, and a fast limiter catches the peaks so nothing distorts
+  private master(): AudioNode {
+    const gain = new GainNode(this.ctx, { gain: MASTER_GAIN })
+    const limiter = new DynamicsCompressorNode(this.ctx, { threshold: -8, knee: 4, ratio: 12, attack: 0.002, release: 0.15 })
+    gain.connect(limiter).connect(this.ctx.destination)
+    return gain
+  }
+
   async init(onProgress: (ratio: number) => void): Promise<void> {
     const [soundfont] = await Promise.all([
       fetchWithProgress(SOUNDFONT_URL, onProgress),
       this.ctx.audioWorklet.addModule(processorUrl),
     ])
     const synth = new WorkletSynthesizer(this.ctx)
-    synth.connect(this.ctx.destination)
+    synth.connect(this.master())
     await synth.soundBankManager.addSoundBank(soundfont, 'main')
     await synth.isReady
 

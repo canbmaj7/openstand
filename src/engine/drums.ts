@@ -31,10 +31,10 @@ function render(hits: DrumHit[], start: number, swing: number, from = 0, to = In
 // Bars in a compound meter (6/8) play `compound`, the style's 6/8 grooves, with straight eighths.
 export function generateDrums(bars: Bar[], part: DrumPart, swing: number, clicks: Click[], compound: DrumPart = part): NoteEvent[] {
   const startsCompound = bars[0]?.compound ?? false
-  // The count-in is played on the style's own count-in sound, louder on the accents
-  const sound = part.countIn[0]?.[1] ?? 'sidestick'
+  // The count-in is played on the cross-stick in every style (a closed hi-hat is too quiet to count by)
+  const velocity = { bar: 112, beat: 94, sub: 64 }
   const events = render(
-    clicks.map(({ at, accent }): DrumHit => [at, sound, accent ? 100 : 74]),
+    clicks.map(({ at, level }): DrumHit => [at, 'sidestick', velocity[level]]),
     0,
     0.5,
   )
@@ -81,9 +81,15 @@ export function generateDrums(bars: Bar[], part: DrumPart, swing: number, clicks
     if (Math.abs(unit - bar.beats) < 1e-9) {
       events.push(...render(current.hits, bar.start, feel, from, from + unit))
     } else if (bar.compound) {
-      // 12/8 and 9/8 repeat the 6/8 bar
-      for (let at = 0; at < bar.beats - 1e-9; at += unit) {
-        events.push(...render(current.hits, bar.start + at, feel, from, from + Math.min(unit, bar.beats - at)))
+      // 12/8 and 9/8 repeat the 6/8 bar; an opening crash only on the first half, a fill only on the last
+      const halves = Math.ceil(bar.beats / unit - 1e-9)
+      for (let k = 0; k < halves; k++) {
+        const at = k * unit
+        const opening = (drums.grooves.first?.includes(current) ?? false) && k > 0
+        const beforeFill = (drums.grooves.last?.includes(current) ?? false) && k < halves - 1
+        // The other halves of an opening or fill bar play the groove's first bar
+        const [hits, start] = opening || beforeFill ? [drums.grooves.middle[0].hits, 0] : [current.hits, from]
+        events.push(...render(hits, bar.start + at, feel, start, start + Math.min(unit, bar.beats - at)))
       }
     } else {
       beatMap(unit, bar.beats).forEach((source, beat) => {
