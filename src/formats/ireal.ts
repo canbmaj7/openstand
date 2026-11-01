@@ -254,7 +254,7 @@ export function durations(cells: Cell[], time: TimeSignature): BarChord[] {
   const lengths = positions.map((p, i) => ((positions[i + 1] ?? first + span) - p) / span)
   let beats = lengths.map((l) => Math.max(1, Math.round(l * barBeats)))
   const sum = beats.reduce((a, b) => a + b, 0)
-  if (sum !== barBeats) beats = evenSplit(chords.length, barBeats)
+  if (sum !== barBeats) beats = evenSplit(chords.length, time)
   return chords.map((symbol, i) => ({ symbol, beats: beats[i] }))
 }
 

@@ -1,13 +1,16 @@
-import { beatsPerBar, playbackOrder, type Chart, type TimeSignature } from '../music/chart'
+import { beatsPerBar, isCompound, playbackOrder, type Chart, type TimeSignature } from '../music/chart'
 import { parseChord, transposeChord, type Chord } from '../music/chords'
+import { PULSE } from './meter'
 
-export const BEATS_PER_MEASURE = 4
-
-// The count-in is one bar of a waltz or a 4/4 tune; other meters count four beats
+// The count-in is one bar of a waltz, a 4/4 tune or a compound meter (6/8 clicks twice);
+// other meters count four beats
 export function countInBeats(chart: Chart): number {
   const beats = beatsPerBar(chart.time)
-  return beats === 3 ? 3 : 4
+  return isCompound(chart.time) || beats === 3 ? beats : 4
 }
+
+// Beats per count-in click: a dotted quarter in 6/8, otherwise a quarter
+export const countInPulse = (chart: Chart) => (isCompound(chart.time) ? PULSE : 1)
 
 // One chord span on the timeline, in beats
 export interface Slot {
@@ -16,6 +19,7 @@ export interface Slot {
   beats: number
   measure: number // bar index in the chart; -1 for the final chord
   chorus: number
+  compound?: boolean // in 6/8, 9/8 or 12/8
 }
 
 // One bar as played; drum grooves are chosen per bar
@@ -25,6 +29,7 @@ export interface Bar {
   measure: number // -1 for the ending bar
   isFirst: boolean
   isLast: boolean
+  compound?: boolean // in 6/8, 9/8 or 12/8
 }
 
 export interface Timeline {
@@ -32,6 +37,7 @@ export interface Timeline {
   bars: Bar[]
   totalBeats: number
   countIn: number // beats before the first bar
+  pulse: number // beats per count-in click
 }
 
 // Practice options: loop a range of written bars, change key every chorus
@@ -74,9 +80,9 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
 
   // Time signature in force at each written bar
   let time: TimeSignature = chart.time
-  const barBeats = chart.bars.map((bar) => {
+  const meters = chart.bars.map((bar) => {
     if (bar.time) time = bar.time
-    return beatsPerBar(time)
+    return { beats: beatsPerBar(time), compound: isCompound(time) || undefined }
   })
 
   const order = practiceOrder(chart, practice.loop)
@@ -93,16 +99,16 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
     let held: Chord | null = carried ? toChord(carried, chorus) : null
     order.forEach((measure, n) => {
       const bar = chart.bars[measure]
-      const beats = barBeats[measure]
-      bars.push({ start: beat, beats, measure, isFirst: n === 0, isLast: n === order.length - 1 })
+      const { beats, compound } = meters[measure]
+      bars.push({ start: beat, beats, measure, isFirst: n === 0, isLast: n === order.length - 1, compound })
 
       if (bar.chords.length === 0) {
-        if (held) slots.push({ chord: held, start: beat, beats, measure, chorus })
+        if (held) slots.push({ chord: held, start: beat, beats, measure, chorus, compound })
       } else {
         let at = beat
         for (const c of bar.chords) {
           held = c.symbol ? toChord(c.symbol, chorus) : null // N.C. leaves a gap
-          if (held) slots.push({ chord: held, start: at, beats: c.beats, measure, chorus })
+          if (held) slots.push({ chord: held, start: at, beats: c.beats, measure, chorus, compound })
           at += c.beats
         }
       }
@@ -110,15 +116,18 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
     })
   }
 
-  // Ending: resolve to the first chord played (usually the tonic) and hold, in the last chorus's key
+  // Ending: resolve to the first chord played (usually the tonic) and hold for a bar of the
+  // last meter (two bars of a short one), in the last chorus's key
   const first = order.flatMap((m) => chart.bars[m].chords).find((c) => c.symbol)?.symbol
   if (first && choruses > 0) {
-    bars.push({ start: beat, beats: BEATS_PER_MEASURE, measure: -1, isFirst: false, isLast: false })
-    slots.push({ chord: toChord(first, choruses - 1), start: beat, beats: BEATS_PER_MEASURE, measure: -1, chorus: choruses })
-    beat += BEATS_PER_MEASURE
+    const last = meters[order[order.length - 1]] ?? { beats: 4 }
+    const beats = last.beats >= 3 ? last.beats : last.beats * 2
+    bars.push({ start: beat, beats, measure: -1, isFirst: false, isLast: false, compound: last.compound })
+    slots.push({ chord: toChord(first, choruses - 1), start: beat, beats, measure: -1, chorus: choruses, compound: last.compound })
+    beat += beats
   }
 
-  return { slots, bars, totalBeats: beat, countIn }
+  return { slots, bars, totalBeats: beat, countIn, pulse: countInPulse(chart) }
 }
 
 export function slotAtBeat(timeline: Timeline, beat: number): Slot | undefined {

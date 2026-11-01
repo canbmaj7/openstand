@@ -75,7 +75,7 @@ export function parseBarInput(text: string, time: TimeSignature): BarInput {
   if (symbols.length > barBeats * 2) return { ok: false, error: `Too many chords for one bar` }
 
   let beats: number[]
-  if (given.every((b) => b === null)) beats = evenSplit(symbols.length, barBeats)
+  if (given.every((b) => b === null)) beats = evenSplit(symbols.length, time)
   else {
     // Chords without a length share what is left of the bar
     const fixed = given.reduce<number>((sum, b) => sum + (b ?? 0), 0)
@@ -91,7 +91,7 @@ export function parseBarInput(text: string, time: TimeSignature): BarInput {
 
 // The text shown for a bar; lengths are written only when they differ from an even split
 export function barToInput(chords: BarChord[], time: TimeSignature): string {
-  const even = evenSplit(chords.length, beatsPerBar(time))
+  const even = evenSplit(chords.length, time)
   const uneven = chords.some((c, i) => Math.abs(c.beats - even[i]) > 1e-6)
   return chords.map((c) => (c.symbol ?? 'NC') + (uneven ? `:${c.beats}` : '')).join(' ')
 }

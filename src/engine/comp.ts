@@ -1,6 +1,7 @@
 import { closeVoicingTones, rootlessVoicings, type Chord } from '../music/chords'
 import type { CompHit, CompPart } from '../styles/types'
-import { chance, humanize, pick, place, rand, toTicks, type NoteEvent } from './events'
+import { chance, humanize, place, rand, toTicks, type NoteEvent } from './events'
+import { patternFor } from './meter'
 import type { Slot } from './timeline'
 
 const CHANNEL = 1
@@ -33,11 +34,15 @@ function chooseVoicing(chord: Chord, kind: CompPart['voicing'], prevCenter: numb
   return best
 }
 
-export function generateComp(slots: Slot[], part: CompPart, swing: number, countIn: number): NoteEvent[] {
+// Chords lasting 3 beats in a style written for 4 play beats 1, 2 and 4 of a 4-beat rhythm;
+// chords in a compound meter (6/8) play `compound`, the style's 6/8 rhythms, with straight eighths.
+export function generateComp(slots: Slot[], part: CompPart, swing: number, countIn: number, compound: CompPart = part): NoteEvent[] {
   const events: NoteEvent[] = []
   let prevCenter = 62
 
   slots.forEach((slot) => {
+    const { rhythms, anticipation = 0 } = slot.compound ? compound : part
+    const feel = slot.compound ? 0.5 : swing
     const voicing = chooseVoicing(slot.chord, part.voicing, prevCenter)
     prevCenter = voicing.reduce((a, b) => a + b, 0) / voicing.length
 
@@ -45,17 +50,19 @@ export function generateComp(slots: Slot[], part: CompPart, swing: number, count
       // Final chord: one long hit with the root in the left hand
       const notes = [slot.chord.root + 36, ...voicing]
       for (const note of notes) {
-        events.push({ tick: toTicks(slot.start), channel: CHANNEL, note, velocity: part.velocity[1], duration: toTicks(3.5) })
+        events.push({ tick: toTicks(slot.start), channel: CHANNEL, note, velocity: part.velocity[1], duration: toTicks(slot.beats - 0.5) })
       }
       return
     }
 
-    const options = part.rhythms[String(slot.beats) as '1' | '2' | '3' | '4'] ?? part.rhythms['1'] ?? [[[0, 0.6]]]
-    const hits: CompHit[] = pick(options).map(([at, dur, vel]): CompHit => [at, dur, vel])
+    const timed = (rhythm: CompHit[][] | undefined) => rhythm?.map((hits) => hits.map(([at, dur, vel]) => ({ at, dur, vel })))
+    const byLength = Object.fromEntries(Object.entries(rhythms).map(([length, options]) => [length, timed(options)]))
+    const hits: CompHit[] = patternFor(byLength, slot.beats, !!slot.compound, { at: 0, dur: 0.6, vel: undefined }).map(({ at, dur, vel }): CompHit => [at, dur, vel])
+    if (!hits.length) return
 
     // Sometimes anticipate the chord by an eighth
-    if (hits[0][0] === 0 && slot.start > countIn && chance(part.anticipation ?? 0)) {
-      hits[0] = [-0.5, hits[0][1] + (1 - swing), hits[0][2]]
+    if (hits[0][0] === 0 && slot.start > countIn && chance(anticipation)) {
+      hits[0] = [-0.5, hits[0][1] + (1 - feel), hits[0][2]]
     }
 
     for (const [at, duration, vel] of hits) {
@@ -64,7 +71,7 @@ export function generateComp(slots: Slot[], part: CompPart, swing: number, count
         events.push(
           humanize(
             {
-              tick: toTicks(slot.start + place(at, swing)),
+              tick: toTicks(slot.start + place(at, feel)),
               channel: CHANNEL,
               note,
               velocity,
