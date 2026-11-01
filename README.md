@@ -38,19 +38,20 @@ OpenStand is an **early but usable** practice tool. What works today:
 - **Import from iReal Pro.** Paste an `irealb://` link or a whole playlist (or choose an iReal Pro HTML export) and the tunes land in your library. Sections, repeats, first and second endings, D.C./D.S. al Coda/Fine, time signatures and N.C. bars are all read and played in the right order. Tested against public playlists of almost 2,000 tunes.
 - **Write your own charts.** Type chords the way you would say them (`Dm7 G7`, `Cmaj7`, `Bø`, `F#dim7`) and press Enter for the next bar. Add sections, repeats, endings, segno and coda, D.C./D.S. jumps, time signature, key, style and tempo. Edit any tune in the library the same way.
 - **Export to iReal Pro.** Any chart, imported or written here, can be copied as an `irealb://` link that opens in iReal Pro. All ~2,000 test tunes come back unchanged after going out and in again.
-- **A tune library in your browser.** Search by title or composer, filter by playlist. Everything is stored locally (IndexedDB); there is no server and no account.
+- **A tune library in your browser.** It starts with fifteen example tunes in 4/4, 3/4, 6/8, 12/8 and 5/4. Search by title or composer, filter by playlist. Everything is stored locally (IndexedDB); there is no server and no account.
 - **Share a tune as a link.** The whole chart is compressed into the URL, so whoever opens it sees and hears the same tune.
 - **Eight styles:** Medium Swing, Ballad (brushes), Jazz Waltz (3/4), Bossa Nova (nylon guitar), Samba, Pop Rock, Funk (electric piano, sixteenth-note groove) and Shuffle (boogie bass). Imported tunes get the closest style automatically, and you can switch styles while the band is playing.
+- **Every style in every meter.** In 3/4, 5/4 or 6/4 a style's 4/4 patterns are rearranged so the accents stay right (a rock beat in 3/4 becomes boom-chick-chick). 6/8 and 12/8 are felt in dotted quarters with straight eighths, with their own grooves for jazz, Latin and pop styles.
 - **Generated accompaniment:**
   - **Bass** walks through chord tones in swing, or plays style patterns (bossa root–fifth, rock eighths), always approaching the next chord smoothly
-  - **Piano / guitar** comps with rootless jazz voicings or close-position chords, choosing the shape closest to the previous one (voice leading)
+  - **Piano / guitar** comps with rootless jazz voicings or close-position chords, choosing the shape whose notes move least from the previous one (voice leading); ballad and pop piano use the sustain pedal so chords ring into each other
   - **Drums** pick grooves by position in the form: a set-up on the first bar, two-bar figures in the middle, a fill on the last bar
   - Every chorus is played a little differently
 - **A real-looking lead sheet.** Chord symbols in a handwritten jazz hand (Petaluma), rehearsal marks, repeat signs, endings, segno and coda, correct flat/sharp spelling in every key, and the current bar marked with a highlighter stroke as it plays.
-- **Practice controls:** tempo (40–300 BPM, changes instantly), transpose to any key while playing, number of choruses, count-in. Keyboard shortcuts: <kbd>Space</kbd> to play/stop, <kbd>↑</kbd>/<kbd>↓</kbd> for ±5 BPM, <kbd>→</kbd>/<kbd>←</kbd> to transpose by a half step, and <kbd>L</kbd> to clear the loop. Shortcuts are inactive while editing a chart or focusing a form control.
+- **Practice controls:** tempo (40–300 BPM, changes instantly), transpose to any key while playing, number of choruses, and a count-in in the tune's meter (4/4 "1 . 2 . 1 2 3 4", 6/8 two pulses then six eighths). Keyboard shortcuts: <kbd>Space</kbd> to play/stop, <kbd>↑</kbd>/<kbd>↓</kbd> for ±5 BPM, <kbd>→</kbd>/<kbd>←</kbd> to transpose by a half step, and <kbd>L</kbd> to clear the loop. Shortcuts are inactive while editing a chart or focusing a form control.
 - **Practice modes:** loop any bars or a rehearsal section, go round all 12 keys (or step up a half or whole tone each chorus), and speed up a few BPM every chorus.
 - **Style lab:** change a style's drums (a main groove, a variation the band switches to, and a fill for the end of the form), bass line and chord rhythm on a grid (each with an optional second pattern the band switches to) and hear it while the band plays. Save your styles and pick them from the style menu, share one as a link, or send it to the project as a new style.
-- **Mixer** with per-instrument volume and mute.
+- **Mixer** with per-instrument volume and mute, a master volume and an output level meter.
 - **Light and dark themes** that follow your system setting, and a layout that works on phones.
 - **Small download, works offline.** The sound bank is trimmed to the instruments OpenStand uses and compressed to 4.5 MB. After the first visit the app works without a connection and can be installed on a phone's home screen.
 
@@ -116,10 +117,10 @@ A style is **data, not code**. Each one lives in `src/styles/library/` and descr
 | Part | What you describe |
 | --- | --- |
 | `bass` | `walking` (rule-based) or `pattern`: notes as chord degrees — `R`, `3`, `5`, `6`, `5-` (fifth below), `7`, `8` (octave), `app` (approach to the next chord) |
-| `comp` | Voicing type (`rootless` or `close`) and rhythms per chord length |
+| `comp` | Voicing type (`rootless` or `close`), rhythms per chord length, and `pedal` for a legato piano |
 | `drums` | Kit, count-in, grooves for the first / middle / last bar of the form (1 or 2 bars long; `beats: 3` for a waltz), ending |
 
-Positions are in beats from the start of the bar or chord. Off-beat eighths are written as `x.5` and are swung automatically when the style has `swing` above `0.5`. A drum hit can carry a probability, so a groove varies on every pass.
+Positions are in beats from the start of the bar or chord. Off-beat eighths are written as `x.5` and are swung automatically when the style has `swing` above `0.5`. A drum hit can carry a probability, so a groove varies on every pass. A style is written for 4/4 (or 3/4 for a waltz); the engine fits it to other meters (`src/engine/meter.ts`), and the 6/8 and 12/8 patterns live in `src/styles/compound.ts`.
 
 ```ts
 // A bossa bass: root on 1, fifth below on the "and" of 2 and on 3, root on the "and" of 4
@@ -140,7 +141,8 @@ Positions are in beats from the start of the bar or chord. Off-beat eighths are 
 - [x] Tune library in the browser, share links
 - [x] Trimmed, compressed sound bank
 - [x] Works offline after the first visit (PWA), installable on phones
-- [ ] More styles: up-tempo swing, Afro-Cuban, reggae, 12/8 — and beyond (Balkan, Turkish *usul*, Afrobeat…)
+- [x] Every style in 3/4, 6/8, 12/8, 5/4 and 6/4, with a count-in in the tune's meter
+- [ ] More styles: up-tempo swing, Afro-Cuban, reggae — and beyond (Balkan, Turkish *usul*, Afrobeat…)
 - [x] A style lab: edit a groove in the browser and hear it right away
 - [x] Chart editor, and export back to iReal Pro
 - [x] Practice modes: tempo ramp per chorus, loop a section, cycle through all 12 keys
