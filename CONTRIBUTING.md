@@ -36,12 +36,13 @@ npm run dev
 Open <http://localhost:5173>. Before sending changes, run:
 
 ```bash
-npm run build   # type-check and build
-npm run lint    # oxlint
-npm test        # Vitest
+npm run build      # type-check and build
+npm run lint       # oxlint
+npm test           # unit tests (Vitest)
+npm run test:e2e   # browser tests (Playwright); run `npx playwright install chromium` once first
 ```
 
-The same three commands run on every pull request.
+All four run on every pull request.
 
 ## Writing a style
 
@@ -84,16 +85,30 @@ The [README](README.md#how-it-works) explains how a chart becomes sound. In shor
 Guidelines:
 
 - **Keep the engine free of the browser.** Code in `engine/`, `music/`, `styles/` and `formats/` must not touch `window`, `document` or audio APIs, so it can run in tests, in Node and later as a separate package.
-- **Test what you change in the engine and formats.** Tests live in `tests/` and use made-up chord progressions.
+- **Test what you change.** Unit tests for the engine and formats live in `tests/` and use made-up chord progressions. Browser tests in `e2e/` walk through what a visitor does (play a tune, change the key, use the style lab, open a shared link, use a phone); if you change one of those flows, update or add a test there.
 - **Match the existing style.** TypeScript in strict mode, small functions, comments that say *why*. oxlint and the build will catch most things.
 - **Check the phone layout.** Many people practice with a phone on the music stand. Try your change at around 390 px wide, in light and dark mode.
 - **English** for code, comments, the interface and commit messages.
+
+## How we work
+
+The same process applies to everyone, maintainers included.
+
+1. **Every change starts as an issue**: a bug, an idea or a planned piece of work. Small fixes can skip this step.
+2. **Work happens on a branch, and lands through a pull request.** Nobody pushes to `main` directly; `main` is protected and is always ready to ship.
+3. **Every pull request is checked automatically**: lint, unit tests, build and browser tests. A pull request can't be merged until they pass.
+4. **Every pull request gets a preview.** Vercel builds it and posts a link, so anyone can try the change on a phone or a laptop before it goes live.
+5. **Who approves what:**
+   - New features and anything you can see or hear (layout, styles, sound) are approved by the project owner after trying the preview.
+   - Bug fixes, tests, documentation and internal changes can be merged by a maintainer once the checks pass.
+6. **Merging to `main` deploys** to <https://openstand-eta.vercel.app>.
+7. **Releases** collect the merged changes every few weeks under a version number (`v0.2.0`…) with release notes.
 
 ## Sending a pull request
 
 - Keep it focused: one feature or fix per pull request.
 - Describe what changed and how you checked it. For sound changes, say what you listened to.
-- Make sure `npm run build`, `npm run lint` and `npm test` pass.
+- Make sure the checks above pass. If a browser test fails, the CI run keeps a trace you can open with `npx playwright show-trace`.
 - Screenshots help for anything visible.
 
 ## What we can't accept
