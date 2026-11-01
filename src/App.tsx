@@ -5,6 +5,7 @@ import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, type Timeline } from './engine/timeline'
 import { parseIrealLinks } from './formats/ireal'
 import { irealLink } from './formats/irealWrite'
+import { reportError } from './errorReports'
 import { chartFromHash, labFromHash, shareUrl, styleShareUrl } from './formats/share'
 import { addTunes, loadTunes, removePlaylist, removeTune, saveTune } from './library/db'
 import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/myStyles'
@@ -175,7 +176,11 @@ export default function App() {
         const first = getStyle(styleRef.current)
         void player.warmUp([first, ...STYLES.filter((s) => s !== first)].map(warmUpMidi))
       })
-      .catch((err: unknown) => active && setReadiness({ kind: 'error', message: String(err) }))
+      .catch((err: unknown) => {
+        if (!active) return
+        setReadiness({ kind: 'error', message: String(err) })
+        reportError(err, 'sound bank')
+      })
     return () => {
       active = false
       void player.dispose()
@@ -297,7 +302,10 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const saved = await loadTunes().catch(() => [] as Tune[])
+      const saved = await loadTunes().catch((err: unknown) => {
+        reportError(err, 'library')
+        return [] as Tune[]
+      })
       let all = [...EXAMPLES, ...saved]
       const shared = await chartFromHash(window.location.hash)
       const sharedStyle = await labFromHash(window.location.hash)

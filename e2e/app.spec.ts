@@ -121,3 +121,15 @@ test('on a phone nothing scrolls sideways', async ({ page }) => {
   await play(page)
   await stop(page)
 })
+
+test('copies of the app and local builds send no error reports', async ({ page }) => {
+  const reports: string[] = []
+  page.on('request', (r) => {
+    if (/sentry|ingest/.test(r.url())) reports.push(r.url())
+  })
+  await page.evaluate(() => setTimeout(() => {
+    throw new Error('test error')
+  }))
+  await page.waitForTimeout(500)
+  expect(reports).toEqual([])
+})
