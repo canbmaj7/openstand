@@ -1,7 +1,18 @@
 import { useState } from 'react'
 import type { DrumName } from '../styles/drums'
 import { STYLES } from '../styles'
-import { BASS_ROWS, DRUM_ROWS, barSteps, drumSteps, setBars, STEPS_PER_BEAT, type DrumCell, type LabStyle } from '../styles/lab'
+import {
+  BASS_ROWS,
+  DRUM_ROWS,
+  barSteps,
+  copyLayer,
+  drumSteps,
+  setBars,
+  STEPS_PER_BEAT,
+  type DrumCell,
+  type DrumLayer,
+  type LabStyle,
+} from '../styles/lab'
 import type { BassTone } from '../styles/types'
 
 const DRUM_LABELS: Record<DrumName, string> = {
@@ -58,6 +69,9 @@ const nearest = (vel: number) => VELOCITIES.reduce((a, b) => (Math.abs(b - vel) 
 const level = (vel: number) => (vel < 66 ? 'soft' : vel < 104 ? 'normal' : 'accent')
 
 type Tab = 'drums' | 'bass' | 'chords'
+// Which drum part the grid shows: groove A, variation B or the last-bar fill
+type Layer = 'A' | 'B' | 'fill'
+const LAYER_KEY = { A: 'drums', B: 'drumsB', fill: 'fill' } as const
 
 interface StyleLabProps {
   lab: LabStyle
@@ -86,17 +100,31 @@ export function StyleLab(props: StyleLabProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [tab, setTab] = useState<Tab>('drums')
   const [maybeMode, setMaybeMode] = useState(false) // clicks mark hits that play only sometimes
-  const steps = drumSteps(lab)
+  const [chosenLayer, setLayer] = useState<Layer>('A')
   const one = barSteps(lab)
-  const shownDrums = DRUM_ROWS.filter((d) => lab.drums[d])
-  const otherDrums = DRUM_ROWS.filter((d) => !lab.drums[d])
-  const base = STYLES.find((s) => s.id === lab.base)
+  // A layer that was removed (or never there, after Start from) falls back to groove A
+  const layer: Layer = chosenLayer === 'B' && !lab.drumsB ? 'A' : chosenLayer === 'fill' && !lab.fill ? 'A' : chosenLayer
+  const drums: DrumLayer = lab[LAYER_KEY[layer]] ?? {}
+  const setDrums = (next: DrumLayer) => onChange({ ...lab, [LAYER_KEY[layer]]: next })
+  const steps = layer === 'fill' ? one : drumSteps(lab)
+  const shownDrums = DRUM_ROWS.filter((d) => drums[d])
+  const otherDrums = DRUM_ROWS.filter((d) => !drums[d])
 
   const setDrum = (drum: DrumName, i: number, cell: DrumCell | null) => {
-    const row = (lab.drums[drum] ?? Array.from({ length: steps }, () => null)).slice()
+    const row = (drums[drum] ?? Array.from({ length: steps }, () => null)).slice()
     row[i] = cell
-    onChange({ ...lab, drums: { ...lab.drums, [drum]: row } })
+    setDrums({ ...drums, [drum]: row })
   }
+  // A new variation or fill starts as a copy of groove A, ready to change
+  const addLayer = (which: 'B' | 'fill') => {
+    onChange({ ...lab, [LAYER_KEY[which]]: copyLayer(lab.drums, which === 'fill' ? one : drumSteps(lab)) })
+    setLayer(which)
+  }
+  const removeLayer = () => {
+    onChange({ ...lab, [LAYER_KEY[layer]]: null })
+    setLayer('A')
+  }
+  const playhead = layer === 'fill' ? null : step
 
   const columns = (count: number) =>
     Array.from({ length: count }, (_, i) =>
@@ -104,7 +132,7 @@ export function StyleLab(props: StyleLabProps) {
         'lab-cell',
         i % STEPS_PER_BEAT === 0 && 'lab-beat',
         i % one === 0 && i > 0 && 'lab-bar',
-        step !== null && step % count === i && 'lab-now',
+        playhead !== null && playhead % count === i && 'lab-now',
       ]
         .filter(Boolean)
         .join(' '),
@@ -203,7 +231,11 @@ export function StyleLab(props: StyleLabProps) {
           {tab === 'drums'
             ? maybeMode
               ? 'Click a hit to make it play only sometimes (hatched), or always again.'
-              : 'Click: hit, accent, soft, off. Right-click or Sometimes: plays only sometimes.'
+              : layer === 'B'
+                ? 'The band switches between grooves A and B as it plays. Click: hit, accent, soft, off.'
+                : layer === 'fill'
+                  ? 'Plays in the last bar of each time through the form. Click: hit, accent, soft, off.'
+                  : 'Click: hit, accent, soft, off. Right-click or Sometimes: plays only sometimes.'
             : tab === 'bass'
               ? 'One bar of a four-beat chord. Notes are chord tones, so the line follows the changes.'
               : 'When the piano or guitar plays on a chord that lasts a bar. Each hit lasts until the next.'}
@@ -212,19 +244,51 @@ export function StyleLab(props: StyleLabProps) {
 
       {tab === 'drums' && (
         <>
-          <div className="lab-options">
-            <span className="label">Groove</span>
-            {([1, 2] as const).map((n) => (
-              <button key={n} className="chip" aria-pressed={lab.bars === n} onClick={() => onChange(setBars(lab, n))}>
-                {n} bar{n === 2 ? 's' : ''}
+          <div className="lab-options" role="group" aria-label="Drum part">
+            <button className="chip" aria-pressed={layer === 'A'} onClick={() => setLayer('A')}>
+              {lab.drumsB ? 'Groove A' : 'Groove'}
+            </button>
+            {lab.drumsB ? (
+              <button className="chip" aria-pressed={layer === 'B'} onClick={() => setLayer('B')}>
+                Groove B
               </button>
-            ))}
+            ) : (
+              <button className="chip" onClick={() => addLayer('B')} title="A second groove; the band switches between the two">
+                + Variation B
+              </button>
+            )}
+            {lab.fill ? (
+              <button className="chip" aria-pressed={layer === 'fill'} onClick={() => setLayer('fill')}>
+                Fill
+              </button>
+            ) : (
+              <button className="chip" onClick={() => addLayer('fill')} title="A bar the drummer plays at the end of each time through the form">
+                + Fill
+              </button>
+            )}
+            {layer !== 'A' && (
+              <button className="chip" onClick={removeLayer}>
+                Remove {layer === 'B' ? 'groove B' : 'fill'}
+              </button>
+            )}
+          </div>
+          <div className="lab-options">
+            {layer !== 'fill' && (
+              <>
+                <span className="label">Length</span>
+                {([1, 2] as const).map((n) => (
+                  <button key={n} className="chip" aria-pressed={lab.bars === n} onClick={() => onChange(setBars(lab, n))}>
+                    {n} bar{n === 2 ? 's' : ''}
+                  </button>
+                ))}
+              </>
+            )}
             <button className="chip" aria-pressed={maybeMode} onClick={() => setMaybeMode(!maybeMode)}>
               Sometimes
             </button>
             <label className="check">
               <input type="checkbox" checked={lab.fills} onChange={(e) => onChange({ ...lab, fills: e.target.checked })} />
-              Fills from {base?.name}
+              Crash on each chorus
             </label>
             {otherDrums.length > 0 && (
               <select
@@ -233,7 +297,7 @@ export function StyleLab(props: StyleLabProps) {
                 value=""
                 onChange={(e) => {
                   const drum = e.target.value as DrumName
-                  if (drum) onChange({ ...lab, drums: { ...lab.drums, [drum]: Array.from({ length: steps }, () => null) } })
+                  if (drum) setDrums({ ...drums, [drum]: Array.from({ length: steps }, () => null) })
                 }}
               >
                 <option value="">Add a drum…</option>
@@ -256,9 +320,9 @@ export function StyleLab(props: StyleLabProps) {
                         aria-label={`Remove ${DRUM_LABELS[drum]}`}
                         title="Remove this drum"
                         onClick={() => {
-                          const drums = { ...lab.drums }
-                          delete drums[drum]
-                          onChange({ ...lab, drums })
+                          const next = { ...drums }
+                          delete next[drum]
+                          setDrums(next)
                         }}
                       >
                         ×
@@ -266,7 +330,7 @@ export function StyleLab(props: StyleLabProps) {
                       {DRUM_LABELS[drum]}
                     </th>
                     {columns(steps).map((cls, i) => {
-                      const cell = lab.drums[drum]?.[i] ?? null
+                      const cell = drums[drum]?.[i] ?? null
                       return (
                         <td key={i} className={cls}>
                           <button

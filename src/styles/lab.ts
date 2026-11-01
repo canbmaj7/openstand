@@ -1,11 +1,13 @@
-// The style lab's model: one groove of a style laid out on a grid of sixteenth notes,
-// so it can be edited cell by cell and turned back into a style.
-// Everything the grid doesn't show (count-in, fills, ending, patterns for shorter chords)
+// The style lab's model: a style's grooves laid out on a grid of sixteenth notes,
+// so they can be edited cell by cell and turned back into a style.
+// Drums: groove A, an optional variation B (the band switches between them) and an optional
+// fill for the last bar of the form. Bass and chords: one bar each.
+// Everything the grid doesn't show (count-in, ending, patterns for shorter chords)
 // comes from the style the lab started from.
 
 import type { DrumName } from './drums'
 import { getStyle } from './index'
-import type { BassNote, BassTone, CompHit, DrumHit, StyleDefinition } from './types'
+import type { BassNote, BassTone, CompHit, DrumHit, Groove, StyleDefinition } from './types'
 
 export const STEPS_PER_BEAT = 4
 
@@ -15,14 +17,19 @@ export interface DrumCell {
   dur?: number // ring length in beats, for cymbals
 }
 
+// One drum part on the grid: a row of cells per drum
+export type DrumLayer = Partial<Record<DrumName, (DrumCell | null)[]>>
+
 export interface LabStyle {
   base: string // id of the style the lab started from
   name: string
   swing: number
   beats: 3 | 4 // beats per bar
-  bars: 1 | 2 // length of the drum groove
-  fills: boolean // keep the base style's first-bar groove and last-bar fill
-  drums: Partial<Record<DrumName, (DrumCell | null)[]>>
+  bars: 1 | 2 // length of grooves A and B
+  fills: boolean // a crash on the first bar of every chorus
+  drums: DrumLayer // groove A
+  drumsB?: DrumLayer | null // variation B, same length as A
+  fill?: DrumLayer | null // the last bar of the form, one bar long
   bass: { walking: boolean; steps: (BassTone | null)[] } // one bar
   comp: boolean[] // one bar
 }
@@ -61,22 +68,46 @@ const stepOf = (at: number) => Math.round(at * STEPS_PER_BEAT)
 export const drumSteps = (lab: LabStyle) => lab.bars * lab.beats * STEPS_PER_BEAT
 export const barSteps = (lab: LabStyle) => lab.beats * STEPS_PER_BEAT
 
-export function labFromStyle(style: StyleDefinition): LabStyle {
-  const groove = style.drums.grooves.middle[0]
-  const beats: 3 | 4 = (groove?.beats ?? 4) === 3 ? 3 : 4
-  const bars = groove?.bars ?? 1
-  const steps = bars * beats * STEPS_PER_BEAT
-
-  const drums: LabStyle['drums'] = {}
-  for (const [at, drum, vel, chance, dur] of groove?.hits ?? []) {
+function layerFromHits(hits: DrumHit[], steps: number): DrumLayer {
+  const layer: DrumLayer = {}
+  for (const [at, drum, vel, chance, dur] of hits) {
     const i = stepOf(at)
     if (i < 0 || i >= steps) continue
-    const row = (drums[drum] ??= empty<DrumCell>(steps))
+    const row = (layer[drum] ??= empty<DrumCell>(steps))
     const cell: DrumCell = { vel }
     if (chance !== undefined && chance < 1) cell.chance = chance
     if (dur !== undefined) cell.dur = dur
     row[i] = cell
   }
+  return layer
+}
+
+function hitsFromLayer(layer: DrumLayer, until = Infinity): DrumHit[] {
+  const hits: DrumHit[] = []
+  for (const drum of DRUM_ROWS) {
+    layer[drum]?.forEach((cell, i) => {
+      if (!cell || i >= until) return
+      const hit: DrumHit = [round(i / STEPS_PER_BEAT), drum, cell.vel]
+      if (cell.chance !== undefined || cell.dur !== undefined) hit.push(cell.chance ?? 1)
+      if (cell.dur !== undefined) hit.push(cell.dur)
+      hits.push(hit)
+    })
+  }
+  return hits
+}
+
+export function labFromStyle(style: StyleDefinition): LabStyle {
+  const { middle, last } = style.drums.grooves
+  const groove = middle[0]
+  const beats: 3 | 4 = (groove?.beats ?? 4) === 3 ? 3 : 4
+  const bars = groove?.bars ?? 1
+  const steps = bars * beats * STEPS_PER_BEAT
+  const sameShape = (g?: Groove) => !!g && g.bars === bars && (g.beats ?? 4) === beats
+
+  const drums = layerFromHits(groove?.hits ?? [], steps)
+  const drumsB = sameShape(middle[1]) ? layerFromHits(middle[1].hits, steps) : null
+  const lastBar = last?.[0]
+  const fill = lastBar && lastBar.bars === 1 && (lastBar.beats ?? 4) === beats ? layerFromHits(lastBar.hits, beats * STEPS_PER_BEAT) : null
 
   const one = beats * STEPS_PER_BEAT
   const bassSteps = empty<BassTone>(one)
@@ -101,8 +132,10 @@ export function labFromStyle(style: StyleDefinition): LabStyle {
     swing: style.swing,
     beats,
     bars: bars === 2 ? 2 : 1,
-    fills: true,
+    fills: !!style.drums.grooves.first,
     drums,
+    drumsB,
+    fill,
     bass: { walking, steps: bassSteps },
     comp,
   }
@@ -136,16 +169,15 @@ export function styleFromLab(lab: LabStyle): StyleDefinition {
   const one = barSteps(lab)
   const key = String(lab.beats) as '3' | '4'
 
-  const hits: DrumHit[] = []
-  for (const drum of DRUM_ROWS) {
-    lab.drums[drum]?.forEach((cell, i) => {
-      if (!cell) return
-      const hit: DrumHit = [round(i / STEPS_PER_BEAT), drum, cell.vel]
-      if (cell.chance !== undefined || cell.dur !== undefined) hit.push(cell.chance ?? 1)
-      if (cell.dur !== undefined) hit.push(cell.dur)
-      hits.push(hit)
-    })
-  }
+  const shape = { bars: lab.bars, ...(lab.beats === 3 ? { beats: 3 } : {}) }
+  const oneBar = { bars: 1 as const, ...(lab.beats === 3 ? { beats: 3 } : {}) }
+  const middle: Groove[] = [{ ...shape, hits: hitsFromLayer(lab.drums) }]
+  if (lab.drumsB) middle.push({ ...shape, hits: hitsFromLayer(lab.drumsB) })
+  // The top of each chorus: groove A's first bar with a crash on one
+  const first: Groove[] | undefined = lab.fills
+    ? [{ ...oneBar, hits: [...hitsFromLayer(lab.drums, one).filter((h) => h[1] !== 'crash'), [0, 'crash', 100, 1, 2]] }]
+    : undefined
+  const last: Groove[] | undefined = lab.fill ? [{ ...oneBar, hits: hitsFromLayer(lab.fill) }] : undefined
 
   const bassOnsets = lab.bass.steps.flatMap((t, i) => (t ? [i] : []))
   const bassLengths = lengths(bassOnsets, one, 2)
@@ -181,25 +213,32 @@ export function styleFromLab(lab: LabStyle): StyleDefinition {
     },
     drums: {
       ...base.drums,
-      grooves: {
-        middle: [{ bars: lab.bars, ...(lab.beats === 3 ? { beats: 3 } : {}), hits }],
-        ...(lab.fills && base.drums.grooves.first ? { first: base.drums.grooves.first } : {}),
-        ...(lab.fills && base.drums.grooves.last ? { last: base.drums.grooves.last } : {}),
-      },
+      grooves: { middle, ...(first ? { first } : {}), ...(last ? { last } : {}) },
     },
   }
 }
 
-// Changes the drum groove's length, keeping what fits
+// Changes the length of grooves A and B, keeping what fits; going to two bars repeats the first
+function resize(layer: DrumLayer, steps: number, repeat: boolean): DrumLayer {
+  const out: DrumLayer = {}
+  for (const [drum, row] of Object.entries(layer) as [DrumName, (DrumCell | null)[]][]) {
+    out[drum] = Array.from({ length: steps }, (_, i) => (i < row.length ? row[i] : repeat ? (row[i % row.length] ?? null) : null))
+  }
+  return out
+}
+
 export function setBars(lab: LabStyle, bars: 1 | 2): LabStyle {
   const steps = bars * lab.beats * STEPS_PER_BEAT
-  const drums: LabStyle['drums'] = {}
-  for (const [drum, row] of Object.entries(lab.drums) as [DrumName, (DrumCell | null)[]][]) {
-    // Going to two bars repeats the first bar
-    drums[drum] = Array.from({ length: steps }, (_, i) => row[i] ?? (bars === 2 ? (row[i % row.length] ?? null) : null))
+  return {
+    ...lab,
+    bars,
+    drums: resize(lab.drums, steps, bars === 2),
+    drumsB: lab.drumsB ? resize(lab.drumsB, steps, bars === 2) : lab.drumsB,
   }
-  return { ...lab, bars, drums }
 }
+
+// A starting point for variation B or the fill: a copy of groove A (its first bar, for the fill)
+export const copyLayer = (layer: DrumLayer, steps: number): DrumLayer => resize(layer, steps, true)
 
 // The style as a TypeScript file for src/styles/library/
 export function styleSource(style: StyleDefinition, baseName: string): string {
@@ -234,11 +273,12 @@ export function normalizeLab(value: unknown): LabStyle | null {
   const steps = bars * beats * STEPS_PER_BEAT
   const one = beats * STEPS_PER_BEAT
 
-  const drums: LabStyle['drums'] = {}
-  if (v.drums && typeof v.drums === 'object') {
-    for (const [drum, row] of Object.entries(v.drums as Record<string, unknown>)) {
+  const layer = (value: unknown, length: number): DrumLayer | null => {
+    if (!value || typeof value !== 'object') return null
+    const out: DrumLayer = {}
+    for (const [drum, row] of Object.entries(value as Record<string, unknown>)) {
       if (!isDrum(drum) || !Array.isArray(row)) continue
-      drums[drum] = Array.from({ length: steps }, (_, i) => {
+      out[drum] = Array.from({ length }, (_, i) => {
         const c = row[i] as Record<string, unknown> | null | undefined
         if (!c || typeof c !== 'object') return null
         const cell: DrumCell = { vel: Math.round(clampNum(c.vel, 1, 127, 90)) }
@@ -247,6 +287,7 @@ export function normalizeLab(value: unknown): LabStyle | null {
         return cell
       })
     }
+    return out
   }
 
   const bass = (v.bass ?? {}) as Record<string, unknown>
@@ -260,7 +301,9 @@ export function normalizeLab(value: unknown): LabStyle | null {
     beats,
     bars,
     fills: v.fills !== false,
-    drums,
+    drums: layer(v.drums, steps) ?? {},
+    drumsB: layer(v.drumsB, steps),
+    fill: layer(v.fill, one),
     bass: {
       walking: bass.walking === true,
       steps: Array.from({ length: one }, (_, i) => (isTone(bassSteps[i]) ? bassSteps[i] : null)),

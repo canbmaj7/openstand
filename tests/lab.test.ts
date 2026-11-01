@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { arrange } from '../src/engine/arrange'
 import { chartFromMeasures } from '../src/music/chart'
 import { getStyle, STYLES } from '../src/styles'
-import { labFromStyle, labId, normalizeLab, setBars, styleFromLab, styleSource } from '../src/styles/lab'
+import { copyLayer, labFromStyle, labId, normalizeLab, setBars, styleFromLab, styleSource } from '../src/styles/lab'
 import type { StyleDefinition } from '../src/styles/types'
 
 const tune = chartFromMeasures({ title: 'Lab', style: 'medium-swing', key: 0, bpm: 120 }, [['D-7'], ['G7'], ['C^7'], ['C^7']])
@@ -64,6 +64,42 @@ describe('style lab', () => {
     expect(setBars(two, 1).drums.ride).toEqual(lab.drums.ride)
   })
 
+  test('a second groove and a fill come in from a style and go back out', () => {
+    for (const style of STYLES) {
+      const { middle, last } = style.drums.grooves
+      const lab = labFromStyle(style)
+      const made = styleFromLab(lab)
+      if (lab.drumsB) expect(made.drums.grooves.middle, style.id).toHaveLength(2)
+      else expect(made.drums.grooves.middle, style.id).toHaveLength(1)
+      if (lab.fill) {
+        // Positions snap to sixteenths, so a triplet fill moves slightly; every hit is kept
+        const hits = (h: { hits: unknown[][] }) => h.hits.map((x) => `${x[1]}:${x[2]}`).sort()
+        expect(hits(made.drums.grooves.last![0]), style.id).toEqual(hits(last![0]))
+      }
+      if (middle.length > 1 && middle[1].bars === middle[0].bars) expect(lab.drumsB, style.id).toBeTruthy()
+    }
+  })
+
+  test('variation B and the fill can be added, resized and removed', () => {
+    const lab = labFromStyle(getStyle('funk'))
+    const withB = { ...lab, drumsB: copyLayer(lab.drums, 16), fill: copyLayer(lab.drums, 16) }
+    const style = styleFromLab(withB)
+    expect(style.drums.grooves.middle).toHaveLength(2)
+    expect(style.drums.grooves.last?.[0].bars).toBe(1)
+    const two = setBars(withB, 2)
+    expect(two.drumsB?.kick).toHaveLength(32)
+    expect(two.fill?.kick).toHaveLength(16)
+    const plain = styleFromLab({ ...withB, drumsB: null, fill: null, fills: false })
+    expect(plain.drums.grooves.middle).toHaveLength(1)
+    expect(plain.drums.grooves.last).toBeUndefined()
+    expect(plain.drums.grooves.first).toBeUndefined()
+    // The top of each chorus gets a crash on one
+    const first = styleFromLab({ ...withB, fills: true }).drums.grooves.first?.[0]
+    expect(first?.hits).toContainEqual([0, 'crash', 100, 1, 2])
+    const { midi } = arrange(tune, style, 0, 2)
+    expect(midi.length).toBeGreaterThan(100)
+  })
+
   test('without a bass pattern the bass walks', () => {
     const lab = labFromStyle(getStyle('bossa-nova'))
     const silent = { ...lab, bass: { walking: false, steps: lab.bass.steps.map(() => null) } }
@@ -97,6 +133,11 @@ describe('style lab', () => {
     expect(odd.drums.kick).toHaveLength(16)
     expect(odd.bass.steps.slice(0, 3)).toEqual(['R', null, null])
     expect(odd.comp.slice(0, 2)).toEqual([true, false])
+    expect([odd.drumsB, odd.fill]).toEqual([null, null])
+    const layered = normalizeLab({ base: 'funk', drums: {}, drumsB: { snare: [null, { vel: 90 }] }, fill: { tomLow: 'x', crash: [{ vel: 100 }] } })!
+    expect(layered.drumsB?.snare).toHaveLength(16)
+    expect(Object.keys(layered.fill!)).toEqual(['crash'])
+    expect(layered.fill?.crash).toHaveLength(16)
     expect(() => styleFromLab(odd)).not.toThrow()
   })
 })
