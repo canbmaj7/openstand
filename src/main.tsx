@@ -9,7 +9,10 @@ import App from './App.tsx'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-    {/* Visitor counts only: no cookies. The address is cut before ? and #, so shared charts are never sent. */}
-    <Analytics beforeSend={(event) => ({ ...event, url: event.url.split(/[?#]/)[0] })} />
+    {/* Visitor counts for the official site only: no cookies, and the address is cut before ? and #,
+        so shared charts are never sent. Copies hosted elsewhere load nothing. */}
+    {location.hostname === 'openstand-eta.vercel.app' && (
+      <Analytics beforeSend={(event) => ({ ...event, url: event.url.split(/[?#]/)[0] })} />
+    )}
   </StrictMode>,
 )

@@ -11,7 +11,8 @@ import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName } from './music/chords'
 import { emptyChart } from './music/edit'
 import { EXAMPLES, type Tune } from './music/songs'
-import { getStyle, STYLES } from './styles'
+import { getStyle, STYLES, type StyleDefinition } from './styles'
+import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type LabStyle } from './styles/lab'
 import { Chart } from './ui/Chart'
 import { Editor, EditorHeader } from './ui/Editor'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
@@ -20,6 +21,7 @@ import { Mixer } from './ui/Mixer'
 import { Popover } from './ui/Popover'
 import { NO_PRACTICE, type PracticeSettings } from './music/practice'
 import { Practice } from './ui/Practice'
+import { StyleLab } from './ui/StyleLab'
 import { Transport, type Readiness } from './ui/Transport'
 import { handlePracticeShortcut, type PracticeShortcuts } from './ui/shortcuts'
 
@@ -30,6 +32,7 @@ interface Position {
   countIn: number // 1, 2, 3… during the count-in, otherwise 0
   ending: boolean
   barBeats: number
+  barNumber: number // bars played since the start, -1 during the count-in
 }
 
 interface ArrangeOptions {
@@ -55,6 +58,19 @@ const offsetToKey = (from: number, to: number) => ((to - from + 17) % 12) - 5
 // The comp instrument is named after the style's General MIDI program
 const LAST_TUNE = 'openstand:last-tune'
 
+// The style being made in the style lab is kept in the browser between visits
+const LAB_KEY = 'openstand:style-lab'
+const LAB_STYLE = 'lab' // style id used while the lab is open
+
+function loadLab(): LabStyle | null {
+  try {
+    const saved = localStorage.getItem(LAB_KEY)
+    return saved ? (JSON.parse(saved) as LabStyle) : null
+  } catch {
+    return null
+  }
+}
+
 const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
 
 const noteNameFor = (pc: number) => noteName(pc, keyPrefersFlats(pc)).replace('b', '♭').replace('#', '♯')
@@ -64,9 +80,10 @@ const compLabel = (program: number) => (program >= 24 && program <= 31 ? 'Guitar
 function positionAt(timeline: Timeline, beat: number): Position | null {
   if (beat < timeline.countIn) {
     const barBeats = timeline.countIn
-    return { measure: -1, chorus: 0, beatInBar: beat, countIn: Math.floor(beat) + 1, ending: false, barBeats }
+    return { measure: -1, chorus: 0, beatInBar: beat, countIn: Math.floor(beat) + 1, ending: false, barBeats, barNumber: -1 }
   }
-  const bar = timeline.bars.findLast((b) => b.start <= beat)
+  const barNumber = timeline.bars.findLastIndex((b) => b.start <= beat)
+  const bar = timeline.bars[barNumber]
   if (!bar) return null
   const chorus = timeline.slots.findLast((s) => s.start <= beat)?.chorus ?? 0
   return {
@@ -76,6 +93,7 @@ function positionAt(timeline: Timeline, beat: number): Position | null {
     countIn: 0,
     ending: bar.measure === -1,
     barBeats: bar.beats,
+    barNumber,
   }
 }
 
@@ -88,6 +106,10 @@ export default function App() {
   const [songId, setSongId] = useState(EXAMPLES[0].id)
   const [styleId, setStyleId] = useState(EXAMPLES[0].chart.style)
   const styleRef = useRef(styleId)
+  const [lab, setLabState] = useState<LabStyle | null>(null)
+  const labRef = useRef<LabStyle | null>(null)
+  const [labUndo, setLabUndo] = useState<LabStyle | null>(null)
+  const [labCopy, setLabCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
   useEffect(() => {
     styleRef.current = styleId
   }, [styleId])
@@ -109,7 +131,10 @@ export default function App() {
 
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
   const chart = draft?.chart ?? tune.chart
-  const style = getStyle(draft ? draft.chart.style : styleId)
+  // The lab's style is rebuilt from the grid each time it is needed
+  const resolveStyle = (id: string): StyleDefinition =>
+    id === LAB_STYLE && labRef.current ? { ...styleFromLab(labRef.current), id: LAB_STYLE } : getStyle(id)
+  const style = draft ? getStyle(draft.chart.style) : styleId === LAB_STYLE && lab ? styleFromLab(lab) : getStyle(styleId)
   const keyPc = (chart.key + transpose + 12) % 12
 
   // During practice the chorus decides the key on the stand and the tempo
@@ -159,7 +184,7 @@ export default function App() {
     const player = playerRef.current
     if (!player) return
     const { loop, keyStep } = opts.practice
-    const { midi, timeline } = arrange(chart, getStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep })
+    const { midi, timeline } = arrange(chart, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep })
     timelineRef.current = timeline
     await player.play(midi, fromSeconds)
     player.setRate(liveBpm / BASE_BPM)
@@ -239,7 +264,7 @@ export default function App() {
     setPlaying(false)
     setPosition(null)
     setSongId(next.id)
-    setStyleId(next.chart.style)
+    setStyleId(labRef.current ? LAB_STYLE : next.chart.style)
     setTranspose(0)
     setBpm(next.chart.bpm)
     setPractice((p) => ({ ...p, loop: null }))
@@ -331,10 +356,65 @@ export default function App() {
     setTimeout(() => set('idle'), 2200)
   }
 
+  // ---- Style lab ----
+
+  const labTimer = useRef(0)
+  const rearrangeRef = useRef(() => {})
+  useEffect(() => {
+    rearrangeRef.current = () => changeArrangement({})
+  })
+
+  const setLab = (next: LabStyle) => {
+    labRef.current = next
+    setLabState(next)
+    localStorage.setItem(LAB_KEY, JSON.stringify(next))
+    // While playing, the change is heard from the same spot; quick clicks are gathered into one update
+    window.clearTimeout(labTimer.current)
+    labTimer.current = window.setTimeout(() => rearrangeRef.current(), 120)
+  }
+
+  const openLab = () => {
+    setLibraryOpen(false)
+    setLab(loadLab() ?? labFromStyle(getStyle(styleId)))
+    setStyleId(LAB_STYLE)
+  }
+
+  function closeLab() {
+    const current = labRef.current
+    if (!current) return
+    window.clearTimeout(labTimer.current)
+    labRef.current = null
+    setLabState(null)
+    setLabUndo(null)
+    changeArrangement({ styleId: current.base })
+  }
+
+  const labStep = (() => {
+    if (!lab || !position || position.countIn || position.ending) return null
+    const groovebar = position.barNumber - (lab.fills ? 1 : 0)
+    if (groovebar < 0) return null
+    return Math.floor(((groovebar % lab.bars) * lab.beats + position.beatInBar) * STEPS_PER_BEAT)
+  })()
+
+  // Copies the style as a file and opens GitHub's new-file page in the style folder.
+  // The clipboard is written before the new tab takes the focus.
+  const sendLab = () => {
+    if (!lab) return
+    const written = navigator.clipboard.writeText(styleSource(styleFromLab(lab), getStyle(lab.base).name))
+    const file = `src/styles/library/${labId(lab)}.ts`
+    window.open(`https://github.com/canbmaj7/openstand/new/main?filename=${encodeURIComponent(file)}`, '_blank', 'noopener')
+    written.then(
+      () => setLabCopy('copied'),
+      () => setLabCopy('failed'),
+    )
+    setTimeout(() => setLabCopy('idle'), 2200)
+  }
+
   // ---- Editing ----
 
   const startEditing = (from: Tune | null) => {
     stop()
+    closeLab()
     setPicking(null)
     setLibraryOpen(false)
     setDraft({ chart: from ? from.chart : emptyChart(), from })
@@ -411,6 +491,14 @@ export default function App() {
         <span className="topbar-spacer" />
         {!editing && (
           <>
+            <button
+              className="topbar-button topbar-lab"
+              aria-pressed={!!lab}
+              onClick={() => (lab ? closeLab() : openLab())}
+              title="Make your own style: edit the drums, bass and chords and hear them as you go"
+            >
+              <span className="topbar-long">Style </span>lab
+            </button>
             <button className="topbar-button" onClick={() => startEditing(tune)} title="Edit this chart">
               Edit
             </button>
@@ -491,14 +579,39 @@ export default function App() {
           onDelete={() => void deleteDraftTune()}
         />
       ) : (
+      <>
+      {lab && (
+        <StyleLab
+          lab={lab}
+          onChange={(next) => {
+            setLab(next)
+            setLabUndo(null)
+          }}
+          onStartFrom={(id) => {
+            setLabUndo(lab)
+            setLab(labFromStyle(getStyle(id)))
+          }}
+          canUndo={labUndo !== null}
+          onUndo={() => {
+            if (labUndo) setLab(labUndo)
+            setLabUndo(null)
+          }}
+          step={playing ? labStep : null}
+          onCopy={() => void copy(() => styleSource(styleFromLab(lab), getStyle(lab.base).name), setLabCopy)}
+          copyState={labCopy}
+          onSend={sendLab}
+          onClose={closeLab}
+        />
+      )}
       <Transport
         readiness={readiness}
         playing={playing}
         onToggle={toggle}
         position={readout}
         styleId={styleId}
+        extraStyles={lab ? [{ id: LAB_STYLE, name: lab.name.trim() || 'My style' }] : []}
         onStyle={(id) => {
-          setBpm(getStyle(id).tempo.default)
+          setBpm(resolveStyle(id).tempo.default)
           changeArrangement({ styleId: id })
         }}
         keyPc={keyPc}
@@ -519,6 +632,7 @@ export default function App() {
           onMute={(part) => setMuted((all) => ({ ...all, [part]: !all[part] }))}
         />
       </Transport>
+      </>
       )}
 
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} onImport={importText} />

@@ -12,6 +12,7 @@ interface TransportProps {
   onToggle: () => void
   position: string
   styleId: string
+  extraStyles?: { id: string; name: string }[] // e.g. the style being made in the style lab
   onStyle: (id: string) => void
   keyPc: number
   onKey: (pc: number) => void
@@ -61,7 +62,7 @@ export function Transport(props: TransportProps) {
       <label className="control">
         <span className="label">Style</span>
         <select className="select" value={props.styleId} onChange={(e) => props.onStyle(e.target.value)}>
-          {STYLES.map((s) => (
+          {[...STYLES, ...(props.extraStyles ?? [])].map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
