@@ -25,6 +25,10 @@ No install, no account, no subscription. Just open the page and play.
   </tr>
 </table>
 
+![The style lab: drum hits added on a grid while the band plays, then groove B, the fill, a written bass line and the chord rhythm](docs/images/style-lab.gif)
+
+*The style lab: change a groove on a grid and hear it while the band plays.*
+
 ---
 
 ## Status
