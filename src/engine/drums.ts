@@ -2,7 +2,7 @@ import { DRUM_NOTES } from '../styles/drums'
 import type { DrumHit, DrumPart, Groove } from '../styles/types'
 import { chance, humanize, pick, place, toTicks, type NoteEvent } from './events'
 import { beatMap } from './meter'
-import type { Bar } from './timeline'
+import type { Bar, Click } from './timeline'
 
 export const DRUM_CHANNEL = 9
 
@@ -29,9 +29,15 @@ function render(hits: DrumHit[], start: number, swing: number, from = 0, to = In
 
 // Plays each bar by its position in the form: first bar, middle bars (two-bar grooves), last bar.
 // Bars in a compound meter (6/8) play `compound`, the style's 6/8 grooves, with straight eighths.
-export function generateDrums(bars: Bar[], part: DrumPart, swing: number, countIn: number, compound: DrumPart = part): NoteEvent[] {
+export function generateDrums(bars: Bar[], part: DrumPart, swing: number, clicks: Click[], compound: DrumPart = part): NoteEvent[] {
   const startsCompound = bars[0]?.compound ?? false
-  const events = render((startsCompound ? compound : part).countIn, 0, startsCompound ? 0.5 : swing, 0, countIn)
+  // The count-in is played on the style's own count-in sound, louder on the accents
+  const sound = part.countIn[0]?.[1] ?? 'sidestick'
+  const events = render(
+    clicks.map(({ at, accent }): DrumHit => [at, sound, accent ? 100 : 74]),
+    0,
+    0.5,
+  )
   let groove: Groove | null = null
   let grooveBar = 0
   let wasCompound = startsCompound

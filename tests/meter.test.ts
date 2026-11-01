@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { arrange } from '../src/engine/arrange'
 import { generateBass } from '../src/engine/bass'
-import { generateComp } from '../src/engine/comp'
+import { generateComp, pedalChanges } from '../src/engine/comp'
 import { generateDrums } from '../src/engine/drums'
 import { PPQ, type NoteEvent } from '../src/engine/events'
 import { beatMap, remap } from '../src/engine/meter'
@@ -71,7 +71,7 @@ describe('meters', () => {
     const chart = tune([3, 4])
     const timeline = buildTimeline(chart, 0, 1)
     const style = getStyle('pop-rock')
-    const drums = generateDrums(timeline.bars, style.drums, style.swing, timeline.countIn)
+    const drums = generateDrums(timeline.bars, style.drums, style.swing, timeline.clicks)
     const snare = onsets(drums, timeline, (e) => e.note === DRUM_NOTES.snare)
     const kick = onsets(drums, timeline, (e) => e.note === DRUM_NOTES.kick)
     for (const [i, bar] of timeline.bars.entries()) {
@@ -95,15 +95,26 @@ describe('meters', () => {
     }
   })
 
-  test('6/8 counts in two dotted quarters and the ending is one 6/8 bar', () => {
+  test('the count-in follows the meter', () => {
+    const counts = (time: TimeSignature) => {
+      const { clicks, countIn } = buildTimeline(tune(time), 0, 1)
+      return `${countIn}: ${clicks.map((c) => `${c.accent ? '>' : ''}${c.count}@${c.at}`).join(' ')}`
+    }
+    expect(counts([4, 4])).toBe('8: >1@0 2@2 >1@4 2@5 3@6 4@7')
+    expect(counts([3, 4])).toBe('6: >1@0 >1@3 2@4 3@5')
+    expect(counts([2, 4])).toBe('4: >1@0 2@1 >1@2 2@3')
+    expect(counts([6, 8])).toBe('6: >1@0 2@1.5 >1@3 2@3.5 3@4 >4@4.5 5@5 6@5.5')
+    expect(counts([12, 8])).toBe('6: >1@0 2@1.5 3@3 4@4.5')
+    expect(counts([5, 4])).toBe('5: >1@0 2@1 3@2 >4@3 5@4')
+  })
+
+  test('6/8 counts in on its pulses, then its eighths, and the bars are 6/8 bars', () => {
     const timeline = buildTimeline(tune([6, 8]), 0, 1)
-    expect(timeline.countIn).toBe(3)
-    expect(timeline.pulse).toBe(1.5)
     expect(timeline.bars.every((b) => b.compound && b.beats === 3)).toBe(true)
     const style = compoundStyle(getStyle('medium-swing'))
-    const drums = generateDrums(timeline.bars, style.drums, style.swing, timeline.countIn)
-    const countIn = drums.filter((e) => e.tick < 3 * PPQ - 20).map((e) => Math.round((e.tick / PPQ) * 4) / 4)
-    expect(countIn).toEqual([0, 1.5])
+    const drums = generateDrums(timeline.bars, style.drums, style.swing, timeline.clicks)
+    const countIn = drums.filter((e) => e.tick < 6 * PPQ - 20).map((e) => Math.round((e.tick / PPQ) * 4) / 4)
+    expect(countIn).toEqual([0, 1.5, 3, 3.5, 4, 4.5, 5, 5.5])
   })
 
   test('in 6/8 every style plays straight eighths, with the bass on the pulses', () => {
@@ -113,7 +124,7 @@ describe('meters', () => {
       expect(midi.length, base.id).toBeGreaterThan(200)
       const style = compoundStyle(base)
       const parts = [
-        generateDrums(timeline.bars, base.drums, base.swing, timeline.countIn, style.drums),
+        generateDrums(timeline.bars, base.drums, base.swing, timeline.clicks, style.drums),
         generateComp(timeline.slots, base.comp, base.swing, timeline.countIn, style.comp),
         generateBass(timeline.slots, base.bass, base.swing, style.bass),
       ]
@@ -175,5 +186,45 @@ describe('example tunes', () => {
       expect(new Set(written).size, id).toBe(1)
       expect(timeline.bars.length, id).toBe(chart.bars.length + 1)
     }
+  })
+})
+
+describe('smooth chord changes', () => {
+  test('the piano pedal is lifted as each chord sounds and pressed just after', () => {
+    const chart = EXAMPLES.find((t) => t.id === 'ballad-eb')!.chart
+    const style = getStyle('ballad')
+    const timeline = buildTimeline(chart, 0, 1)
+    const comp = generateComp(timeline.slots, style.comp, style.swing, timeline.countIn)
+    const pedal = pedalChanges(comp, timeline.slots)
+    const ups = pedal.filter((p) => p.value === 0)
+    const downs = pedal.filter((p) => p.value === 127)
+    expect(downs.length).toBeGreaterThan(timeline.slots.length - 3)
+    // Every press comes shortly after a lift
+    for (const down of downs) expect(ups.some((up) => up.tick < down.tick && down.tick - up.tick < PPQ / 4)).toBe(true)
+    expect(pedal.at(-1)?.value).toBe(0)
+    expect(style.comp.pedal).toBe(true)
+    expect(getStyle('medium-swing').comp.pedal).toBeFalsy()
+  })
+
+  test('the top voice of the comp moves by small steps', () => {
+    const chart = EXAMPLES.find((t) => t.id === 'ii-v-i-c')!.chart
+    const style = getStyle('medium-swing')
+    let total = 0
+    let changes = 0
+    for (let run = 0; run < 10; run++) {
+      const timeline = buildTimeline(chart, 0, 1)
+      const comp = generateComp(timeline.slots, style.comp, style.swing, timeline.countIn)
+      const tops = timeline.slots
+        .filter((s) => s.measure >= 0)
+        .map((s) =>
+          Math.max(...comp.filter((e) => e.tick >= (s.start - 0.6) * PPQ && e.tick < (s.start + s.beats - 0.6) * PPQ).map((e) => e.note)),
+        )
+        .filter(Number.isFinite)
+      for (let i = 1; i < tops.length; i++) {
+        total += Math.abs(tops[i] - tops[i - 1])
+        changes++
+      }
+    }
+    expect(total / changes).toBeLessThan(3)
   })
 })

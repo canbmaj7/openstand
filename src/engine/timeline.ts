@@ -2,15 +2,46 @@ import { beatsPerBar, isCompound, playbackOrder, type Chart, type TimeSignature 
 import { parseChord, transposeChord, type Chord } from '../music/chords'
 import { PULSE } from './meter'
 
-// The count-in is one bar of a waltz, a 4/4 tune or a compound meter (6/8 clicks twice);
-// other meters count four beats
-export function countInBeats(chart: Chart): number {
-  const beats = beatsPerBar(chart.time)
-  return isCompound(chart.time) || beats === 3 ? beats : 4
+// One click of the count-in: where it falls, the number shown, and whether it starts a bar
+export interface Click {
+  at: number
+  count: number
+  accent: boolean
 }
 
-// Beats per count-in click: a dotted quarter in 6/8, otherwise a quarter
-export const countInPulse = (chart: Chart) => (isCompound(chart.time) ? PULSE : 1)
+// The count-in follows the tune's meter, the way a band leader counts off:
+// 4/4 "1 . 2 . | 1 2 3 4", 3/4 "1 . . | 1 2 3", 2/4 "1 2 | 1 2",
+// 6/8 "1 . 2 . | 1 2 3 4 5 6" (eighths, accents on the pulses), and one bar of pulses or
+// beats in longer meters (12/8, 9/8, 5/4, 6/4).
+export function countInClicks(chart: Chart): Click[] {
+  const beats = beatsPerBar(chart.time)
+  const clicks = (list: [at: number, count: number][], accents: number[] = [0]): Click[] =>
+    list.map(([at, count]) => ({ at, count, accent: accents.some((a) => Math.abs(a - at) < 1e-9) }))
+  if (isCompound(chart.time)) {
+    if (beats === 2 * PULSE) {
+      const eighths = Array.from({ length: 6 }, (_, i): [number, number] => [beats + i / 2, i + 1])
+      return clicks([[0, 1], [PULSE, 2], ...eighths], [0, beats, beats + PULSE])
+    }
+    const pulses = Math.round(beats / PULSE)
+    return clicks(Array.from({ length: pulses }, (_, i): [number, number] => [i * PULSE, i + 1]))
+  }
+  if (beats === 4) return clicks([[0, 1], [2, 2], [4, 1], [5, 2], [6, 3], [7, 4]], [0, 4])
+  if (beats === 3) return clicks([[0, 1], [3, 1], [4, 2], [5, 3]], [0, 3])
+  if (beats === 2) return clicks([[0, 1], [1, 2], [2, 1], [3, 2]], [0, 2])
+  if (Number.isInteger(beats) && beats > 4) {
+    // Accent where the bar divides: 5/4 as 3+2, 6/4 as 3+3
+    return clicks(Array.from({ length: beats }, (_, i): [number, number] => [i, i + 1]), [0, 3])
+  }
+  return clicks([[0, 1], [1, 2], [2, 3], [3, 4]])
+}
+
+// Count-in length in beats: two bars of short meters, one bar of long ones
+export function countInBeats(chart: Chart): number {
+  const beats = beatsPerBar(chart.time)
+  if (isCompound(chart.time)) return beats === 2 * PULSE ? 2 * beats : beats
+  if (!Number.isInteger(beats)) return 4
+  return beats <= 4 ? 2 * beats : beats
+}
 
 // One chord span on the timeline, in beats
 export interface Slot {
@@ -37,7 +68,7 @@ export interface Timeline {
   bars: Bar[]
   totalBeats: number
   countIn: number // beats before the first bar
-  pulse: number // beats per count-in click
+  clicks: Click[] // the count-in
 }
 
 // Practice options: loop a range of written bars, change key every chorus
@@ -127,7 +158,7 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
     beat += beats
   }
 
-  return { slots, bars, totalBeats: beat, countIn, pulse: countInPulse(chart) }
+  return { slots, bars, totalBeats: beat, countIn, clicks: countInClicks(chart) }
 }
 
 export function slotAtBeat(timeline: Timeline, beat: number): Slot | undefined {

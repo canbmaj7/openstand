@@ -39,6 +39,7 @@ export interface CompPart {
   velocity: [min: number, max: number]
   rhythms: ByChordLength<CompHit[]>
   anticipation?: number // probability of hitting the chord an eighth early
+  pedal?: boolean // sustain pedal held through each chord (legato piano)
 }
 
 // [position, drum, velocity, probability?, duration?]

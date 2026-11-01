@@ -2,7 +2,7 @@ import type { Chart } from '../music/chart'
 import { compoundStyle } from '../styles/compound'
 import type { StyleDefinition } from '../styles/types'
 import { generateBass } from './bass'
-import { generateComp } from './comp'
+import { generateComp, pedalChanges } from './comp'
 import { DRUM_CHANNEL, generateDrums } from './drums'
 import { writeMidi } from './midiWriter'
 import { buildTimeline, type PracticeOptions, type Timeline } from './timeline'
@@ -30,6 +30,7 @@ export function arrange(
   const { swing } = style
   // The same band in 6/8, for bars in a compound meter
   const compound = timeline.bars.some((b) => b.compound) ? compoundStyle(style) : style
+  const comp = generateComp(timeline.slots, style.comp, swing, timeline.countIn, compound.comp)
   const midi = writeMidi(BASE_BPM, [
     {
       name: 'Bass',
@@ -45,7 +46,8 @@ export function arrange(
       program: style.comp.program,
       pan: 74,
       reverb: 40,
-      events: generateComp(timeline.slots, style.comp, swing, timeline.countIn, compound.comp),
+      events: comp,
+      pedal: style.comp.pedal ? pedalChanges(comp, timeline.slots) : undefined,
     },
     {
       name: 'Drums',
@@ -53,7 +55,7 @@ export function arrange(
       program: style.drums.kit,
       pan: 64,
       reverb: 35,
-      events: generateDrums(timeline.bars, style.drums, swing, timeline.countIn, compound.drums),
+      events: generateDrums(timeline.bars, style.drums, swing, timeline.clicks, compound.drums),
     },
   ])
   return { midi, timeline }

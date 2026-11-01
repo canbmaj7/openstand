@@ -82,7 +82,7 @@ const compLabel = (program: number) => (program >= 24 && program <= 31 ? 'Guitar
 function positionAt(timeline: Timeline, beat: number): Position | null {
   if (beat < timeline.countIn) {
     const barBeats = timeline.countIn
-    return { measure: -1, chorus: 0, beatInBar: beat, countIn: Math.floor(beat / timeline.pulse) + 1, ending: false, barBeats, barNumber: -1 }
+    return { measure: -1, chorus: 0, beatInBar: beat, countIn: timeline.clicks.findLast((c) => c.at <= beat + 1e-6)?.count ?? 1, ending: false, barBeats, barNumber: -1 }
   }
   const barNumber = timeline.bars.findLastIndex((b) => b.start <= beat)
   const bar = timeline.bars[barNumber]

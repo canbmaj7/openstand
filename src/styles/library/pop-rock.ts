@@ -55,6 +55,7 @@ export const popRock: StyleDefinition = {
     // The piano sits under the band: mostly long chords and a push, so the bass and drums carry the drive
     velocity: [56, 72],
     anticipation: 0.15,
+    pedal: true,
     rhythms: {
       '4': [
         [[0, 1.4], [1.5, 0.9], [2.5, 1.4]],

@@ -147,9 +147,7 @@ function popBar(): DrumHit[] {
 }
 
 function compoundDrums(feel: Feel, own: DrumPart): DrumPart {
-  // The count-in clicks the pulse with the style's own count-in sound
-  const click = own.countIn[0]?.[1] ?? 'sidestick'
-  const countIn: DrumHit[] = [0, 1.5, 3, 4.5].map((at, i) => [at, click, i % 2 === 0 ? 95 : 80])
+  const { countIn } = own // the count-in follows the meter (engine/timeline.ts)
   const crash: DrumHit = [0, 'crash', 90, 0.7, 2]
 
   if (feel === 'jazz') {
