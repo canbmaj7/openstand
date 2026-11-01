@@ -52,11 +52,18 @@ export function beatsPerBar([beats, unit]: TimeSignature): number {
   return unit === 8 ? beats / 2 : unit === 2 ? beats * 2 : beats
 }
 
-// Split a bar between its chords: 1 → whole bar, 2 → halves, 3 → 2+1+1 in 4/4
-export function evenSplit(count: number, barBeats: number): number[] {
+// 6/8, 9/8 and 12/8 are felt in dotted quarters; 3/8 is felt in one, like a fast 3/4
+export function isCompound([beats, unit]: TimeSignature): boolean {
+  return unit === 8 && beats % 3 === 0 && beats > 3
+}
+
+// Split a bar between its chords: 1 → whole bar, 2 → halves, 3 → 2+1+1 in 4/4.
+// Two chords in 3/4 are 2+1; in 6/8 they take a dotted quarter each.
+export function evenSplit(count: number, time: TimeSignature): number[] {
+  const barBeats = beatsPerBar(time)
   if (count <= 1) return [barBeats]
   if (count === 3 && barBeats === 4) return [2, 1, 1]
-  if (count === 2 && barBeats === 3) return [2, 1]
+  if (count === 2 && barBeats === 3 && !isCompound(time)) return [2, 1]
   return Array.from({ length: count }, () => barBeats / count)
 }
 
@@ -66,14 +73,13 @@ export function chartFromMeasures(
   measures: string[][],
 ): Chart {
   const time = meta.time ?? [4, 4]
-  const barBeats = beatsPerBar(time)
   return {
     format: 'openstand-chart',
     version: 1,
     ...meta,
     time,
     bars: measures.map((symbols, i) => {
-      const split = evenSplit(symbols.length, barBeats)
+      const split = evenSplit(symbols.length, time)
       return {
         chords: symbols.map((symbol, j) => ({ symbol, beats: split[j] })),
         cells: 4,

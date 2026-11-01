@@ -1193,6 +1193,54 @@ input.fader::-moz-range-thumb {
   opacity: 0.35;
 }
 
+.mixer-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 6px;
+  background: var(--line);
+}
+
+.strip-master {
+  width: 88px;
+}
+
+.master-controls {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+/* Output level: average as a bar, recent peak as a line; 0 dBFS at the top */
+.meter {
+  position: relative;
+  width: 8px;
+  height: 120px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--control);
+}
+
+.meter-bar {
+  position: absolute;
+  inset: auto 0 0;
+  height: 0;
+  background: var(--ink-2);
+}
+
+.meter-peak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--ink);
+}
+
+.meter-peak[data-hot='true'] {
+  background: var(--danger);
+}
+
 /* ---------- Dialog ---------- */
 
 .dialog {

@@ -62,6 +62,7 @@ const LAST_TUNE = 'openstand:last-tune'
 
 // The style being made in the style lab is kept in the browser between visits
 const LAB_KEY = 'openstand:style-lab'
+const MASTER_KEY = 'openstand:master-volume'
 const LAB_STYLE = 'lab' // style id used while the lab is open
 
 function loadLab(): LabStyle | null {
@@ -82,7 +83,7 @@ const compLabel = (program: number) => (program >= 24 && program <= 31 ? 'Guitar
 function positionAt(timeline: Timeline, beat: number): Position | null {
   if (beat < timeline.countIn) {
     const barBeats = timeline.countIn
-    return { measure: -1, chorus: 0, beatInBar: beat, countIn: Math.floor(beat) + 1, ending: false, barBeats, barNumber: -1 }
+    return { measure: -1, chorus: 0, beatInBar: beat, countIn: timeline.clicks.findLast((c) => c.at <= beat + 1e-6)?.count ?? 1, ending: false, barBeats, barNumber: -1 }
   }
   const barNumber = timeline.bars.findLastIndex((b) => b.start <= beat)
   const bar = timeline.bars[barNumber]
@@ -134,6 +135,13 @@ export default function App() {
   const [volumes, setVolumes] = useState<Record<Part, number>>({ bass: 110, comp: 85, drums: 95 })
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [muted, setMuted] = useState<Record<Part, boolean>>({ bass: false, comp: false, drums: false })
+  // The master volume is kept in the browser: it depends on the speakers, not the tune
+  const [master, setMaster] = useState(() => {
+    const saved = Number(localStorage.getItem(MASTER_KEY))
+    return Number.isFinite(saved) && saved > 0 && saved <= 127 ? saved : 100
+  })
+  const [masterMuted, setMasterMuted] = useState(false)
+  const outputLevel = useCallback(() => playerRef.current?.level() ?? { peak: -100, rms: -100 }, [])
   const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -194,6 +202,11 @@ export default function App() {
       player.setVolume(CHANNELS[part], muted[part] ? 0 : volumes[part])
     }
   }, [volumes, muted, readiness.kind])
+
+  useEffect(() => {
+    localStorage.setItem(MASTER_KEY, String(master))
+    playerRef.current?.setMasterVolume(masterMuted ? 0 : master)
+  }, [master, masterMuted, readiness.kind])
 
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
@@ -688,6 +701,11 @@ export default function App() {
           muted={muted}
           onVolume={(part, v) => setVolumes((all) => ({ ...all, [part]: v }))}
           onMute={(part) => setMuted((all) => ({ ...all, [part]: !all[part] }))}
+          master={master}
+          masterMuted={masterMuted}
+          onMaster={setMaster}
+          onMasterMute={() => setMasterMuted((m) => !m)}
+          level={outputLevel}
         />
       </Transport>
       </>

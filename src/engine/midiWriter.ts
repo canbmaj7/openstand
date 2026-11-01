@@ -9,6 +9,7 @@ export interface TrackSpec {
   pan?: number
   reverb?: number
   events: NoteEvent[]
+  pedal?: { tick: number; value: number }[] // sustain pedal (CC 64)
 }
 
 interface RawEvent {
@@ -79,8 +80,12 @@ export function writeMidi(bpm: number, tracks: TrackSpec[]): Uint8Array {
       { tick: 0, order: 0, bytes: [0xc0 | t.channel, t.program] },
       { tick: 0, order: 0, bytes: [0xb0 | t.channel, 10, t.pan ?? 64] },
       { tick: 0, order: 0, bytes: [0xb0 | t.channel, 91, t.reverb ?? 30] },
+      // Pedal up, in case a previous song stopped with it down
+      { tick: 0, order: 0, bytes: [0xb0 | t.channel, 64, 0] },
     ]
-    return encodeTrack([...setup, ...noteEvents(t)])
+    // A pedal change at the same tick as a note-on comes first, so the new note isn't caught by the old pedal
+    const pedal = (t.pedal ?? []).map((p): RawEvent => ({ tick: p.tick, order: 0, bytes: [0xb0 | t.channel, 64, p.value] }))
+    return encodeTrack([...setup, ...pedal, ...noteEvents(t)])
   })
 
   const header = chunk('MThd', [0, 1, 0, tracks.length + 1, (PPQ >> 8) & 0xff, PPQ & 0xff])

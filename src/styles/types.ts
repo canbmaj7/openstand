@@ -22,8 +22,9 @@ export interface BassNote {
   vel?: number
 }
 
-// Alternative patterns by chord length in beats; the engine picks one each time
-export type ByChordLength<T> = Partial<Record<'1' | '2' | '3' | '4', T[]>>
+// Alternative patterns by chord length in beats; the engine picks one each time.
+// Other lengths are made from the longest pattern (see engine/meter.ts); 1.5 is half a 6/8 bar.
+export type ByChordLength<T> = Partial<Record<'1' | '1.5' | '2' | '3' | '4', T[]>>
 
 export type BassPart =
   | { mode: 'walking'; program: number; range?: [number, number] }
@@ -38,6 +39,7 @@ export interface CompPart {
   velocity: [min: number, max: number]
   rhythms: ByChordLength<CompHit[]>
   anticipation?: number // probability of hitting the chord an eighth early
+  pedal?: boolean // sustain pedal held through each chord (legato piano)
 }
 
 // [position, drum, velocity, probability?, duration?]

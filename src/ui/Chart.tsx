@@ -193,7 +193,7 @@ export function Chart(props: ChartProps) {
                 prev={row[b - 1]}
                 keyPc={keyPc}
                 active={activeMeasure === placed.index}
-                progress={Math.min(1, (beatInBar + 0.25) / barBeats)}
+                progress={Math.min(1, beatInBar / barBeats)}
                 showTime={placed.index === 0 ? chart.time : (placed.bar.time ?? null)}
                 inRange={!!range && placed.index >= Math.min(...range) && placed.index <= Math.max(...range)}
                 selected={selectedBar === placed.index}

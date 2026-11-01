@@ -52,6 +52,7 @@ export const ballad: StyleDefinition = {
     voicing: 'rootless',
     velocity: [44, 60],
     anticipation: 0.1,
+    pedal: true,
     rhythms: {
       '4': [[[0, 3.8]], [[0, 1.8], [2.5, 1.3]], [[0, 2.4], [3, 0.9]]],
       '3': [[[0, 2.8]]],

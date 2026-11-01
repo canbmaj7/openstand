@@ -1,6 +1,7 @@
 import { chordTones, type Chord } from '../music/chords'
 import type { BassNote, BassPart } from '../styles/types'
-import { chance, humanize, pick, place, rand, toTicks, type NoteEvent } from './events'
+import { chance, humanize, place, rand, toTicks, type NoteEvent } from './events'
+import { patternFor } from './meter'
 import type { Slot } from './timeline'
 
 const CHANNEL = 0
@@ -71,7 +72,7 @@ function endingNote(reg: Register, slot: Slot): NoteEvent {
     channel: CHANNEL,
     note: reg.nearest(slot.chord.root, reg.low + 8),
     velocity: 100,
-    duration: toTicks(3.5),
+    duration: toTicks(slot.beats - 0.5),
   }
 }
 
@@ -153,39 +154,44 @@ function patternBass(slots: Slot[], reg: Register, patterns: Partial<Record<stri
       return
     }
 
-    // Without an exact match (e.g. 3 beats) a shorter pattern is repeated
-    const length = [slot.beats, 4, 2, 1].find((l) => l <= slot.beats && patterns[String(l)]?.length) ?? 1
-    const pattern = pick(patterns[String(length)] ?? [[{ at: 0, dur: 0.9, tone: 'R' }]])
+    // Without an exact match (e.g. 3 beats in a 4/4 style) the longest pattern is rearranged
+    const pattern = patternFor(patterns, slot.beats, !!slot.compound, { at: 0, dur: 0.9, tone: 'R' })
     const root = reg.nearest(slot.chord.bass, reg.anchor(prev))
+    const feel = slot.compound ? 0.5 : swing
 
-    for (let offset = 0; offset < slot.beats; offset += length) {
-      for (const note of pattern) {
-        if (offset + note.at >= slot.beats) continue
-        const n = resolveTone(reg, note, root, slot.chord, next)
-        events.push(
-          humanize(
-            {
-              tick: toTicks(slot.start + offset + place(note.at, swing)),
-              channel: CHANNEL,
-              note: n,
-              velocity: note.vel ?? (note.at === 0 ? 96 : 86),
-              duration: toTicks(note.dur),
-            },
-            6,
-            5,
-          ),
-        )
-        prev = n
-      }
+    for (const note of pattern) {
+      const n = resolveTone(reg, note, root, slot.chord, next)
+      events.push(
+        humanize(
+          {
+            tick: toTicks(slot.start + place(note.at, feel)),
+            channel: CHANNEL,
+            note: n,
+            velocity: note.vel ?? (note.at === 0 ? 96 : 86),
+            duration: toTicks(note.dur),
+          },
+          6,
+          5,
+        ),
+      )
+      prev = n
     }
   })
 
   return events
 }
 
-export function generateBass(slots: Slot[], part: BassPart, swing: number): NoteEvent[] {
+const play = (slots: Slot[], part: BassPart, swing: number, reg: Register) =>
+  part.mode === 'walking' ? walkingBass(slots, reg) : patternBass(slots, reg, part.patterns, swing)
+
+// Chords in a compound meter (6/8) are played from `compound`, the style's 6/8 patterns
+export function generateBass(slots: Slot[], part: BassPart, swing: number, compound: BassPart = part): NoteEvent[] {
   const reg = new Register(part.range ?? DEFAULT_RANGE)
-  return part.mode === 'walking' ? walkingBass(slots, reg) : patternBass(slots, reg, part.patterns, swing)
+  if (!slots.some((s) => s.compound)) return play(slots, part, swing, reg)
+  return [
+    ...play(slots.filter((s) => !s.compound), part, swing, reg),
+    ...play(slots.filter((s) => s.compound), compound, swing, reg),
+  ]
 }
 
 export const BASS_CHANNEL = CHANNEL

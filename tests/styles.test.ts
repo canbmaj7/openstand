@@ -39,10 +39,11 @@ describe('styles', () => {
     expect(mapStyle('Ballad')).toBe('ballad')
   })
 
-  test('a waltz counts in three and keeps its bars three beats long', () => {
+  test('a waltz counts in "1 . . | 1 2 3" and keeps its bars three beats long', () => {
     const timeline = buildTimeline(waltz, 0, 1)
-    expect(timeline.countIn).toBe(3)
-    expect(timeline.bars.slice(0, 4).map((b) => b.start)).toEqual([3, 6, 9, 12])
+    expect(timeline.countIn).toBe(6)
+    expect(timeline.clicks.map((c) => c.count)).toEqual([1, 1, 2, 3])
+    expect(timeline.bars.slice(0, 4).map((b) => b.start)).toEqual([6, 9, 12, 15])
     expect(timeline.slots.filter((s) => s.measure === 3).map((s) => s.beats)).toEqual([2, 1])
   })
 
@@ -58,7 +59,7 @@ describe('styles', () => {
   test('waltz drums play one groove bar per three-beat bar', () => {
     const timeline = buildTimeline(waltz, 0, 2)
     const style = getStyle('jazz-waltz')
-    const events = generateDrums(timeline.bars, style.drums, style.swing, timeline.countIn)
+    const events = generateDrums(timeline.bars, style.drums, style.swing, timeline.clicks)
     const ride = events.filter((e) => e.note === DRUM_NOTES.ride).map((e) => e.tick / toTicks(1))
     // Middle bars (not the first or last of the form) carry exactly four ride strokes: 1, 2, 2&, 3
     for (const bar of timeline.bars.filter((b) => b.measure > 0 && !b.isLast)) {

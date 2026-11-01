@@ -122,6 +122,21 @@ test('on a phone nothing scrolls sideways', async ({ page }) => {
   await stop(page)
 })
 
+test('the mixer has a master volume that is kept, and a level meter that moves', async ({ page }) => {
+  await play(page)
+  await page.getByRole('button', { name: /Mixer/ }).click()
+  const master = page.getByRole('slider', { name: 'Master volume' })
+  await expect(master).toHaveValue('100')
+  // The meter's level bar rises while the band plays
+  const bar = page.locator('.meter-bar')
+  await expect.poll(() => bar.evaluate((e) => parseFloat(e.style.height) || 0), { timeout: 15_000 }).toBeGreaterThan(20)
+  await master.fill('80')
+  await stop(page)
+  await page.reload()
+  await page.getByRole('button', { name: /Mixer/ }).click()
+  await expect(page.getByRole('slider', { name: 'Master volume' })).toHaveValue('80')
+})
+
 test('copies of the app and local builds send no error reports', async ({ page }) => {
   const reports: string[] = []
   page.on('request', (r) => {

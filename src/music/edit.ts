@@ -66,7 +66,7 @@ export function setTime(chart: Chart, time: TimeSignature): Chart {
     if (i > 0 && underTimeChange(chart, i)) return bar
     const total = bar.chords.reduce((a, c) => a + c.beats, 0)
     if (total === beats || bar.chords.length === 0) return bar
-    const split = evenSplit(bar.chords.length, beats)
+    const split = evenSplit(bar.chords.length, time)
     return { ...bar, chords: bar.chords.map((c, j) => ({ ...c, beats: split[j] })) }
   })
   return { ...chart, time, bars }
