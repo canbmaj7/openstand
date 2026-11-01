@@ -9,6 +9,7 @@ import { buildTimeline, type Timeline } from '../src/engine/timeline'
 import { chartFromMeasures, evenSplit, isCompound, type TimeSignature } from '../src/music/chart'
 import { getStyle, STYLES } from '../src/styles'
 import { compoundStyle } from '../src/styles/compound'
+import { EXAMPLES } from '../src/music/songs'
 import { DRUM_NOTES } from '../src/styles/drums'
 
 const tune = (time: TimeSignature, style = 'pop-rock') =>
@@ -160,6 +161,19 @@ describe('meters', () => {
       ] as TimeSignature[]) {
         expect(arrange(tune(time), style, 0, 1).midi.length, `${style.id} ${time.join('/')}`).toBeGreaterThan(200)
       }
+    }
+  })
+})
+
+describe('example tunes', () => {
+  test('come in several meters and each plays with its own style', () => {
+    const meters = new Set(EXAMPLES.map((t) => t.chart.time.join('/')))
+    for (const m of ['4/4', '3/4', '6/8', '12/8', '5/4']) expect(meters, m).toContain(m)
+    for (const { id, chart } of EXAMPLES) {
+      const { timeline } = arrange(chart, getStyle(chart.style), 0, 1)
+      const written = chart.bars.map((b) => b.chords.reduce((a, c) => a + c.beats, 0))
+      expect(new Set(written).size, id).toBe(1)
+      expect(timeline.bars.length, id).toBe(chart.bars.length + 1)
     }
   })
 })

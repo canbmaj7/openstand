@@ -1,7 +1,8 @@
-// Example tunes. All are generic, copyright-free chord progressions.
-// Each measure is a list of chords: 1 chord = 4 beats, 2 chords = 2+2, 4 chords = 1 beat each.
+// Example tunes. All are generic, copyright-free chord progressions, in several meters.
+// Each measure is a list of chords sharing the bar: in 4/4, 1 chord = 4 beats, 2 chords = 2+2,
+// 4 chords = 1 beat each; in 3/4, 2 chords = 2+1; in 6/8, 2 chords = a dotted quarter each.
 
-import { chartFromMeasures, type Chart } from './chart'
+import { chartFromMeasures, type Chart, type TimeSignature } from './chart'
 
 // A tune in the library: a chart plus where it came from
 export interface Tune {
@@ -17,7 +18,9 @@ interface Example {
   title: string
   key: number
   style: string
-  bpm: number
+  minor?: boolean
+  bpm: number // quarter notes per minute, in every meter
+  time?: TimeSignature // default 4/4
   measures: string[][]
 }
 
@@ -163,6 +166,106 @@ const RAW: Example[] = [
     key: 9,
     bpm: 130,
     measures: [['A7'], ['A7'], ['A7'], ['A7'], ['D7'], ['D7'], ['A7'], ['A7'], ['E7'], ['D7'], ['A7'], ['E7']],
+  },
+  {
+    id: 'jazz-waltz-bb',
+    style: 'jazz-waltz',
+    title: 'Jazz Waltz Workout (3/4)',
+    key: 10,
+    bpm: 160,
+    time: [3, 4],
+    measures: [
+      ['Bb^7'],
+      ['G-7'],
+      ['C-7'],
+      ['F7'],
+      ['D-7'],
+      ['G7b9'],
+      ['C-7'],
+      ['F7'],
+      ['Eb^7'],
+      ['Eo7'],
+      ['D-7'],
+      ['G7b9'],
+      ['C-7'],
+      ['F7'],
+      ['Bb^7'],
+      ['C-7', 'F7'],
+    ],
+  },
+  {
+    id: 'pop-waltz-d',
+    style: 'pop-rock',
+    title: 'Pop Waltz (3/4)',
+    key: 2,
+    bpm: 132,
+    time: [3, 4],
+    measures: [['D'], ['A/C#'], ['B-'], ['G'], ['D'], ['A'], ['G'], ['A'], ['B-'], ['F#-'], ['G'], ['D'], ['E-'], ['G'], ['A'], ['A']],
+  },
+  {
+    id: 'ballad-68-c',
+    style: 'pop-rock',
+    title: '6/8 Ballad',
+    key: 0,
+    bpm: 84,
+    time: [6, 8],
+    measures: [['C'], ['A-'], ['F'], ['G'], ['C'], ['E-'], ['F', 'G'], ['C'], ['A-'], ['E-'], ['F'], ['C'], ['D-'], ['F'], ['G'], ['G7']],
+  },
+  {
+    id: 'afro-68-d',
+    style: 'bossa-nova',
+    title: 'Afro 6/8 Minor',
+    key: 2,
+    minor: true,
+    bpm: 150,
+    time: [6, 8],
+    measures: [['D-7'], ['D-7'], ['D-7'], ['D-7'], ['G-7'], ['G-7'], ['D-7'], ['D-7'], ['Eh7'], ['A7b9'], ['D-7'], ['Eh7', 'A7b9']],
+  },
+  {
+    id: 'jazz-68-f',
+    style: 'medium-swing',
+    title: 'Jazz 6/8 Vamp',
+    key: 5,
+    minor: true,
+    bpm: 140,
+    time: [6, 8],
+    measures: [
+      ['F-7'],
+      ['F-7'],
+      ['Gb^7'],
+      ['Gb^7'],
+      ['F-7'],
+      ['F-7'],
+      ['Eh7'],
+      ['A7b9'],
+      ['Bb-7'],
+      ['Eb7'],
+      ['Ab^7'],
+      ['Db^7'],
+      ['Gh7'],
+      ['C7b9'],
+      ['F-7'],
+      ['C7b9'],
+    ],
+  },
+  {
+    id: 'slow-blues-128-g',
+    style: 'shuffle',
+    title: 'Slow Blues (12/8)',
+    key: 7,
+    bpm: 96,
+    time: [12, 8],
+    measures: [['G7'], ['C7'], ['G7'], ['G7'], ['C7'], ['C7'], ['G7'], ['E7'], ['A-7'], ['D7'], ['G7', 'C7'], ['G7', 'D7']],
+  },
+  {
+    id: 'five-four-eb',
+    style: 'medium-swing',
+    title: 'Five-Four Vamp (5/4)',
+    key: 3,
+    minor: true,
+    bpm: 168,
+    time: [5, 4],
+    measures: [['Eb-7'], ['Bb-7'], ['Eb-7'], ['Bb-7'], ['Eb-7'], ['Bb-7'], ['Cb^7'], ['Bb7alt']],
   },
 ]
 
