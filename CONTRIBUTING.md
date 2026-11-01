@@ -8,6 +8,7 @@ Thanks for wanting to help. OpenStand is a practice band that anyone can open in
 - [Working on the code](#working-on-the-code)
 - [Sending a pull request](#sending-a-pull-request)
 - [What we can't accept](#what-we-cant-accept)
+- [Licensing](#licensing)
 
 ## Ways to help
 
@@ -95,7 +96,21 @@ Guidelines:
 
 - **Copyrighted chord charts.** Example tunes in the repository must be original progressions or standard forms (a blues, rhythm changes) without a melody or title from a copyrighted song. Users keep their own charts in their own browser.
 - **Material copied from commercial apps**: pattern data, sound banks, fonts or graphics.
-- **Code you don't have the right to contribute.** Everything in the project is released under the [AGPL-3.0-or-later](LICENSE); by sending a pull request you agree that your contribution is too.
+- **Code you don't have the right to contribute.** See [Licensing](#licensing).
+
+## Licensing
+
+OpenStand is released under the [AGPL-3.0-or-later](LICENSE), and by sending a pull request you agree that your contribution is too.
+
+**The engine and the styles will also be offered under the [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/).** We plan to publish them as a separate package that other apps can use, and a more permissive licence makes that practical: apps of any kind can use the engine, while changes to the engine's own files stay open. So contributions to these folders are made under **both** the AGPL-3.0-or-later and the MPL-2.0:
+
+- `src/engine/`
+- `src/music/`
+- `src/styles/`
+- `src/formats/`
+- tests of the code in these folders
+
+The rest of the app (the interface, audio playback, the tune library) stays AGPL only.
 
 ## Code of conduct
 

@@ -168,3 +168,5 @@ iReal Pro is a trademark of its owner. OpenStand is not affiliated with it; it r
 [GNU Affero General Public License v3.0 or later](LICENSE).
 
 You are free to use, study, modify and share OpenStand. If you run a modified version as a web service, you must make its source code available to its users.
+
+The accompaniment engine and the styles (`src/engine`, `src/music`, `src/styles`, `src/formats`) will also be offered under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/) when they are published as a separate package, so other apps can use them. Contributions to those folders are accepted under both licences; see [CONTRIBUTING.md](CONTRIBUTING.md#licensing).
