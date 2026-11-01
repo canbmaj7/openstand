@@ -102,7 +102,7 @@ describe('style lab', () => {
 
   test('without a bass pattern the bass walks', () => {
     const lab = labFromStyle(getStyle('bossa-nova'))
-    const silent = { ...lab, bass: { walking: false, steps: lab.bass.steps.map(() => null) } }
+    const silent = { ...lab, bass: { walking: false, steps: lab.bass.steps.map(() => null) }, bassB: null }
     expect(styleFromLab(silent).bass.mode).toBe('walking')
   })
 
@@ -157,5 +157,36 @@ describe('style links', () => {
     const withTune = await styleShareUrl(lab, tune)
     expect(await labFromHash(new URL(withTune).hash)).toEqual(lab)
     expect((await chartFromHash(new URL(withTune).hash))?.title).toBe('Lab')
+  })
+})
+
+describe('bass and chord variations', () => {
+  test('a second bass pattern and comping rhythm are played in turn', () => {
+    const lab = labFromStyle(getStyle('bossa-nova'))
+    const steps = lab.bass.steps.slice()
+    steps[14] = '5'
+    const comp = lab.comp.map((on, i) => (i === 6 ? !on : on))
+    const style = styleFromLab({ ...lab, bassB: steps, compB: comp })
+    const patterns = style.bass.mode === 'pattern' ? style.bass.patterns['4'] : []
+    expect(patterns).toHaveLength(2)
+    expect(style.comp.rhythms['4']).toHaveLength(2)
+    expect(arrange(tune, style, 0, 2).midi.length).toBeGreaterThan(100)
+    // An empty variation is left out
+    const empty = styleFromLab({ ...lab, bassB: steps.map(() => null), compB: comp.map(() => false) })
+    expect(empty.bass.mode === 'pattern' && empty.bass.patterns['4']).toHaveLength(1)
+    expect(empty.comp.rhythms['4']).toHaveLength(1)
+  })
+
+  test('styles with two patterns open with both, and links keep them', () => {
+    for (const style of STYLES) {
+      const lab = labFromStyle(style)
+      const rhythms = style.comp.rhythms[String(lab.beats) as '3' | '4'] ?? []
+      expect(!!lab.compB, style.id).toBe(rhythms.length > 1)
+      expect(normalizeLab(JSON.parse(JSON.stringify(lab))), style.id).toEqual(lab)
+    }
+    const odd = normalizeLab({ base: 'funk', drums: {}, bassB: ['R', 'X'], compB: [true, 'yes'] })!
+    expect(odd.bassB?.slice(0, 2)).toEqual(['R', null])
+    expect(odd.bassB).toHaveLength(16)
+    expect(odd.compB?.slice(0, 2)).toEqual([true, false])
   })
 })

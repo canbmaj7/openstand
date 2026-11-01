@@ -1,7 +1,7 @@
 // The style lab's model: a style's grooves laid out on a grid of sixteenth notes,
 // so they can be edited cell by cell and turned back into a style.
 // Drums: groove A, an optional variation B (the band switches between them) and an optional
-// fill for the last bar of the form. Bass and chords: one bar each.
+// fill for the last bar of the form. Bass and chords: one bar each, with an optional variation B.
 // Everything the grid doesn't show (count-in, ending, patterns for shorter chords)
 // comes from the style the lab started from.
 
@@ -31,7 +31,9 @@ export interface LabStyle {
   drumsB?: DrumLayer | null // variation B, same length as A
   fill?: DrumLayer | null // the last bar of the form, one bar long
   bass: { walking: boolean; steps: (BassTone | null)[] } // one bar
+  bassB?: (BassTone | null)[] | null // a second bass bar; the band switches between the two
   comp: boolean[] // one bar
+  compB?: boolean[] | null // a second comping rhythm
 }
 
 // Drum rows offered in the grid, top to bottom
@@ -110,21 +112,29 @@ export function labFromStyle(style: StyleDefinition): LabStyle {
   const fill = lastBar && lastBar.bars === 1 && (lastBar.beats ?? 4) === beats ? layerFromHits(lastBar.hits, beats * STEPS_PER_BEAT) : null
 
   const one = beats * STEPS_PER_BEAT
-  const bassSteps = empty<BassTone>(one)
   const walking = style.bass.mode === 'walking'
-  const pattern = style.bass.mode === 'pattern' ? style.bass.patterns[String(beats) as '3' | '4']?.[0] : undefined
-  if (pattern) {
-    for (const n of pattern) if (stepOf(n.at) < one) bassSteps[stepOf(n.at)] = n.tone
-  } else {
+  const patterns = style.bass.mode === 'pattern' ? style.bass.patterns[String(beats) as '3' | '4'] : undefined
+  const bassBar = (pattern: BassNote[]) => {
+    const steps = empty<BassTone>(one)
+    for (const n of pattern) if (stepOf(n.at) >= 0 && stepOf(n.at) < one) steps[stepOf(n.at)] = n.tone
+    return steps
+  }
+  const bassSteps = patterns?.[0] ? bassBar(patterns[0]) : empty<BassTone>(one)
+  const bassB = patterns?.[1] ? bassBar(patterns[1]) : null
+  if (!patterns?.[0]) {
     // A starting point for a walking-bass style switched to a pattern: root on one, fifth on three
     bassSteps[0] = 'R'
     if (beats === 4) bassSteps[2 * STEPS_PER_BEAT] = '5'
   }
 
-  const comp = Array.from({ length: one }, () => false)
-  for (const [at] of style.comp.rhythms[String(beats) as '3' | '4']?.[0] ?? []) {
-    if (stepOf(at) >= 0 && stepOf(at) < one) comp[stepOf(at)] = true
+  const rhythms = style.comp.rhythms[String(beats) as '3' | '4']
+  const compBar = (rhythm: CompHit[]) => {
+    const on = Array.from({ length: one }, () => false)
+    for (const [at] of rhythm) if (stepOf(at) >= 0 && stepOf(at) < one) on[stepOf(at)] = true
+    return on
   }
+  const comp = compBar(rhythms?.[0] ?? [])
+  const compB = rhythms?.[1] ? compBar(rhythms[1]) : null
 
   return {
     base: style.id,
@@ -137,7 +147,9 @@ export function labFromStyle(style: StyleDefinition): LabStyle {
     drumsB,
     fill,
     bass: { walking, steps: bassSteps },
+    bassB,
     comp,
+    compB,
   }
 }
 
@@ -175,30 +187,44 @@ export function styleFromLab(lab: LabStyle): StyleDefinition {
   if (lab.drumsB) middle.push({ ...shape, hits: hitsFromLayer(lab.drumsB) })
   // The top of each chorus: groove A's first bar with a crash on one
   const first: Groove[] | undefined = lab.fills
-    ? [{ ...oneBar, hits: [...hitsFromLayer(lab.drums, one).filter((h) => h[1] !== 'crash'), [0, 'crash', 100, 1, 2]] }]
+    ? [
+        {
+          ...oneBar,
+          hits: [...hitsFromLayer(lab.drums, one).filter((h) => h[1] !== 'crash'), [0, 'crash', 100, 1, 2]],
+        },
+      ]
     : undefined
   const last: Groove[] | undefined = lab.fill ? [{ ...oneBar, hits: hitsFromLayer(lab.fill) }] : undefined
 
-  const bassOnsets = lab.bass.steps.flatMap((t, i) => (t ? [i] : []))
-  const bassLengths = lengths(bassOnsets, one, 2)
-  const bassPattern: BassNote[] = bassOnsets.map((i, j) => ({
-    at: round(i / STEPS_PER_BEAT),
-    dur: round(bassLengths[j]),
-    tone: lab.bass.steps[i]!,
-  }))
-
-  const compOnsets = lab.comp.flatMap((on, i) => (on ? [i] : []))
-  const compLengths = lengths(compOnsets, one, 2.5)
-  const compRhythm: CompHit[] = compOnsets.map((i, j) => [round(i / STEPS_PER_BEAT), round(compLengths[j])])
+  const bassPattern = (steps: (BassTone | null)[]): BassNote[] => {
+    const onsets = steps.flatMap((t, i) => (t ? [i] : []))
+    const durs = lengths(onsets, one, 2)
+    return onsets.map((i, j) => ({
+      at: round(i / STEPS_PER_BEAT),
+      dur: round(durs[j]),
+      tone: steps[i]!,
+    }))
+  }
+  const compRhythm = (on: boolean[]): CompHit[] => {
+    const onsets = on.flatMap((x, i) => (x ? [i] : []))
+    const durs = lengths(onsets, one, 2.5)
+    return onsets.map((i, j): CompHit => [round(i / STEPS_PER_BEAT), round(durs[j])])
+  }
+  // Empty bars are left out; the band switches between the ones that remain
+  const bassPatterns = [lab.bass.steps, lab.bassB].flatMap((steps) => (steps ? [bassPattern(steps)] : [])).filter((p) => p.length)
+  const compRhythms = [lab.comp, lab.compB].flatMap((on) => (on ? [compRhythm(on)] : [])).filter((r) => r.length)
 
   const bass: StyleDefinition['bass'] =
-    lab.bass.walking || bassPattern.length === 0
+    lab.bass.walking || bassPatterns.length === 0
       ? { mode: 'walking', program: base.bass.program, range: base.bass.range }
       : {
           mode: 'pattern',
           program: base.bass.program,
           range: base.bass.range,
-          patterns: { ...(base.bass.mode === 'pattern' ? base.bass.patterns : {}), [key]: [bassPattern] },
+          patterns: {
+            ...(base.bass.mode === 'pattern' ? base.bass.patterns : {}),
+            [key]: bassPatterns,
+          },
         }
 
   return {
@@ -209,11 +235,15 @@ export function styleFromLab(lab: LabStyle): StyleDefinition {
     bass,
     comp: {
       ...base.comp,
-      rhythms: compRhythm.length ? { ...base.comp.rhythms, [key]: [compRhythm] } : base.comp.rhythms,
+      rhythms: compRhythms.length ? { ...base.comp.rhythms, [key]: compRhythms } : base.comp.rhythms,
     },
     drums: {
       ...base.drums,
-      grooves: { middle, ...(first ? { first } : {}), ...(last ? { last } : {}) },
+      grooves: {
+        middle,
+        ...(first ? { first } : {}),
+        ...(last ? { last } : {}),
+      },
     },
   }
 }
@@ -308,6 +338,13 @@ export function normalizeLab(value: unknown): LabStyle | null {
       walking: bass.walking === true,
       steps: Array.from({ length: one }, (_, i) => (isTone(bassSteps[i]) ? bassSteps[i] : null)),
     },
+    bassB: Array.isArray(v.bassB)
+      ? Array.from({ length: one }, (_, i) => {
+          const t: unknown = (v.bassB as unknown[])[i]
+          return isTone(t) ? t : null
+        })
+      : null,
     comp: Array.from({ length: one }, (_, i) => comp[i] === true),
+    compB: Array.isArray(v.compB) ? Array.from({ length: one }, (_, i) => (v.compB as unknown[])[i] === true) : null,
   }
 }

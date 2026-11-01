@@ -1640,6 +1640,13 @@ input.fader::-moz-range-thumb {
   gap: 6px 8px;
 }
 
+.lab-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
 .lab-title {
   margin: 0 6px 6px 0;
   font-size: 15px;

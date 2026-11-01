@@ -52,14 +52,15 @@ export const popRock: StyleDefinition = {
   comp: {
     program: 0,
     voicing: 'close',
-    velocity: [62, 80],
+    // The piano sits under the band: mostly long chords and a push, so the bass and drums carry the drive
+    velocity: [56, 72],
     anticipation: 0.15,
     rhythms: {
       '4': [
-        [[0, 0.9], [1, 0.9], [2, 0.9], [3, 0.9]],
         [[0, 1.4], [1.5, 0.9], [2.5, 1.4]],
-        [[0, 0.45], [0.5, 0.45], [1, 0.45], [1.5, 0.45], [2, 0.45], [2.5, 0.45], [3, 0.45], [3.5, 0.45]],
         [[0, 1.9], [2, 1.9]],
+        [[0, 1.4], [1.5, 2.4]],
+        [[0, 0.9], [1, 0.9], [2, 0.9], [3, 0.9]],
       ],
       '2': [[[0, 0.9], [1, 0.9]], [[0, 1.4], [1.5, 0.45]]],
       '1': [[[0, 0.9]]],

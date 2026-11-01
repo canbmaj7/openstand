@@ -68,6 +68,38 @@ function toggleMaybe(cell: DrumCell | null): DrumCell {
 const nearest = (vel: number) => VELOCITIES.reduce((a, b) => (Math.abs(b - vel) < Math.abs(a - vel) ? b : a))
 const level = (vel: number) => (vel < 66 ? 'soft' : vel < 104 ? 'normal' : 'accent')
 
+// Pattern A, and B when there is one: the band switches between the two as it plays
+function Variations(props: {
+  noun: string
+  hasB: boolean
+  onB: boolean
+  onSelect: (b: boolean) => void
+  onAdd: () => void
+  onRemove: () => void
+}) {
+  return (
+    <>
+      <button className="chip" aria-pressed={!props.onB} onClick={() => props.onSelect(false)}>
+        {props.hasB ? `${props.noun} A` : props.noun}
+      </button>
+      {props.hasB ? (
+        <button className="chip" aria-pressed={props.onB} onClick={() => props.onSelect(true)}>
+          {props.noun} B
+        </button>
+      ) : (
+        <button className="chip" onClick={props.onAdd} title="A second pattern; the band switches between the two">
+          + Variation B
+        </button>
+      )}
+      {props.onB && (
+        <button className="chip" onClick={props.onRemove}>
+          Remove {props.noun.toLowerCase()} B
+        </button>
+      )}
+    </>
+  )
+}
+
 type Tab = 'drums' | 'bass' | 'chords'
 // Which drum part the grid shows: groove A, variation B or the last-bar fill
 type Layer = 'A' | 'B' | 'fill'
@@ -117,7 +149,10 @@ export function StyleLab(props: StyleLabProps) {
   }
   // A new variation or fill starts as a copy of groove A, ready to change
   const addLayer = (which: 'B' | 'fill') => {
-    onChange({ ...lab, [LAYER_KEY[which]]: copyLayer(lab.drums, which === 'fill' ? one : drumSteps(lab)) })
+    onChange({
+      ...lab,
+      [LAYER_KEY[which]]: copyLayer(lab.drums, which === 'fill' ? one : drumSteps(lab)),
+    })
     setLayer(which)
   }
   const removeLayer = () => {
@@ -125,6 +160,16 @@ export function StyleLab(props: StyleLabProps) {
     setLayer('A')
   }
   const playhead = layer === 'fill' ? null : step
+
+  const [bassPickB, setBassPickB] = useState(false)
+  const bassOnB = bassPickB && !!lab.bassB
+  const bassSteps = (bassOnB ? lab.bassB : lab.bass.steps) ?? lab.bass.steps
+  const setBassSteps = (next: typeof bassSteps) =>
+    onChange(bassOnB ? { ...lab, bassB: next } : { ...lab, bass: { ...lab.bass, steps: next } })
+  const [compPickB, setCompPickB] = useState(false)
+  const compOnB = compPickB && !!lab.compB
+  const compSteps = (compOnB ? lab.compB : lab.comp) ?? lab.comp
+  const setCompSteps = (next: boolean[]) => onChange(compOnB ? { ...lab, compB: next } : { ...lab, comp: next })
 
   const columns = (count: number) =>
     Array.from({ length: count }, (_, i) =>
@@ -203,7 +248,11 @@ export function StyleLab(props: StyleLabProps) {
         >
           {props.saveState === 'saved' ? 'Saved' : props.isSaved ? 'Save changes' : 'Save'}
         </button>
-        <button className="chip" onClick={props.onShare} title="Copy a link that opens this style in OpenStand, with the tune on screen to hear it on">
+        <button
+          className="chip"
+          onClick={props.onShare}
+          title="Copy a link that opens this style in OpenStand, with the tune on screen to hear it on"
+        >
           {props.shareState === 'copied' ? 'Link copied' : props.shareState === 'failed' ? 'Copy failed' : 'Share link'}
         </button>
         <button className="chip" onClick={onCopy}>
@@ -262,7 +311,11 @@ export function StyleLab(props: StyleLabProps) {
                 Fill
               </button>
             ) : (
-              <button className="chip" onClick={() => addLayer('fill')} title="A bar the drummer plays at the end of each time through the form">
+              <button
+                className="chip"
+                onClick={() => addLayer('fill')}
+                title="A bar the drummer plays at the end of each time through the form"
+              >
                 + Fill
               </button>
             )}
@@ -297,7 +350,11 @@ export function StyleLab(props: StyleLabProps) {
                 value=""
                 onChange={(e) => {
                   const drum = e.target.value as DrumName
-                  if (drum) setDrums({ ...drums, [drum]: Array.from({ length: steps }, () => null) })
+                  if (drum)
+                    setDrums({
+                      ...drums,
+                      [drum]: Array.from({ length: steps }, () => null),
+                    })
                 }}
               >
                 <option value="">Add a drum…</option>
@@ -370,12 +427,31 @@ export function StyleLab(props: StyleLabProps) {
               aria-pressed={!lab.bass.walking}
               onClick={() => onChange({ ...lab, bass: { ...lab.bass, walking: false } })}
             >
-              Pattern
+              Written
             </button>
+            {!lab.bass.walking && (
+              <>
+                <span className="lab-divider" />
+                <Variations
+                  noun="Line"
+                  hasB={!!lab.bassB}
+                  onB={bassOnB}
+                  onSelect={setBassPickB}
+                  onAdd={() => {
+                    onChange({ ...lab, bassB: lab.bass.steps.slice() })
+                    setBassPickB(true)
+                  }}
+                  onRemove={() => {
+                    onChange({ ...lab, bassB: null })
+                    setBassPickB(false)
+                  }}
+                />
+              </>
+            )}
           </div>
           {lab.bass.walking ? (
             <p className="lab-note">
-              The bass walks in quarter notes and picks its own line through the changes. Choose Pattern to write a bass part.
+              The bass walks in quarter notes and picks its own line through the changes. Choose Written to write a bass part.
             </p>
           ) : (
             <div className="lab-grid-wrap">
@@ -385,7 +461,7 @@ export function StyleLab(props: StyleLabProps) {
                     <tr key={tone}>
                       <th scope="row">{BASS_LABELS[tone]}</th>
                       {columns(one).map((cls, i) => {
-                        const on = lab.bass.steps[i] === tone
+                        const on = bassSteps[i] === tone
                         return (
                           <td key={i} className={cls}>
                             <button
@@ -393,9 +469,9 @@ export function StyleLab(props: StyleLabProps) {
                               data-level={on ? 'normal' : undefined}
                               aria-label={`${BASS_LABELS[tone]}, beat ${Math.floor(i / STEPS_PER_BEAT) + 1}, step ${(i % STEPS_PER_BEAT) + 1}: ${on ? 'on' : 'off'}`}
                               onClick={() => {
-                                const next = lab.bass.steps.slice()
+                                const next = bassSteps.slice()
                                 next[i] = on ? null : tone
-                                onChange({ ...lab, bass: { ...lab.bass, steps: next } })
+                                setBassSteps(next)
                               }}
                             />
                           </td>
@@ -411,29 +487,47 @@ export function StyleLab(props: StyleLabProps) {
       )}
 
       {tab === 'chords' && (
-        <div className="lab-grid-wrap">
-          <table className="lab-grid">
-            <tbody>
-              <tr>
-                <th scope="row">Chord</th>
-                {columns(one).map((cls, i) => (
-                  <td key={i} className={cls}>
-                    <button
-                      className="lab-hit"
-                      data-level={lab.comp[i] ? 'normal' : undefined}
-                      aria-label={`Chord, beat ${Math.floor(i / STEPS_PER_BEAT) + 1}, step ${(i % STEPS_PER_BEAT) + 1}: ${lab.comp[i] ? 'on' : 'off'}`}
-                      onClick={() => {
-                        const next = lab.comp.slice()
-                        next[i] = !next[i]
-                        onChange({ ...lab, comp: next })
-                      }}
-                    />
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="lab-options">
+            <Variations
+              noun="Pattern"
+              hasB={!!lab.compB}
+              onB={compOnB}
+              onSelect={setCompPickB}
+              onAdd={() => {
+                onChange({ ...lab, compB: lab.comp.slice() })
+                setCompPickB(true)
+              }}
+              onRemove={() => {
+                onChange({ ...lab, compB: null })
+                setCompPickB(false)
+              }}
+            />
+          </div>
+          <div className="lab-grid-wrap">
+            <table className="lab-grid">
+              <tbody>
+                <tr>
+                  <th scope="row">Chord</th>
+                  {columns(one).map((cls, i) => (
+                    <td key={i} className={cls}>
+                      <button
+                        className="lab-hit"
+                        data-level={compSteps[i] ? 'normal' : undefined}
+                        aria-label={`Chord, beat ${Math.floor(i / STEPS_PER_BEAT) + 1}, step ${(i % STEPS_PER_BEAT) + 1}: ${compSteps[i] ? 'on' : 'off'}`}
+                        onClick={() => {
+                          const next = compSteps.slice()
+                          next[i] = !next[i]
+                          setCompSteps(next)
+                        }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </section>
   )
