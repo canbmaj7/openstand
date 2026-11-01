@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run tests",
-    "soundbank": "node scripts/build-soundbank.mjs"
+    "soundbank": "node scripts/build-soundbank.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "^5.3.0",
@@ -22,6 +23,7 @@
     "spessasynth_lib": "^4.4.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
