@@ -1,4 +1,5 @@
 import { spellRoot, type Chord } from '../music/chords'
+import { plainChordParts } from '../music/chordText'
 
 // SMuFL chord-symbol glyphs (rendered with Petaluma Text), so symbols look hand-copied
 const GLYPH = {
@@ -38,13 +39,53 @@ function typeset(suffix: string): { quality: string; extensions: string } {
 export function ChordSymbol({
   chord,
   keyPc,
+  plain = false,
   onSelect,
 }: {
   chord: Chord
   keyPc: number
+  plain?: boolean
   onSelect?: (chord: Chord) => void
 }) {
   const name = spellRoot(chord.root, keyPc)
+
+  if (plain) {
+    const parts = plainChordParts(chord, keyPc)
+    return (
+      <span
+        className={onSelect ? 'chord chord-interactive' : 'chord'}
+        aria-label={`${name}${chord.suffix}`}
+        role={onSelect ? 'button' : undefined}
+        tabIndex={onSelect ? 0 : undefined}
+        data-opens={onSelect ? 'chords' : undefined}
+        onClick={
+          onSelect
+            ? (e) => {
+                e.stopPropagation()
+                onSelect(chord)
+              }
+            : undefined
+        }
+        onKeyDown={
+          onSelect
+            ? (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
+                e.stopPropagation()
+                onSelect(chord)
+              }
+            : undefined
+        }
+      >
+        <span>{parts.root}</span>
+        {parts.accidental && <span className="chord-accidental">{parts.accidental}</span>}
+        {parts.quality && <span className="chord-quality">{parts.quality}</span>}
+        {parts.extensions && <span className="chord-ext">{parts.extensions}</span>}
+        {parts.bass && <span className="chord-bass">/{parts.bass}</span>}
+      </span>
+    )
+  }
+
   const { quality, extensions } = typeset(chord.suffix)
   return (
     <span

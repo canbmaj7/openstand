@@ -48,6 +48,7 @@ OpenStand is an **early but usable** practice tool. What works today:
   - **Drums** pick grooves by position in the form: a set-up on the first bar, two-bar figures in the middle, a fill on the last bar
   - Every chorus is played a little differently
 - **A real-looking lead sheet.** Chord symbols in a handwritten jazz hand (Petaluma), rehearsal marks, repeat signs, endings, segno and coda, correct flat/sharp spelling in every key, and the current bar marked with a highlighter stroke as it plays.
+- **Plain chord font option for easier reading on small screens.**
 - **Practice controls:** tempo (40–300 BPM, changes instantly), transpose to any key while playing, number of choruses, and a count-in in the tune's meter (4/4 "1 . 2 . 1 2 3 4", 6/8 two pulses then six eighths). Keyboard shortcuts: <kbd>Space</kbd> to play/stop, <kbd>↑</kbd>/<kbd>↓</kbd> for ±5 BPM, <kbd>→</kbd>/<kbd>←</kbd> to transpose by a half step, and <kbd>L</kbd> to clear the loop. Shortcuts are inactive while editing a chart or focusing a form control.
 - **Practice modes:** loop any bars or a rehearsal section, go round all 12 keys (or step up a half or whole tone each chorus), and speed up a few BPM every chorus.
 - **Switch a tune between major and minor (same tonic) with one click.**

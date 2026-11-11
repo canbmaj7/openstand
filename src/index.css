@@ -181,6 +181,13 @@ button:disabled {
   border-color: var(--ink-2);
 }
 
+.topbar-chord-font {
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  padding: 0 9px;
+}
+
 .topbar-link svg {
   width: 15px;
   height: 15px;
@@ -616,6 +623,26 @@ button:disabled {
 
 .chord-unknown {
   color: var(--danger);
+}
+
+/* Plain chord font (sans-serif) */
+[data-chord-font='plain'] .chord,
+[data-chord-font='plain'] .chord-accidental,
+[data-chord-font='plain'] .chord-quality,
+[data-chord-font='plain'] .chord-ext,
+[data-chord-font='plain'] .chord-bass {
+  font-family: var(--sans);
+  font-weight: 600;
+}
+
+[data-chord-font='plain'] .chord-accidental {
+  font-size: 0.65em;
+  translate: 0 -0.4em;
+}
+
+[data-chord-font='plain'] .chord-ext {
+  font-size: 0.55em;
+  translate: 0 -0.6em;
 }
 
 /* ---------- Transport ---------- */
@@ -1371,9 +1398,31 @@ input.fader::-moz-range-thumb {
 
 /* ---------- Narrow screens ---------- */
 
-@media (max-width: 1100px) {
-  .topbar-tag,
+/* Key, Mode, Reads in, Tempo and the band buttons need about 1430px; below that, save room */
+@media (max-width: 1500px) {
   .control-tempo input[type='range'] {
+    display: none;
+  }
+
+  .transport {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 1320px) {
+  :root {
+    --transport-h: auto;
+  }
+
+  .transport {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-block: 10px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .topbar-tag {
     display: none;
   }
 
@@ -1420,6 +1469,10 @@ input.fader::-moz-range-thumb {
   .tunes-toggle,
   .share .band-toggle {
     padding: 0 9px;
+  }
+
+  .topbar-chord-font {
+    padding: 0 7px;
   }
 
   .wordmark {
@@ -1629,6 +1682,31 @@ input.fader::-moz-range-thumb {
   }
 }
 
+@media (max-width: 500px) {
+  .topbar {
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .topbar-link,
+  .topbar-button,
+  .tunes-toggle,
+  .share .band-toggle {
+    padding: 0 7px;
+  }
+
+  .topbar-chord-font {
+    padding: 0 5px;
+  }
+}
+
+/* On the narrowest phones the logo mark alone is enough */
+@media (max-width: 360px) {
+  .wordmark-name {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
@@ -1716,6 +1794,15 @@ input.fader::-moz-range-thumb {
 
   .bar-highlight {
     display: none !important;
+  }
+
+  [data-chord-font='plain'] .chord,
+  [data-chord-font='plain'] .chord-accidental,
+  [data-chord-font='plain'] .chord-quality,
+  [data-chord-font='plain'] .chord-ext,
+  [data-chord-font='plain'] .chord-bass {
+    font-family: var(--sans);
+    font-weight: 600;
   }
 }
 

@@ -16,6 +16,7 @@ interface ChartProps {
   barBeats: number
   range?: [number, number] | null // looped bars
   selectedBar?: number | null // the bar being edited
+  plain?: boolean
   onBarClick?: (index: number) => void
   onChordClick?: (chord: Chord) => void
   header?: ReactNode // replaces the title block, e.g. with inputs in the editor
@@ -74,11 +75,12 @@ interface BarProps {
   showTime: TimeSignature | null
   inRange: boolean
   selected: boolean
+  plain?: boolean
   onClick?: (index: number) => void
   onChordClick?: (chord: Chord) => void
 }
 
-function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, onClick, onChordClick }: BarProps) {
+function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, plain, onClick, onChordClick }: BarProps) {
   const { bar, chords, column, closesRow, index } = placed
   const classes = ['bar']
   if (bar.spacer) classes.push('bar-spacer')
@@ -148,7 +150,7 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
       {active && <span className="bar-highlight" style={{ transform: `scaleX(${progress})` }} />}
       {chords.map(({ chord, symbol }, j) =>
         chord ? (
-          <ChordSymbol key={j} chord={chord} keyPc={keyPc} onSelect={onChordClick} />
+          <ChordSymbol key={j} chord={chord} keyPc={keyPc} plain={plain} onSelect={onChordClick} />
         ) : symbol === null ? (
           <span key={j} className="chord chord-nc">
             N.C.
@@ -170,7 +172,7 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, beatInBar, barBeats, range, selectedBar, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, beatInBar, barBeats, range, selectedBar, plain, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
   const keyName = prettyKey(noteName(keyPc, keyPrefersFlats(keyPc))) + (chart.minor ? '−' : '')
@@ -199,6 +201,7 @@ export function Chart(props: ChartProps) {
                 showTime={placed.index === 0 ? chart.time : (placed.bar.time ?? null)}
                 inRange={!!range && placed.index >= Math.min(...range) && placed.index <= Math.max(...range)}
                 selected={selectedBar === placed.index}
+                plain={plain}
                 onClick={onBarClick}
                 onChordClick={onChordClick}
               />
