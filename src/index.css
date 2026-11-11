@@ -624,7 +624,7 @@ button:disabled {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 20px;
   height: var(--transport-h);
   padding: 0 20px;
   border-top: 1px solid var(--line);
@@ -635,7 +635,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-width: 250px;
+  min-width: 200px;
 }
 
 .play {
@@ -699,13 +699,24 @@ button:disabled {
 .controls {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
   flex: 1;
 }
 
 .control {
+  position: relative;
   display: grid;
   gap: 7px;
+}
+
+.control-hint {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .select {
@@ -798,7 +809,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .control-tempo input[type='range'] {
-  width: 132px;
+  width: 96px;
 }
 
 .band-toggle {
@@ -1361,8 +1372,18 @@ input.fader::-moz-range-thumb {
 /* ---------- Narrow screens ---------- */
 
 @media (max-width: 1100px) {
-  .topbar-tag {
+  .topbar-tag,
+  .control-tempo input[type='range'] {
     display: none;
+  }
+
+  .transport,
+  .controls {
+    gap: 12px;
+  }
+
+  .transport-main {
+    min-width: 0;
   }
 
   .stage {
@@ -1535,7 +1556,13 @@ input.fader::-moz-range-thumb {
     order: 3;
     flex-basis: 100%;
     flex-wrap: wrap;
+    align-items: start;
     gap: 10px 16px;
+  }
+
+  .control-hint {
+    position: static;
+    margin-top: -2px;
   }
 
   .control-tempo input[type='range'] {

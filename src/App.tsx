@@ -12,6 +12,7 @@ import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/m
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
 import { emptyChart } from './music/edit'
+import { isInstrumentId, viewOffset, type InstrumentId } from './music/instrument'
 import { EXAMPLES, type Tune } from './music/songs'
 import { getStyle, STYLES, type StyleDefinition } from './styles'
 import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type LabStyle } from './styles/lab'
@@ -65,6 +66,7 @@ const LAST_TUNE = 'openstand:last-tune'
 const LAB_KEY = 'openstand:style-lab'
 const MASTER_KEY = 'openstand:master-volume'
 const LATENCY_KEY = 'openstand:latency-offset'
+const INSTRUMENT_KEY = 'openstand:instrument'
 const LAB_STYLE = 'lab' // style id used while the lab is open
 
 function loadLab(): LabStyle | null {
@@ -161,6 +163,14 @@ export default function App() {
     styleRef.current = styleId
   }, [styleId])
   const [transpose, setTranspose] = useState(0)
+  const [instrument, setInstrument] = useState<InstrumentId>(() => {
+    try {
+      const saved = localStorage.getItem(INSTRUMENT_KEY)
+      return isInstrumentId(saved) ? saved : 'C'
+    } catch {
+      return 'C'
+    }
+  })
   const [bpm, setBpm] = useState(EXAMPLES[0].chart.bpm)
   const [importOpen, setImportOpen] = useState(false)
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle')
@@ -214,11 +224,12 @@ export default function App() {
   // During practice the chorus decides the key on the stand and the tempo
   const chorus = position ? Math.min(position.chorus, choruses - 1) : 0
   const shownTranspose = playing ? chorusTranspose(transpose, practice.keyStep, chorus) : transpose
-  const shownKeyPc = (chart.key + shownTranspose + 12) % 12
+  const viewTranspose = shownTranspose + viewOffset(instrument)
+  const shownKeyPc = (chart.key + viewTranspose + 12) % 12
   const liveBpm = clampBpm(bpm + practice.ramp * (playing ? chorus : 0))
   const shownChord = selectedChord
-    ? transposeChord(selectedChord, shownTranspose)
-    : (playing ? playingChord(chart, position, shownTranspose) : null) ?? firstChord(chart, shownTranspose)
+    ? transposeChord(selectedChord, viewTranspose)
+    : (playing ? playingChord(chart, position, viewTranspose) : null) ?? firstChord(chart, viewTranspose)
 
   useEffect(() => {
     // The effect may run twice (StrictMode); a discarded player must not update the UI
@@ -274,6 +285,14 @@ export default function App() {
     }
     playerRef.current?.setLatencyOffset(latencyOffset)
   }, [latencyOffset, readiness.kind])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(INSTRUMENT_KEY, instrument)
+    } catch {
+      // Storage may be disabled in private browsing
+    }
+  }, [instrument])
 
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
@@ -690,7 +709,7 @@ export default function App() {
           <Chart
             chart={chart}
             style={style}
-            transpose={draft ? 0 : shownTranspose}
+            transpose={draft ? 0 : viewTranspose}
             activeMeasure={position && position.measure >= 0 ? position.measure : null}
             beatInBar={position?.beatInBar ?? 0}
             barBeats={position?.barBeats ?? 4}
@@ -700,7 +719,7 @@ export default function App() {
             onChordClick={
               !draft && !picking
                 ? (c) => {
-                    setSelectedChord(transposeChord(c, -shownTranspose))
+                    setSelectedChord(transposeChord(c, -viewTranspose))
                     setChordsOpen(true)
                   }
                 : undefined
@@ -780,6 +799,8 @@ export default function App() {
         }}
         keyPc={keyPc}
         onKey={(pc) => changeArrangement({ transpose: offsetToKey(chart.key, pc) })}
+        instrument={instrument}
+        onInstrument={setInstrument}
         bpm={bpm}
         bpmRange={BPM_RANGE}
         onBpm={setBpm}
@@ -792,7 +813,7 @@ export default function App() {
           chord={shownChord}
           keyPc={shownKeyPc}
           following={selectedChord === null}
-          onFollowChange={(follow) => setSelectedChord(follow ? null : transposeChord(shownChord, -shownTranspose))}
+          onFollowChange={(follow) => setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))}
           open={chordsOpen}
           onOpenChange={setChordsOpen}
         />
