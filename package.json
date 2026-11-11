@@ -15,25 +15,25 @@
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
-    "@sentry/browser": "^11.10.0",
+    "@sentry/browser": "^11.11.0",
     "@vercel/analytics": "^2.0.1",
     "dexie": "^4.4.7",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "spessasynth_core": "^4.4.4",
-    "spessasynth_lib": "^4.4.2"
+    "spessasynth_core": "^4.4.9",
+    "spessasynth_lib": "^4.4.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "oxlint": "^1.89.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "oxlint": "^1.92.0",
     "typescript": "~7.0.2",
-    "vite": "^8.3.5",
+    "vite": "^8.3.6",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "license": "AGPL-3.0-or-later",
   "description": "Open-source, browser-based play-along band: chord charts with auto-generated bass, piano and drums.",
