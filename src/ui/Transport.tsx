@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { keyPrefersFlats, noteName } from '../music/chords'
+import { INSTRUMENTS, type InstrumentId } from '../music/instrument'
 import { STYLES } from '../styles'
 
 const RING = 2 * Math.PI * 27 // circumference of the loading ring
@@ -17,6 +18,8 @@ interface TransportProps {
   onStyle: (id: string) => void
   keyPc: number
   onKey: (pc: number) => void
+  instrument: InstrumentId
+  onInstrument: (id: InstrumentId) => void
   bpm: number
   bpmRange: [number, number]
   onBpm: (bpm: number) => void
@@ -30,6 +33,7 @@ export function Transport(props: TransportProps) {
   const { readiness, playing, bpm, bpmRange, choruses } = props
   const loading = readiness.kind === 'loading'
   const clampBpm = (v: number) => Math.max(bpmRange[0], Math.min(bpmRange[1], v))
+  const concertKey = noteName(props.keyPc, keyPrefersFlats(props.keyPc))
 
   return (
     <section className="transport" aria-label="Playback">
@@ -76,12 +80,28 @@ export function Transport(props: TransportProps) {
         </select>
       </label>
 
-      <label className="control">
+      <label className="control control-key">
         <span className="label">Key</span>
         <select className="select" value={props.keyPc} onChange={(e) => props.onKey(Number(e.target.value))}>
           {Array.from({ length: 12 }, (_, pc) => (
             <option key={pc} value={pc}>
               {noteName(pc, keyPrefersFlats(pc))}
+            </option>
+          ))}
+        </select>
+        {props.instrument !== 'C' && <span className="control-hint">Band plays in {concertKey}</span>}
+      </label>
+
+      <label className="control">
+        <span className="label">Reads in</span>
+        <select
+          className="select"
+          value={props.instrument}
+          onChange={(e) => props.onInstrument(e.target.value as InstrumentId)}
+        >
+          {INSTRUMENTS.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.label}
             </option>
           ))}
         </select>
