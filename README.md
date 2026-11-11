@@ -33,7 +33,7 @@ No install, no account, no subscription. Just open the page and play.
 
 ## Status
 
-OpenStand is an **early but usable** practice tool. What works today:
+OpenStand is an **early but usable** practice tool (see the [changelog](CHANGELOG.md) for what changed and when). What works today:
 
 - **Import from iReal Pro.** Paste an `irealb://` link or a whole playlist (or choose an iReal Pro HTML export) and the tunes land in your library. Sections, repeats, first and second endings, D.C./D.S. al Coda/Fine, time signatures and N.C. bars are all read and played in the right order. Tested against public playlists of almost 2,000 tunes.
 - **Write your own charts.** Type chords the way you would say them (`Dm7 G7`, `Cmaj7`, `Bø`, `F#dim7`) and press Enter for the next bar. Add sections, repeats, endings, segno and coda, D.C./D.S. jumps, time signature, key, style and tempo. Edit any tune in the library the same way.
