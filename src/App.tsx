@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Player } from './audio/player'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { warmUpMidi } from './engine/warmup'
@@ -26,7 +26,8 @@ import { Popover } from './ui/Popover'
 import { NO_PRACTICE, type PracticeSettings } from './music/practice'
 import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
-import { Transport, type Readiness } from './ui/Transport'
+import { switchMode } from './music/mode'
+import { Transport, type ModeOption, type Readiness } from './ui/Transport'
 import { handlePracticeShortcut, type PracticeShortcuts } from './ui/shortcuts'
 
 interface Position {
@@ -207,9 +208,14 @@ export default function App() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [editBar, setEditBar] = useState(0)
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [mode, setMode] = useState<ModeOption>('original')
 
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
-  const chart = draft?.chart ?? tune.chart
+  const baseChart = draft?.chart ?? tune.chart
+  const chart = useMemo(
+    () => (!draft && mode !== 'original' ? switchMode(baseChart, mode) : baseChart),
+    [baseChart, draft, mode],
+  )
   // The lab's style is rebuilt from the grid each time it is needed
   // Saved styles are chosen as "my:<id>"
   const styleFor = (id: string, current: LabStyle | null, mine: LabStyle[]): StyleDefinition => {
@@ -299,12 +305,12 @@ export default function App() {
     playerRef.current?.setRate(liveBpm / BASE_BPM)
   }, [liveBpm])
 
-  const start = async (opts: ArrangeOptions, fromSeconds = 0) => {
+  const start = async (opts: ArrangeOptions, fromSeconds = 0, chartToUse = chart) => {
     const player = playerRef.current
     if (!player) return
     setNotice(null)
     const { loop, keyStep } = opts.practice
-    const { midi, timeline } = arrange(chart, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep })
+    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep })
     timelineRef.current = timeline
     try {
       await player.play(midi, fromSeconds)
@@ -334,6 +340,16 @@ export default function App() {
     const player = playerRef.current
     const loopChanged = String(next.practice.loop) !== String(practice.loop)
     if (playing && player) void start(next, loopChanged ? 0 : player.position)
+  }
+
+  const changeMode = (nextMode: ModeOption) => {
+    setMode(nextMode)
+    setSelectedChord(null)
+    const nextChart = !draft && nextMode !== 'original' ? switchMode(baseChart, nextMode) : baseChart
+    const player = playerRef.current
+    if (playing && player) {
+      void start({ styleId, transpose, choruses, practice }, player.position, nextChart)
+    }
   }
 
   const changePractice = (next: PracticeSettings) => {
@@ -392,6 +408,7 @@ export default function App() {
     setSongId(next.id)
     setStyleId(labRef.current ? LAB_STYLE : next.chart.style)
     setTranspose(0)
+    setMode('original')
     setBpm(next.chart.bpm)
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
@@ -660,13 +677,13 @@ export default function App() {
             <Popover id="share" className="share" label="Share">
               {() => (
                 <div className="share-panel">
-                  <button className="share-option" onClick={() => void copy(() => shareUrl(chart), setShareState)}>
+                  <button className="share-option" onClick={() => void copy(() => shareUrl(baseChart), setShareState)}>
                     <span className="share-name">
                       {shareState === 'copied' ? 'Link copied' : shareState === 'failed' ? 'Copy failed' : 'Copy OpenStand link'}
                     </span>
                     <span className="share-desc">Opens this chart in OpenStand. Nothing is uploaded.</span>
                   </button>
-                  <button className="share-option" onClick={() => void copy(() => irealLink([chart]), setIrealState)}>
+                  <button className="share-option" onClick={() => void copy(() => irealLink([baseChart]), setIrealState)}>
                     <span className="share-name">
                       {irealState === 'copied' ? 'Link copied' : irealState === 'failed' ? 'Copy failed' : 'Copy iReal Pro link'}
                     </span>
@@ -763,7 +780,7 @@ export default function App() {
             setTimeout(() => setLabSaved('idle'), 2200)
           }}
           saveState={labSaved}
-          onShare={() => void copy(() => styleShareUrl(lab, chart), setLabShare)}
+          onShare={() => void copy(() => styleShareUrl(lab, baseChart), setLabShare)}
           shareState={labShare}
           onDelete={() => {
             const id = myStyleId(lab)
@@ -799,6 +816,9 @@ export default function App() {
         }}
         keyPc={keyPc}
         onKey={(pc) => changeArrangement({ transpose: offsetToKey(chart.key, pc) })}
+        mode={mode}
+        originalMinor={tune.chart.minor}
+        onMode={changeMode}
         instrument={instrument}
         onInstrument={setInstrument}
         bpm={bpm}

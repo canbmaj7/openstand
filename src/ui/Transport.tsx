@@ -6,6 +6,7 @@ import { STYLES } from '../styles'
 const RING = 2 * Math.PI * 27 // circumference of the loading ring
 
 export type Readiness = { kind: 'loading'; progress: number } | { kind: 'ready' } | { kind: 'error'; message: string }
+export type ModeOption = 'original' | 'major' | 'minor'
 
 interface TransportProps {
   readiness: Readiness
@@ -18,6 +19,9 @@ interface TransportProps {
   onStyle: (id: string) => void
   keyPc: number
   onKey: (pc: number) => void
+  mode: ModeOption
+  originalMinor?: boolean
+  onMode: (mode: ModeOption) => void
   instrument: InstrumentId
   onInstrument: (id: InstrumentId) => void
   bpm: number
@@ -90,6 +94,19 @@ export function Transport(props: TransportProps) {
           ))}
         </select>
         {props.instrument !== 'C' && <span className="control-hint">Band plays in {concertKey}</span>}
+      </label>
+
+      <label className="control">
+        <span className="label">Mode</span>
+        <select
+          className="select"
+          value={props.mode}
+          onChange={(e) => props.onMode(e.target.value as ModeOption)}
+        >
+          <option value="original">Original</option>
+          <option value="major">{props.originalMinor ? 'Major' : 'Major (original)'}</option>
+          <option value="minor">{props.originalMinor ? 'Minor (original)' : 'Minor'}</option>
+        </select>
       </label>
 
       <label className="control">
