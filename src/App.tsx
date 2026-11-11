@@ -12,6 +12,7 @@ import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/m
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
 import { emptyChart } from './music/edit'
+import { CHORD_FONT_KEY, loadChordFont, type ChordFont } from './music/chordText'
 import { isInstrumentId, viewOffset, type InstrumentId } from './music/instrument'
 import { EXAMPLES, type Tune } from './music/songs'
 import { getStyle, STYLES, type StyleDefinition } from './styles'
@@ -209,6 +210,7 @@ export default function App() {
   const [editBar, setEditBar] = useState(0)
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [mode, setMode] = useState<ModeOption>('original')
+  const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
 
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
   const baseChart = draft?.chart ?? tune.chart
@@ -299,6 +301,19 @@ export default function App() {
       // Storage may be disabled in private browsing
     }
   }, [instrument])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHORD_FONT_KEY, chordFont)
+    } catch {
+      // Storage may be disabled in private browsing
+    }
+    if (chordFont === 'Plain') {
+      document.documentElement.dataset.chordFont = 'plain'
+    } else {
+      delete document.documentElement.dataset.chordFont
+    }
+  }, [chordFont])
 
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
@@ -649,7 +664,7 @@ export default function App() {
   })()
 
   return (
-    <div className="app">
+    <div className="app" data-chord-font={chordFont === 'Plain' ? 'plain' : undefined}>
       <header className="topbar">
         <a className="wordmark" href="/" aria-label="OpenStand home">
           <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -657,7 +672,7 @@ export default function App() {
             <path d="M5 15h22" />
             <path d="M16 15v12M16 27l-6 3M16 27l6 3" />
           </svg>
-          OpenStand
+          <span className="wordmark-name">OpenStand</span>
         </a>
         <span className="topbar-tag">Practice with a band in your browser</span>
         <span className="topbar-spacer" />
@@ -694,6 +709,16 @@ export default function App() {
             </Popover>
           </>
         )}
+        <button
+          type="button"
+          className="topbar-button topbar-chord-font"
+          aria-pressed={chordFont === 'Plain'}
+          aria-label="Plain chords"
+          title="Plain chords"
+          onClick={() => setChordFont((f) => (f === 'Plain' ? 'Handwritten' : 'Plain'))}
+        >
+          Aa
+        </button>
         <button className="tunes-toggle" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(!libraryOpen)}>
           Tunes
         </button>
@@ -732,6 +757,7 @@ export default function App() {
             barBeats={position?.barBeats ?? 4}
             range={picking && picking !== 'first' ? [picking.from, picking.from] : draft ? null : practice.loop}
             selectedBar={draft ? editBar : null}
+            plain={chordFont === 'Plain'}
             onBarClick={draft ? setEditBar : picking ? pickBar : undefined}
             onChordClick={
               !draft && !picking

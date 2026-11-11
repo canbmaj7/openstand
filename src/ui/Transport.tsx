@@ -163,7 +163,7 @@ export function Transport(props: TransportProps) {
       </div>
       </div>
 
-      {props.children}
+      <div className="transport-band">{props.children}</div>
     </section>
   )
 }
