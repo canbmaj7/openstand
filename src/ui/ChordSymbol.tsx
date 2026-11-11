@@ -32,7 +32,8 @@ function typeset(suffix: string): { quality: string; extensions: string } {
   const marker = markers[match[1] ?? ''] ?? ''
   // A bare Δ already means major seventh
   const number = match[1] === '^' && match[2] === '7' ? '' : (match[2] ?? '')
-  const extensions = (match[3] ?? '').replace(/[b#]/g, accidental)
+  // Co^7 and C+^7 carry their major seventh after the marker
+  const extensions = (match[3] ?? '').replace(/\^7?/g, GLYPH.major7).replace(/[b#]/g, accidental)
   return { quality: marker + number, extensions }
 }
 

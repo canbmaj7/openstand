@@ -1,4 +1,5 @@
-// Chord symbol parser. Supports common jazz chart notation (C-7, F7b9, Bb^7, Eh7, Do7, C7alt, G/B).
+// Chord symbol parser. Supports common jazz chart notation (C-7, F7b9, Bb^7, Eh7, Do7, C7alt, G/B)
+// plus a few qualities iReal Pro lacks (C5, Csus2, Co^7, C^7sus, C+^7, Cadd11).
 
 export type Quality =
   | 'maj'
@@ -13,6 +14,12 @@ export type Quality =
   | 'half'
   | 'dim7'
   | 'aug'
+  // Qualities iReal Pro has no symbol for
+  | 'power' // C5: root and fifth, no third
+  | 'sus2' // C2, Csus2
+  | 'dimMaj7' // Co^7, Cdim(maj7)
+  | 'maj7sus' // C^7sus
+  | 'augMaj7' // C+^7, C^7#5
 
 export interface Chord {
   root: number // pitch class 0-11 (C = 0)
@@ -44,6 +51,7 @@ function parseNote(s: string): { pc: number; len: number } | null {
 function qualityOf(suffix: string): Quality {
   const s = suffix.replace('ø', 'h').replace('Δ', '^')
   if (/^(h|m7b5|-7b5|min7b5)/.test(s)) return 'half'
+  if (/^(o|dim)\^/.test(s)) return 'dimMaj7'
   if (/^(o|dim)/.test(s)) return 'dim7'
   if (/^(-|m(?!aj)|min)/.test(s)) {
     const rest = s.replace(/^(min|-|m)/, '')
@@ -52,8 +60,11 @@ function qualityOf(suffix: string): Quality {
     if (/^(7|9|11|13)/.test(rest)) return 'min7'
     return 'min'
   }
-  if (/^(\^|maj|M7)/.test(s)) return 'maj7'
+  if (/^(\^|maj|M7)/.test(s)) return /sus/.test(s) ? 'maj7sus' : /#5/.test(s) ? 'augMaj7' : 'maj7'
+  if (/^(\+|aug)\^/.test(s)) return 'augMaj7'
   if (/^(\+|aug)/.test(s)) return 'aug'
+  if (/^5$/.test(s)) return 'power'
+  if (/^(2|sus2)$/.test(s)) return 'sus2'
   if (/^6/.test(s)) return 'maj6'
   if (/^(7|9|11|13)/.test(s)) return /sus/.test(s) ? 'sus7' : 'dom7'
   if (/^sus/.test(s)) return 'sus7'
@@ -65,7 +76,7 @@ export function parseChord(symbol: string): Chord | null {
   const root = parseNote(main)
   if (!root) return null
   const suffix = main.slice(root.len)
-  const tensions = suffix.match(/[b#](5|9|11|13)|alt/g) ?? []
+  const tensions = suffix.match(/add#?(2|9|11)|[b#](5|9|11|13)|alt/g) ?? []
   const bass = slash ? parseNote(slash)?.pc ?? root.pc : root.pc
   return { root: root.pc, bass, quality: qualityOf(suffix), tensions, suffix }
 }
@@ -121,7 +132,25 @@ export function chordTones(chord: Chord): number[] {
       return [0, 3, 6, 9]
     case 'aug':
       return [0, 4, 8, 10]
+    case 'power':
+      return [0, 7, 7, 12]
+    case 'sus2':
+      return [0, 2, 7, 12]
+    case 'dimMaj7':
+      return [0, 3, 6, 11]
+    case 'maj7sus':
+      return [0, 5, 7, 11]
+    case 'augMaj7':
+      return [0, 4, 8, 11]
   }
+}
+
+// An added note on a triad (Cadd9, C-add11), as semitones above the root
+function addedTone(tensions: string[]): number | null {
+  if (tensions.some((t) => t === 'add9' || t === 'add2')) return 14
+  if (tensions.includes('add#11')) return 18
+  if (tensions.includes('add11')) return 17
+  return null
 }
 
 // Rootless A/B voicings for piano, as intervals above the root
@@ -134,11 +163,18 @@ export function rootlessVoicings(chord: Chord): [number[], number[]] {
         [11, 14, 16, 19],
       ]
     case 'maj':
-    case 'maj6':
+    case 'maj6': {
+      const add = chord.quality === 'maj' ? addedTone(t) : null
+      if (add !== null)
+        return [
+          [4, 7, 12, add],
+          [7, 12, 16, add + 12],
+        ]
       return [
         [4, 7, 9, 14],
         [9, 14, 16, 19],
       ]
+    }
     case 'dom7': {
       if (t.includes('alt'))
         return [
@@ -158,11 +194,18 @@ export function rootlessVoicings(chord: Chord): [number[], number[]] {
         [10, 14, 17, 19],
       ]
     case 'min':
-    case 'min7':
+    case 'min7': {
+      const add = chord.quality === 'min' ? addedTone(t) : null
+      if (add !== null)
+        return [
+          [3, 7, 12, add],
+          [7, 12, 15, add + 12],
+        ]
       return [
         [3, 7, 10, 14],
         [10, 14, 15, 19],
       ]
+    }
     case 'min6':
       return [
         [3, 7, 9, 14],
@@ -188,13 +231,41 @@ export function rootlessVoicings(chord: Chord): [number[], number[]] {
         [4, 8, 10, 14],
         [10, 14, 16, 20],
       ]
+    case 'power':
+      return [
+        [0, 7, 12, 19],
+        [7, 12, 19, 24],
+      ]
+    case 'sus2':
+      return [
+        [2, 7, 12, 14],
+        [7, 12, 14, 19],
+      ]
+    case 'dimMaj7':
+      return [
+        [3, 6, 11, 14],
+        [11, 14, 15, 18],
+      ]
+    case 'maj7sus':
+      return [
+        [5, 7, 11, 14],
+        [11, 14, 17, 19],
+      ]
+    case 'augMaj7':
+      return [
+        [4, 8, 11, 14],
+        [11, 14, 16, 20],
+      ]
   }
 }
 
 // Close-position chord tones including the root, for pop/rock (triads or sevenths)
 export function closeVoicingTones(chord: Chord): number[] {
-  if (chord.quality === 'maj') return [0, 4, 7]
-  if (chord.quality === 'min') return [0, 3, 7]
+  const add = addedTone(chord.tensions)
+  if (chord.quality === 'maj') return add === null ? [0, 4, 7] : [0, 4, 7, add]
+  if (chord.quality === 'min') return add === null ? [0, 3, 7] : [0, 3, 7, add]
+  if (chord.quality === 'power') return [0, 7, 12]
+  if (chord.quality === 'sus2') return [0, 2, 7]
   if (chord.quality === 'sus7' && !chord.suffix.includes('7')) return [0, 5, 7]
   return chordTones(chord)
 }

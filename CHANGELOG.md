@@ -8,6 +8,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ### 2026-11-11
 
 #### Added
+- **More chord qualities**, including ones iReal Pro has no symbol for: power chords (C5), sus2 (Csus2, C2), added notes (Cadd9, C-add11), diminished major seventh (Cdim(maj7)), major seventh sus (Cmaj7sus4) and augmented major seventh (C+maj7). Type them in the editor; the band voices them without the missing third, and the chord helper lists scales for them. [#34]
 - **Chord and scale helper**: a Chords panel next to Practice and Mixer shows the playing chord (or the one you click in the chart) on a piano keyboard and in two guitar shapes, with the scales that fit it and their notes. [#26, #36]
 - **Transposing instruments**: a "Reads in" selector (C, Bb, Eb) shows the chart as a Bb or Eb player reads it, while the band keeps playing in concert pitch. [#31, #37]
 - **Major/minor switch**: a Mode selector plays a tune in major or minor on the same tonic. Sharing, export and saved charts keep the original. [#27, #38]
