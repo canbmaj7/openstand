@@ -11,6 +11,7 @@ export default defineConfig({
     // Works offline after the first visit, sound bank included
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'OpenStand',

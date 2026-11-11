@@ -11,6 +11,7 @@ interface TransportProps {
   playing: boolean
   onToggle: () => void
   position: string
+  notice?: string | null
   styleId: string
   extraStyles?: { id: string; name: string }[] // e.g. the style being made in the style lab
   onStyle: (id: string) => void
@@ -53,8 +54,13 @@ export function Transport(props: TransportProps) {
 
         <div className="readout">
           {readiness.kind === 'loading' && <>Loading sounds {Math.round(readiness.progress * 100)}%</>}
-          {readiness.kind === 'error' && <span className="readout-error">{readiness.message}</span>}
-          {readiness.kind === 'ready' && props.position}
+          {readiness.kind === 'error' ? (
+            <span className="readout-error">{readiness.message}</span>
+          ) : props.notice ? (
+            <span className="readout-error">{props.notice}</span>
+          ) : (
+            readiness.kind === 'ready' && props.position
+          )}
         </div>
       </div>
 
