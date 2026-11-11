@@ -730,6 +730,13 @@ button:disabled {
   flex: 1;
 }
 
+/* Practice, Chords and Mixer stay together on one row */
+.transport-band {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .control {
   position: relative;
   display: grid;
@@ -1404,12 +1411,18 @@ input.fader::-moz-range-thumb {
     display: none;
   }
 
-  .transport {
+  .transport,
+  .controls,
+  .transport-band {
     gap: 12px;
+  }
+
+  .transport-main {
+    min-width: 0;
   }
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1240px) {
   :root {
     --transport-h: auto;
   }
@@ -1418,6 +1431,11 @@ input.fader::-moz-range-thumb {
     flex-wrap: wrap;
     row-gap: 8px;
     padding-block: 10px;
+  }
+
+  /* On the second row the band buttons sit at the right, so their panels open away from Play */
+  .transport-band {
+    margin-left: auto;
   }
 }
 
