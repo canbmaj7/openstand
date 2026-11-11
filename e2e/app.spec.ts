@@ -148,3 +148,24 @@ test('copies of the app and local builds send no error reports', async ({ page }
   await page.waitForTimeout(500)
   expect(reports).toEqual([])
 })
+
+test('chords iReal Pro lacks can be typed, are drawn and play', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  const typed = ['C5', 'Csus2', 'Cdim(maj7)', 'C+maj7', 'Cmaj7sus4', 'Cadd11']
+  for (const [i, symbol] of typed.entries()) {
+    const input = page.getByLabel(`Chords in bar ${i + 1}`)
+    await input.fill(symbol)
+    await expect(input).toHaveAttribute('aria-invalid', 'false')
+    await input.press('Enter')
+  }
+  for (const label of ['C5', 'Csus2', 'Co^7', 'C+^7', 'C^7sus', 'Cadd11'])
+    await expect(page.locator(`.chord[aria-label="${label}"]`).first()).toBeVisible()
+  await page.getByRole('button', { name: /^Save/ }).click()
+  await expect(page.locator('.chord[aria-label="Co^7"]').first()).toBeVisible()
+  await play(page)
+  await page.waitForTimeout(1500)
+  await stop(page)
+  expect(errors).toEqual([])
+})
