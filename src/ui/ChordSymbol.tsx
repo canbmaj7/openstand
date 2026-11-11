@@ -35,11 +35,43 @@ function typeset(suffix: string): { quality: string; extensions: string } {
   return { quality: marker + number, extensions }
 }
 
-export function ChordSymbol({ chord, keyPc }: { chord: Chord; keyPc: number }) {
+export function ChordSymbol({
+  chord,
+  keyPc,
+  onSelect,
+}: {
+  chord: Chord
+  keyPc: number
+  onSelect?: (chord: Chord) => void
+}) {
   const name = spellRoot(chord.root, keyPc)
   const { quality, extensions } = typeset(chord.suffix)
   return (
-    <span className="chord" aria-label={`${name}${chord.suffix}`}>
+    <span
+      className={onSelect ? 'chord chord-interactive' : 'chord'}
+      aria-label={`${name}${chord.suffix}`}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      data-opens={onSelect ? 'chords' : undefined}
+      onClick={
+        onSelect
+          ? (e) => {
+              e.stopPropagation()
+              onSelect(chord)
+            }
+          : undefined
+      }
+      onKeyDown={
+        onSelect
+          ? (e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              e.preventDefault()
+              e.stopPropagation()
+              onSelect(chord)
+            }
+          : undefined
+      }
+    >
       <span>{name[0]}</span>
       {name[1] && <span className="chord-accidental">{accidental(name[1])}</span>}
       {quality && <span className="chord-quality">{quality}</span>}

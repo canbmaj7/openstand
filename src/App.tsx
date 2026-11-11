@@ -10,12 +10,13 @@ import { chartFromHash, labFromHash, shareUrl, styleShareUrl } from './formats/s
 import { addTunes, loadTunes, removePlaylist, removeTune, saveTune } from './library/db'
 import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/myStyles'
 import type { Chart as ChartData } from './music/chart'
-import { keyPrefersFlats, noteName } from './music/chords'
+import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
 import { emptyChart } from './music/edit'
 import { EXAMPLES, type Tune } from './music/songs'
 import { getStyle, STYLES, type StyleDefinition } from './styles'
 import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type LabStyle } from './styles/lab'
 import { Chart } from './ui/Chart'
+import { ChordHelper } from './ui/ChordHelper'
 import { Editor, EditorHeader } from './ui/Editor'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
@@ -80,6 +81,39 @@ const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
 const noteNameFor = (pc: number) => noteName(pc, keyPrefersFlats(pc)).replace('b', '♭').replace('#', '♯')
 
 const compLabel = (program: number) => (program >= 24 && program <= 31 ? 'Guitar' : 'Piano')
+
+function firstChord(chart: ChartData, transpose: number): Chord {
+  for (const bar of chart.bars) {
+    for (const c of bar.chords) {
+      const parsed = c.symbol ? parseChord(c.symbol) : null
+      if (parsed) return transposeChord(parsed, transpose)
+    }
+  }
+  return transposeChord(parseChord('C')!, transpose)
+}
+
+function playingChord(chart: ChartData, position: Position | null, transpose: number): Chord | null {
+  if (!position || position.countIn > 0) return null
+  if (position.ending) return firstChord(chart, transpose)
+  const bar = chart.bars[position.measure]
+  if (!bar) return null
+  if (bar.chords.length > 0) {
+    let at = 0
+    for (const c of bar.chords) {
+      at += c.beats
+      if (position.beatInBar < at || c === bar.chords[bar.chords.length - 1]) {
+        const parsed = c.symbol ? parseChord(c.symbol) : null
+        return parsed ? transposeChord(parsed, transpose) : null
+      }
+    }
+  }
+  const held = chart.bars
+    .slice(0, position.measure)
+    .flatMap((b) => b.chords)
+    .findLast((c) => c.symbol)?.symbol
+  const parsed = held ? parseChord(held) : null
+  return parsed ? transposeChord(parsed, transpose) : null
+}
 
 function positionAt(timeline: Timeline, beat: number): Position | null {
   if (beat < timeline.countIn) {
@@ -158,6 +192,8 @@ export default function App() {
   const outputLevel = useCallback(() => playerRef.current?.level() ?? { peak: -100, rms: -100 }, [])
   const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
+  const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
+  const [chordsOpen, setChordsOpen] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [editBar, setEditBar] = useState(0)
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
@@ -178,7 +214,11 @@ export default function App() {
   // During practice the chorus decides the key on the stand and the tempo
   const chorus = position ? Math.min(position.chorus, choruses - 1) : 0
   const shownTranspose = playing ? chorusTranspose(transpose, practice.keyStep, chorus) : transpose
+  const shownKeyPc = (chart.key + shownTranspose + 12) % 12
   const liveBpm = clampBpm(bpm + practice.ramp * (playing ? chorus : 0))
+  const shownChord = selectedChord
+    ? transposeChord(selectedChord, shownTranspose)
+    : (playing ? playingChord(chart, position, shownTranspose) : null) ?? firstChord(chart, shownTranspose)
 
   useEffect(() => {
     // The effect may run twice (StrictMode); a discarded player must not update the UI
@@ -336,6 +376,7 @@ export default function App() {
     setBpm(next.chart.bpm)
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
+    setSelectedChord(null)
     setLibraryOpen(false)
     try {
       localStorage.setItem(LAST_TUNE, next.id)
@@ -656,6 +697,14 @@ export default function App() {
             range={picking && picking !== 'first' ? [picking.from, picking.from] : draft ? null : practice.loop}
             selectedBar={draft ? editBar : null}
             onBarClick={draft ? setEditBar : picking ? pickBar : undefined}
+            onChordClick={
+              !draft && !picking
+                ? (c) => {
+                    setSelectedChord(transposeChord(c, -shownTranspose))
+                    setChordsOpen(true)
+                  }
+                : undefined
+            }
             header={draft ? <EditorHeader chart={draft.chart} onChange={(c) => setDraft({ ...draft, chart: c })} /> : undefined}
           />
         </main>
@@ -739,6 +788,14 @@ export default function App() {
         onChoruses={(n) => changeArrangement({ choruses: n })}
       >
         <Practice chart={chart} settings={practice} onChange={changePractice} onPickLoop={() => setPicking('first')} />
+        <ChordHelper
+          chord={shownChord}
+          keyPc={shownKeyPc}
+          following={selectedChord === null}
+          onFollowChange={(follow) => setSelectedChord(follow ? null : transposeChord(shownChord, -shownTranspose))}
+          open={chordsOpen}
+          onOpenChange={setChordsOpen}
+        />
         <Mixer
           labels={{ bass: 'Bass', comp: compLabel(style.comp.program), drums: 'Drums' }}
           volumes={volumes}

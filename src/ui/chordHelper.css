@@ -1,0 +1,277 @@
+/* Chord and scale helper popover */
+
+.chords {
+  --mark: var(--highlighter);
+}
+
+.chord-interactive {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.chord-interactive:hover {
+  background: color-mix(in srgb, var(--highlighter) 28%, transparent);
+}
+
+.chords-panel {
+  --mark: var(--highlighter);
+  display: grid;
+  gap: 12px;
+  width: 356px;
+  padding: 2px 4px;
+}
+
+.chords-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chords-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.chords-name {
+  margin: 0;
+  font: 600 20px/1.1 var(--mono);
+  color: var(--ink);
+}
+
+.chords-tones {
+  font: 500 12.5px/1 var(--mono);
+  color: var(--ink-2);
+}
+
+.chords-follow {
+  height: auto;
+  font-size: 12px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.chords-piano {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--paper);
+}
+
+.piano-white {
+  fill: var(--paper);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.piano-white.piano-chord {
+  fill: color-mix(in srgb, var(--mark) 55%, var(--paper));
+}
+
+.piano-black {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.piano-tone-mark {
+  fill: var(--mark);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.piano-tone-mark-black {
+  fill: var(--mark);
+  stroke: var(--paper);
+  stroke-width: 1.4;
+}
+
+.piano-scale-dot {
+  fill: var(--ink);
+}
+
+.piano-scale-dot-black {
+  fill: var(--paper);
+}
+
+.piano-scale-dot-on-mark {
+  fill: var(--ink);
+}
+
+.chords-guitars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.chords-guitar {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control);
+}
+
+.guitar-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.guitar-string {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+}
+
+.guitar-nut {
+  stroke: var(--ink);
+  stroke-width: 3.2;
+}
+
+.guitar-top {
+  stroke: var(--ink-2);
+  stroke-width: 1.2;
+}
+
+.guitar-mute {
+  stroke: var(--muted);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.guitar-open {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+.guitar-dot {
+  fill: var(--ink);
+}
+
+.guitar-dot-bass {
+  fill: var(--mark);
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
+.guitar-fret-num {
+  font: 500 10px/1 var(--mono);
+  fill: var(--ink-2);
+}
+
+.chords-scales {
+  display: grid;
+  gap: 6px;
+}
+
+.chords-scale-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chords-scale-notes {
+  font: 500 12.5px/1.2 var(--mono);
+  color: var(--ink);
+  letter-spacing: 0.03em;
+}
+
+.chords-scale-list {
+  display: grid;
+  gap: 4px;
+}
+
+.scale-item {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control);
+  text-align: left;
+}
+
+.scale-item:hover {
+  border-color: var(--ink-2);
+}
+
+.scale-item[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+
+.scale-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scale-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.scale-badge {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--mark);
+  color: var(--ink);
+  font: 500 10px/1.3 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scale-item[aria-pressed='true'] .scale-badge {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.scale-note {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.scale-item[aria-pressed='true'] .scale-note {
+  color: var(--line);
+}
+
+@media (max-width: 820px) {
+  .transport {
+    column-gap: 8px;
+  }
+
+  .transport .band-toggle {
+    padding: 0 9px;
+    gap: 5px;
+  }
+
+  .chords-panel {
+    width: auto;
+    max-height: min(72dvh, 520px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .transport .band-toggle svg {
+    display: none;
+  }
+
+  .chords-panel {
+    gap: 10px;
+    padding: 2px 0;
+  }
+
+  .chords-guitars {
+    gap: 6px;
+  }
+}
