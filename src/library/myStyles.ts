@@ -16,7 +16,11 @@ export function loadMyStyles(): LabStyle[] {
 }
 
 function store(styles: LabStyle[]): LabStyle[] {
-  localStorage.setItem(KEY, JSON.stringify(styles))
+  try {
+    localStorage.setItem(KEY, JSON.stringify(styles))
+  } catch {
+    // Storage may be disabled in private browsing
+  }
   return styles
 }
 

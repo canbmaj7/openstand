@@ -63,6 +63,7 @@ const LAST_TUNE = 'openstand:last-tune'
 // The style being made in the style lab is kept in the browser between visits
 const LAB_KEY = 'openstand:style-lab'
 const MASTER_KEY = 'openstand:master-volume'
+const LATENCY_KEY = 'openstand:latency-offset'
 const LAB_STYLE = 'lab' // style id used while the lab is open
 
 function loadLab(): LabStyle | null {
@@ -137,10 +138,23 @@ export default function App() {
   const [muted, setMuted] = useState<Record<Part, boolean>>({ bass: false, comp: false, drums: false })
   // The master volume is kept in the browser: it depends on the speakers, not the tune
   const [master, setMaster] = useState(() => {
-    const saved = Number(localStorage.getItem(MASTER_KEY))
-    return Number.isFinite(saved) && saved > 0 && saved <= 127 ? saved : 100
+    try {
+      const saved = Number(localStorage.getItem(MASTER_KEY))
+      return Number.isFinite(saved) && saved > 0 && saved <= 127 ? saved : 100
+    } catch {
+      return 100
+    }
   })
   const [masterMuted, setMasterMuted] = useState(false)
+  const [latencyOffset, setLatencyOffset] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(LATENCY_KEY))
+      return Number.isFinite(saved) && saved >= -300 && saved <= 300 ? saved : 0
+    } catch {
+      return 0
+    }
+  })
+  const [notice, setNotice] = useState<string | null>(null)
   const outputLevel = useCallback(() => playerRef.current?.level() ?? { peak: -100, rms: -100 }, [])
   const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
@@ -186,8 +200,8 @@ export default function App() {
       })
       .catch((err: unknown) => {
         if (!active) return
-        setReadiness({ kind: 'error', message: String(err) })
-        reportError(err, 'sound bank')
+        setReadiness({ kind: 'error', message: err instanceof Error ? err.message : String(err) })
+        if (player.supported) reportError(err, 'sound bank')
       })
     return () => {
       active = false
@@ -204,9 +218,22 @@ export default function App() {
   }, [volumes, muted, readiness.kind])
 
   useEffect(() => {
-    localStorage.setItem(MASTER_KEY, String(master))
+    try {
+      localStorage.setItem(MASTER_KEY, String(master))
+    } catch {
+      // Storage may be disabled in private browsing
+    }
     playerRef.current?.setMasterVolume(masterMuted ? 0 : master)
   }, [master, masterMuted, readiness.kind])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LATENCY_KEY, String(latencyOffset))
+    } catch {
+      // Storage may be disabled in private browsing
+    }
+    playerRef.current?.setLatencyOffset(latencyOffset)
+  }, [latencyOffset, readiness.kind])
 
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
@@ -216,12 +243,19 @@ export default function App() {
   const start = async (opts: ArrangeOptions, fromSeconds = 0) => {
     const player = playerRef.current
     if (!player) return
+    setNotice(null)
     const { loop, keyStep } = opts.practice
     const { midi, timeline } = arrange(chart, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep })
     timelineRef.current = timeline
-    await player.play(midi, fromSeconds)
-    player.setRate(liveBpm / BASE_BPM)
-    setPlaying(true)
+    try {
+      await player.play(midi, fromSeconds)
+      player.setRate(liveBpm / BASE_BPM)
+      setPlaying(true)
+    } catch (err) {
+      setPlaying(false)
+      setPosition(null)
+      setNotice(err instanceof Error ? err.message : "Couldn't start the audio. Check your sound output and try Play again.")
+    }
   }
 
   const stop = useCallback(() => {
@@ -303,7 +337,11 @@ export default function App() {
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
     setLibraryOpen(false)
-    localStorage.setItem(LAST_TUNE, next.id)
+    try {
+      localStorage.setItem(LAST_TUNE, next.id)
+    } catch {
+      // Storage may be disabled in private browsing
+    }
   }, [])
 
   const selectSong = (id: string) => {
@@ -315,22 +353,23 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const saved = await loadTunes().catch((err: unknown) => {
-        reportError(err, 'library')
-        return [] as Tune[]
-      })
+      const saved = await loadTunes()
       let all = [...EXAMPLES, ...saved]
       const shared = await chartFromHash(window.location.hash)
       const sharedStyle = await labFromHash(window.location.hash)
       if (sharedStyle) openSharedStyleRef.current(sharedStyle)
       let open: Tune | undefined
       if (shared) {
-        const [added] = await addTunes([shared], 'link', 'Shared with me')
+        const [added] = await addTunes([shared], 'link', 'Shared with me', setNotice)
         all = [...all.filter((t) => t.id !== added.id), added]
         open = added
         history.replaceState(null, '', window.location.pathname)
       } else {
-        open = all.find((t) => t.id === localStorage.getItem(LAST_TUNE))
+        try {
+          open = all.find((t) => t.id === localStorage.getItem(LAST_TUNE))
+        } catch {
+          open = undefined
+        }
       }
       if (cancelled) return
       setTunes(all)
@@ -349,7 +388,7 @@ export default function App() {
       const shared = await chartFromHash(window.location.hash)
       if (sharedStyle) openSharedStyleRef.current(sharedStyle)
       if (!shared) return
-      const [added] = await addTunes([shared], 'link', 'Shared with me')
+      const [added] = await addTunes([shared], 'link', 'Shared with me', setNotice)
       setTunes((all) => [...all.filter((t) => t.id !== added.id), added])
       showTune(added)
       history.replaceState(null, '', window.location.pathname)
@@ -362,7 +401,7 @@ export default function App() {
     async (text: string): Promise<ImportResult> => {
       const lists = parseIrealLinks(text)
       const added: Tune[] = []
-      for (const list of lists) added.push(...(await addTunes(list.charts, 'import', list.name)))
+      for (const list of lists) added.push(...(await addTunes(list.charts, 'import', list.name, setNotice)))
       if (added.length) {
         const ids = new Set(added.map((t) => t.id))
         setTunes((all) => [...all.filter((t) => !ids.has(t.id)), ...added])
@@ -408,7 +447,11 @@ export default function App() {
   const setLab = (next: LabStyle) => {
     labRef.current = next
     setLabState(next)
-    localStorage.setItem(LAB_KEY, JSON.stringify(next))
+    try {
+      localStorage.setItem(LAB_KEY, JSON.stringify(next))
+    } catch {
+      // Storage may be disabled in private browsing
+    }
     // While playing, the change is heard from the same spot; quick clicks are gathered into one update
     window.clearTimeout(labTimer.current)
     labTimer.current = window.setTimeout(() => rearrangeRef.current(), 120)
@@ -479,9 +522,9 @@ export default function App() {
     let saved: Tune
     if (draft.from && draft.from.source !== 'example') {
       saved = { ...draft.from, chart }
-      await saveTune(saved)
+      await saveTune(saved, setNotice)
     } else {
-      ;[saved] = await addTunes([chart], 'own', 'My tunes')
+      ;[saved] = await addTunes([chart], 'own', 'My tunes', setNotice)
     }
     setTunes((all) => [...all.filter((t) => t.id !== saved.id), saved])
     setDraft(null)
@@ -676,6 +719,7 @@ export default function App() {
         playing={playing}
         onToggle={toggle}
         position={readout}
+        notice={notice}
         styleId={styleId}
         extraStyles={[
           ...(lab ? [{ id: LAB_STYLE, name: `${lab.name.trim() || 'My style'} (style lab)` }] : []),
@@ -705,6 +749,8 @@ export default function App() {
           masterMuted={masterMuted}
           onMaster={setMaster}
           onMasterMute={() => setMasterMuted((m) => !m)}
+          sync={latencyOffset}
+          onSync={setLatencyOffset}
           level={outputLevel}
         />
       </Transport>

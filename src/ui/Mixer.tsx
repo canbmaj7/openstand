@@ -12,17 +12,32 @@ interface MixerProps {
   masterMuted: boolean
   onMaster: (volume: number) => void
   onMasterMute: () => void
+  sync: number
+  onSync: (ms: number) => void
   level: () => { peak: number; rms: number } // output level in dBFS
 }
 
 const PARTS: Part[] = ['bass', 'comp', 'drums']
 
-export function Mixer({ labels, volumes, muted, onVolume, onMute, master, masterMuted, onMaster, onMasterMute, level }: MixerProps) {
+export function Mixer({
+  labels,
+  volumes,
+  muted,
+  onVolume,
+  onMute,
+  master,
+  masterMuted,
+  onMaster,
+  onMasterMute,
+  sync,
+  onSync,
+  level,
+}: MixerProps) {
   return (
     <Popover
       id="mixer"
       className="band"
-      active={PARTS.some((p) => muted[p]) || masterMuted}
+      active={PARTS.some((p) => muted[p]) || masterMuted || sync !== 0}
       label={
         <>
           <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -34,44 +49,67 @@ export function Mixer({ labels, volumes, muted, onVolume, onMute, master, master
       }
     >
       {() => (
-        <div className="mixer" aria-label="Mixer">
-          {PARTS.map((part) => (
-            <div key={part} className={`strip${muted[part] ? ' strip-muted' : ''}`}>
-              <span className="label">{labels[part]}</span>
-              <input
-                className="fader"
-                type="range"
-                min={0}
-                max={127}
-                value={volumes[part]}
-                aria-label={`${labels[part]} volume`}
-                onChange={(e) => onVolume(part, Number(e.target.value))}
-              />
-              <span className="strip-value">{volumes[part]}</span>
-              <button className="mute" aria-pressed={muted[part]} onClick={() => onMute(part)}>
+        <div aria-label="Mixer">
+          <div className="mixer">
+            {PARTS.map((part) => (
+              <div key={part} className={`strip${muted[part] ? ' strip-muted' : ''}`}>
+                <span className="label">{labels[part]}</span>
+                <input
+                  className="fader"
+                  type="range"
+                  min={0}
+                  max={127}
+                  value={volumes[part]}
+                  aria-label={`${labels[part]} volume`}
+                  onChange={(e) => onVolume(part, Number(e.target.value))}
+                />
+                <span className="strip-value">{volumes[part]}</span>
+                <button className="mute" aria-pressed={muted[part]} onClick={() => onMute(part)}>
+                  Mute
+                </button>
+              </div>
+            ))}
+            <span className="mixer-divider" aria-hidden="true" />
+            <div className={`strip strip-master${masterMuted ? ' strip-muted' : ''}`}>
+              <span className="label">Master</span>
+              <div className="master-controls">
+                <input
+                  className="fader"
+                  type="range"
+                  min={0}
+                  max={127}
+                  value={master}
+                  aria-label="Master volume"
+                  onChange={(e) => onMaster(Number(e.target.value))}
+                />
+                <Meter level={level} />
+              </div>
+              <span className="strip-value">{master}</span>
+              <button className="mute" aria-pressed={masterMuted} onClick={onMasterMute}>
                 Mute
               </button>
             </div>
-          ))}
-          <span className="mixer-divider" aria-hidden="true" />
-          <div className={`strip strip-master${masterMuted ? ' strip-muted' : ''}`}>
-            <span className="label">Master</span>
-            <div className="master-controls">
-              <input
-                className="fader"
-                type="range"
-                min={0}
-                max={127}
-                value={master}
-                aria-label="Master volume"
-                onChange={(e) => onMaster(Number(e.target.value))}
-              />
-              <Meter level={level} />
+          </div>
+          <div className="mixer-sync">
+            <div className="mixer-sync-head">
+              <label className="label" htmlFor="mixer-sync">
+                Sync
+              </label>
+              <output className="strip-value" htmlFor="mixer-sync">
+                {sync > 0 ? `+${sync}` : sync} ms
+              </output>
             </div>
-            <span className="strip-value">{master}</span>
-            <button className="mute" aria-pressed={masterMuted} onClick={onMasterMute}>
-              Mute
-            </button>
+            <input
+              id="mixer-sync"
+              type="range"
+              min={-300}
+              max={300}
+              step={10}
+              value={sync}
+              aria-label="Sync"
+              onChange={(e) => onSync(Number(e.target.value))}
+            />
+            <p className="mixer-hint">If the highlight runs ahead of the sound (Bluetooth), raise this.</p>
           </div>
         </div>
       )}

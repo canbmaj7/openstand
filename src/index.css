@@ -1241,6 +1241,45 @@ input.fader::-moz-range-thumb {
   background: var(--danger);
 }
 
+.mixer-sync {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.mixer-sync-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mixer-sync input[type='range'] {
+  width: 100%;
+}
+
+.mixer-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.error-boundary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100dvh;
+  padding: 24px;
+  text-align: center;
+}
+
+.error-boundary p {
+  margin: 0;
+}
+
 /* ---------- Dialog ---------- */
 
 .dialog {

@@ -34,29 +34,49 @@ const masterGainFor = (volume: number) => MASTER_GAIN * (volume / 100) ** 2
 
 // Thin layer over SpessaSynth: sound bank loading, MIDI playback, mixer
 export class Player {
-  private ctx: AudioContext
+  private ctx: AudioContext | null = null
   private synth: WorkletSynthesizer | null = null
   private seq: Sequencer | null = null
   private volumes = new Map<number, number>()
   // Loads go one at a time, so a warm-up load can't replace the song the user asked for
   private loading: Promise<void> = Promise.resolve()
   private playRequested = false
+  private latencyOffset = 0
+  private removeUnlock: () => void = () => {}
   onEnded: () => void = () => {}
 
   constructor() {
-    this.ctx = new AudioContext({ sampleRate: 44100 })
+    if (typeof AudioContext === 'undefined') return
+    try {
+      this.ctx = new AudioContext({ sampleRate: 44100 })
+    } catch {
+      return
+    }
     // On iPhone, Web Audio is silenced by the ring/silent switch unless the session is "playback"
     const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
     if (session) session.type = 'playback'
     // Phones open the audio output on the first touch; doing it then, rather than on play, saves that wait
+    const ctx = this.ctx
     const unlock = () => {
-      if (this.ctx.state === 'running') {
-        for (const type of UNLOCK_EVENTS) window.removeEventListener(type, unlock, true)
+      if (ctx.state === 'running' || ctx.state === 'closed') {
+        this.removeUnlock()
         return
       }
-      void this.ctx.resume()
+      void ctx.resume().then(
+        () => {
+          if (ctx.state === 'running') this.removeUnlock()
+        },
+        () => {},
+      )
+    }
+    this.removeUnlock = () => {
+      for (const type of UNLOCK_EVENTS) window.removeEventListener(type, unlock, true)
     }
     for (const type of UNLOCK_EVENTS) window.addEventListener(type, unlock, true)
+  }
+
+  get supported(): boolean {
+    return this.ctx !== null
   }
 
   // The output stage: the General MIDI sound bank plays well below full scale, so the band is
@@ -67,11 +87,11 @@ export class Player {
   private meter: AnalyserNode | null = null
   private meterBuffer = new Float32Array(1024)
 
-  private master(): AudioNode {
-    this.masterGain = new GainNode(this.ctx, { gain: masterGainFor(this.masterVolume) })
-    this.meter = new AnalyserNode(this.ctx, { fftSize: 1024 })
-    const limiter = new DynamicsCompressorNode(this.ctx, { threshold: -8, knee: 4, ratio: 12, attack: 0.002, release: 0.15 })
-    this.masterGain.connect(limiter).connect(this.ctx.destination)
+  private master(ctx: AudioContext): AudioNode {
+    this.masterGain = new GainNode(ctx, { gain: masterGainFor(this.masterVolume) })
+    this.meter = new AnalyserNode(ctx, { fftSize: 1024 })
+    const limiter = new DynamicsCompressorNode(ctx, { threshold: -8, knee: 4, ratio: 12, attack: 0.002, release: 0.15 })
+    this.masterGain.connect(limiter).connect(ctx.destination)
     limiter.connect(this.meter)
     return this.masterGain
   }
@@ -79,7 +99,7 @@ export class Player {
   // Master volume on the mixer's 0-127 scale; 100 is the normal level, 127 about 4 dB more
   setMasterVolume(volume: number): void {
     this.masterVolume = volume
-    this.masterGain?.gain.setTargetAtTime(masterGainFor(volume), this.ctx.currentTime, 0.02)
+    if (this.ctx) this.masterGain?.gain.setTargetAtTime(masterGainFor(volume), this.ctx.currentTime, 0.02)
   }
 
   // Output level now, in dBFS: the peak and the average (RMS) of the last 23 ms
@@ -98,12 +118,14 @@ export class Player {
   }
 
   async init(onProgress: (ratio: number) => void): Promise<void> {
+    const ctx = this.ctx
+    if (!ctx || !ctx.audioWorklet) throw new Error("This browser can't play audio.")
     const [soundfont] = await Promise.all([
       fetchWithProgress(SOUNDFONT_URL, onProgress),
-      this.ctx.audioWorklet.addModule(processorUrl),
+      ctx.audioWorklet.addModule(processorUrl),
     ])
-    const synth = new WorkletSynthesizer(this.ctx)
-    synth.connect(this.master())
+    const synth = new WorkletSynthesizer(ctx)
+    synth.connect(this.master(ctx))
     await synth.soundBankManager.addSoundBank(soundfont, 'main')
     await synth.isReady
 
@@ -118,10 +140,23 @@ export class Player {
   // Loads the MIDI and starts playing from the given time (seconds of MIDI time)
   async play(midi: Uint8Array, fromSeconds = 0): Promise<void> {
     const seq = this.requireSeq()
+    const ctx = this.ctx
+    if (!ctx || ctx.state === 'closed') {
+      throw new Error("Couldn't start the audio. Check your sound output and try Play again.")
+    }
     this.playRequested = true
-    const resumed = this.ctx.resume()
+    const resumed = ctx.state === 'running' ? Promise.resolve() : ctx.resume()
+    resumed.catch(() => {})
     await this.load(midi, 'arrangement.mid')
-    await resumed
+    try {
+      await resumed
+    } catch {
+      throw new Error("Couldn't start the audio. Check your sound output and try Play again.")
+    }
+    if (ctx.state !== 'running') {
+      throw new Error("Couldn't start the audio. Check your sound output and try Play again.")
+    }
+    this.removeUnlock()
     this.applyVolumes()
     if (fromSeconds > 0) seq.currentTime = fromSeconds
     seq.play()
@@ -160,8 +195,11 @@ export class Player {
   }
 
   async dispose(): Promise<void> {
+    this.removeUnlock()
     this.stop()
-    await this.ctx.close()
+    if (this.ctx && this.ctx.state !== 'closed') {
+      await this.ctx.close().catch(() => {})
+    }
   }
 
   get isPlaying(): boolean {
@@ -178,9 +216,14 @@ export class Player {
   // The audio clock moves in steps; the smoothed clock keeps the chart's highlight gliding.
   get heardPosition(): number {
     const seq = this.seq
-    if (!seq) return 0
-    const latency = (this.ctx.outputLatency || 0) + (this.ctx.baseLatency || 0)
+    if (!seq || !this.ctx) return 0
+    const latency = (this.ctx.outputLatency || 0) + (this.ctx.baseLatency || 0) + this.latencyOffset
     return Math.max(0, seq.currentHighResolutionTime - latency * seq.playbackRate)
+  }
+
+  // Extra output latency in milliseconds, for outputs (such as Bluetooth) that do not report their delay
+  setLatencyOffset(ms: number): void {
+    this.latencyOffset = ms / 1000
   }
 
   setRate(rate: number): void {
