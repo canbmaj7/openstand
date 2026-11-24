@@ -1,21 +1,74 @@
-import { closeVoicingTones, rootlessVoicings, type Chord } from '../music/chords'
+import { chordTones, closeVoicingTones, rootlessVoicings, type Chord } from '../music/chords'
+import { guitarShapes } from '../music/fretboard'
 import type { CompHit, CompPart } from '../styles/types'
 import { chance, humanize, place, rand, toTicks, type NoteEvent } from './events'
 import { patternFor } from './meter'
 import type { Slot } from './timeline'
 
 const CHANNEL = 1
-const LOWEST = 48 // lowest allowed bottom note of a voicing
-const HIGHEST_BOTTOM = 62 // highest allowed bottom note of a voicing
+// Standard guitar tuning (E2 A2 D3 G3 B3 E4) in MIDI note numbers
+const GUITAR_MIDI = [40, 45, 50, 55, 59, 64] as const
 
-// Voicing candidates as intervals above the root (A/B forms or inversions)
+interface VoicingRange {
+  lowest: number
+  highestBottom: number
+  highestTop: number
+  home: number
+}
+
+function rangeFor(kind: CompPart['voicing']): VoicingRange {
+  if (kind === 'guitar') return { lowest: 40, highestBottom: 52, highestTop: 76, home: 56 }
+  return { lowest: 48, highestBottom: 62, highestTop: 127, home: 62 }
+}
+
+// Playable 3-4 note guitar voicings as intervals above the root:
+// fretboard shapes from guitarShapes plus 3-note jazz shell voicings (R-3-7 and R-7-3).
+function guitarVoicingForms(chord: Chord): number[][] {
+  const forms: number[][] = []
+  const seen = new Set<string>()
+  const push = (form: number[]) => {
+    const key = form.join(',')
+    if (seen.has(key)) return
+    seen.add(key)
+    forms.push(form)
+  }
+
+  for (const shape of guitarShapes(chord)) {
+    const midi = shape.frets.flatMap((fret, s) => (fret === null ? [] : [GUITAR_MIDI[s] + fret]))
+    const pcs = new Set<number>()
+    const unique = midi
+      .filter((n) => {
+        const pc = n % 12
+        if (pcs.has(pc)) return false
+        pcs.add(pc)
+        return true
+      })
+      .slice(0, 4)
+    if (unique.length < 3) continue
+    const offset = (((unique[0] - chord.root) % 12) + 12) % 12
+    push(unique.map((n) => n - unique[0] + offset))
+  }
+
+  if (chord.bass === chord.root) {
+    const [, third, fifth, seventh] = chordTones(chord)
+    if (seventh < 12 && third !== fifth) {
+      push([0, third, seventh])
+      push([0, seventh, third + 12])
+    }
+  }
+
+  if (!forms.length) push(closeVoicingTones(chord))
+  return forms
+}
+
+// Voicing candidates as intervals above the root (A/B forms, inversions, or guitar shapes)
 function voicingForms(chord: Chord, kind: CompPart['voicing']): number[][] {
   if (kind === 'rootless') return rootlessVoicings(chord)
+  if (kind === 'guitar') return guitarVoicingForms(chord)
   const tones = closeVoicingTones(chord)
   return tones.map((_, r) => [...tones.slice(r), ...tones.slice(0, r).map((t) => t + 12)])
 }
 
-const HOME = 62 // the middle of the comping range
 const average = (notes: number[]) => notes.reduce((a, b) => a + b, 0) / notes.length
 
 // How far the notes of one voicing are from the nearest notes of another, on average
@@ -23,15 +76,16 @@ const leap = (from: number[], to: number[]) => from.reduce((sum, p) => sum + Mat
 
 // Voice leading: each note moves as little as possible from the previous voicing, so common
 // tones stay where they are and the top voice moves by step (the measure Impro-Visor and MMA
-// use). A gentle pull keeps the voicings from drifting out of the middle of the keyboard.
+// use). A gentle pull keeps the voicings from drifting out of the middle of the instrument.
 function chooseVoicing(chord: Chord, kind: CompPart['voicing'], prev: number[]): number[] {
+  const range = rangeFor(kind)
   let best: number[] = []
   let bestScore = Infinity
   for (const form of voicingForms(chord, kind)) {
     for (let octave = 2; octave <= 6; octave++) {
       const notes = form.map((i) => chord.root + i + octave * 12)
-      if (notes[0] < LOWEST || notes[0] > HIGHEST_BOTTOM) continue
-      const drift = Math.abs(average(notes) - HOME)
+      if (notes[0] < range.lowest || notes[0] > range.highestBottom || notes[notes.length - 1] > range.highestTop) continue
+      const drift = Math.abs(average(notes) - range.home)
       const score = prev.length
         ? leap(prev, notes) +
           leap(notes, prev) +
@@ -61,8 +115,8 @@ export function generateComp(slots: Slot[], part: CompPart, swing: number, count
     prev = voicing
 
     if (slot.measure === -1) {
-      // Final chord: one long hit with the root in the left hand
-      const notes = [slot.chord.root + 36, ...voicing]
+      // Final chord: one long hit, adding a low root in the left hand for piano styles
+      const notes = part.voicing === 'guitar' ? voicing : [slot.chord.root + 36, ...voicing]
       for (const note of notes) {
         events.push({ tick: toTicks(slot.start), channel: CHANNEL, note, velocity: part.velocity[1], duration: toTicks(slot.beats - 0.5) })
       }

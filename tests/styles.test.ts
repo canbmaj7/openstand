@@ -24,10 +24,27 @@ describe('styles', () => {
     }
   })
 
+  test('up-tempo swing is a fast, flatter variant with quarter-note bass and silent bars', () => {
+    const style = getStyle('up-tempo-swing')
+    expect(style.id).toBe('up-tempo-swing')
+    expect(style.tempo).toEqual({ default: 260, min: 200, max: 340 })
+    expect(style.swing).toBeGreaterThan(0.5)
+    expect(style.swing).toBeLessThan(getStyle('medium-swing').swing)
+    expect(style.bass.mode).toBe('pattern')
+    if (style.bass.mode === 'pattern') {
+      for (const pattern of style.bass.patterns['4'] ?? []) {
+        expect(pattern.every((n) => n.dur === 1), 'quarter notes').toBe(true)
+        expect(pattern.reduce((sum, n) => sum + n.dur, 0), 'fills the bar').toBe(4)
+      }
+    }
+    expect(style.comp.rhythms['4'], 'silent bar option').toContainEqual([])
+  })
+
   test('iReal Pro style names map to the closest style', () => {
     expect(mapStyle('Waltz', [3, 4])).toBe('jazz-waltz')
     expect(mapStyle('Medium Swing', [3, 4])).toBe('jazz-waltz')
     expect(mapStyle('Medium Swing')).toBe('medium-swing')
+    expect(mapStyle('Up Tempo Swing')).toBe('up-tempo-swing')
     expect(mapStyle('Samba')).toBe('samba')
     expect(mapStyle('Bossa Nova')).toBe('bossa-nova')
     expect(mapStyle('Funk')).toBe('funk')

@@ -7,9 +7,10 @@ import { popRock } from './library/pop-rock'
 import { reggae } from './library/reggae'
 import { samba } from './library/samba'
 import { shuffle } from './library/shuffle'
+import { upTempoSwing } from './library/up-tempo-swing'
 import type { StyleDefinition } from './types'
 
-export const STYLES: StyleDefinition[] = [mediumSwing, ballad, jazzWaltz, bossaNova, samba, popRock, funk, shuffle, reggae]
+export const STYLES: StyleDefinition[] = [mediumSwing, upTempoSwing, ballad, jazzWaltz, bossaNova, samba, popRock, funk, shuffle, reggae]
 
 export function getStyle(id: string): StyleDefinition {
   return STYLES.find((s) => s.id === id) ?? STYLES[0]
