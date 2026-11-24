@@ -1,6 +1,6 @@
 # OpenStand chart format (version 1)
 
-A chart is a JSON document. It is what the library stores, what share links carry, and what the
+A chart is a JSON document (saved with the `.openstand.json` file extension). It is what the library stores, what share links carry, and what the
 accompaniment engine reads. The TypeScript types live in [`src/music/chart.ts`](../src/music/chart.ts).
 
 ```json

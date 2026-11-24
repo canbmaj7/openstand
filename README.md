@@ -35,9 +35,9 @@ No install, no account, no subscription. Just open the page and play.
 
 OpenStand is an **early but usable** practice tool (see the [changelog](CHANGELOG.md) for what changed and when). What works today:
 
-- **Import from iReal Pro.** Paste an `irealb://` link or a whole playlist (or choose an iReal Pro HTML export) and the tunes land in your library. Sections, repeats, first and second endings, D.C./D.S. al Coda/Fine, time signatures and N.C. bars are all read and played in the right order. Tested against public playlists of almost 2,000 tunes.
+- **Import from iReal Pro or OpenStand files.** Paste an `irealb://` link or a whole playlist (or choose an iReal Pro HTML export or `.openstand.json` chart file) and the tunes land in your library. Sections, repeats, first and second endings, D.C./D.S. al Coda/Fine, time signatures and N.C. bars are all read and played in the right order. Tested against public playlists of almost 2,000 tunes.
 - **Write your own charts.** Type chords the way you would say them (`Dm7 G7`, `Cmaj7`, `Bø`, `F#dim7`) and press Enter for the next bar. Add sections, repeats, endings, segno and coda, D.C./D.S. jumps, time signature, key, style and tempo. Edit any tune in the library the same way.
-- **Export to iReal Pro.** Any chart, imported or written here, can be copied as an `irealb://` link that opens in iReal Pro. All ~2,000 test tunes come back unchanged after going out and in again.
+- **Export to MIDI, ChordPro, `.openstand.json`, and iReal Pro.** Download the generated band as a Standard MIDI File (bass, piano and drums on separate tracks at the current tempo), a ChordPro chord grid (`.cho`) for songbook apps, an `.openstand.json` file you can reopen or share, or copy an `irealb://` link that opens in iReal Pro. All ~2,000 test tunes come back unchanged after going out and in again.
 - **A tune library in your browser.** It starts with fifteen example tunes in 4/4, 3/4, 6/8, 12/8 and 5/4. Search by title or composer, filter by playlist. Everything is stored locally (IndexedDB); there is no server and no account.
 - **Share a tune as a link.** The whole chart is compressed into the URL, so whoever opens it sees and hears the same tune.
 - **Nine styles:** Medium Swing, Ballad (brushes), Jazz Waltz (3/4), Bossa Nova (nylon guitar), Samba, Pop Rock, Funk (electric piano, sixteenth-note groove), Shuffle (boogie bass) and Reggae (one drop). Imported tunes get the closest style automatically, and you can switch styles while the band is playing.
@@ -100,7 +100,7 @@ Everything runs client-side. There is no server.
 src/
 ├── audio/      Sound bank loading, playback, mixer
 ├── engine/     Accompaniment engine (timeline, generators, MIDI writer)
-├── formats/    iReal Pro links in and out, share links
+├── formats/    iReal Pro links, ChordPro grids, .openstand.json files, share links
 ├── library/    Tune library stored in the browser (IndexedDB)
 ├── music/      Chart format, chord parsing, voicings, example tunes
 ├── styles/     Style format and the style library
