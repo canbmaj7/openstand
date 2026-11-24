@@ -25,13 +25,14 @@ export function arrange(
   transpose: number,
   choruses: number,
   practice: PracticeOptions = {},
+  bpm: number = BASE_BPM,
 ): Arrangement {
   const timeline = buildTimeline(chart, transpose, choruses, practice)
   const { swing } = style
   // The same band in 6/8, for bars in a compound meter
   const compound = timeline.bars.some((b) => b.compound) ? compoundStyle(style) : style
   const comp = generateComp(timeline.slots, style.comp, swing, timeline.countIn, compound.comp)
-  const midi = writeMidi(BASE_BPM, [
+  const midi = writeMidi(bpm, [
     {
       name: 'Bass',
       channel: CHANNELS.bass,

@@ -107,6 +107,9 @@ const LAYER_KEY = { A: 'drums', B: 'drumsB', fill: 'fill' } as const
 
 interface StyleLabProps {
   lab: LabStyle
+  startFromId: string
+  dirty: boolean
+  confirmClose: boolean
   onChange: (lab: LabStyle) => void
   onStartFrom: (styleId: string) => void
   canUndo: boolean
@@ -116,10 +119,11 @@ interface StyleLabProps {
   copyState: CopyState
   onSend: () => void
   onClose: () => void
+  onSaveAndClose: () => void
+  onDiscardClose: () => void
+  onKeepEditing: () => void
   myStyles: { id: string; name: string }[] // saved in this browser
   isSaved: boolean // a style with this name is in My styles
-  onSave: () => void
-  saveState: 'idle' | 'saved'
   onShare: () => void
   shareState: CopyState
   onDelete: () => void
@@ -187,9 +191,10 @@ export function StyleLab(props: StyleLabProps) {
     <section className="lab" aria-label="Style lab">
       <div className="lab-head">
         <h2 className="lab-title">Style lab</h2>
+        {props.dirty && <span className="lab-unsaved">Unsaved changes</span>}
         <label className="field">
           <span className="label">Start from</span>
-          <select className="select" value={lab.base} onChange={(e) => onStartFrom(e.target.value)}>
+          <select className="select" value={props.startFromId} onChange={(e) => onStartFrom(e.target.value)}>
             <optgroup label="Styles">
               {STYLES.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -232,42 +237,57 @@ export function StyleLab(props: StyleLabProps) {
           </span>
         </label>
         <span className="editor-spacer" />
-        {props.isSaved && (
-          <button
-            className={confirmDelete ? 'chip chip-danger' : 'chip'}
-            onClick={() => (confirmDelete ? props.onDelete() : setConfirmDelete(true))}
-            onBlur={() => setConfirmDelete(false)}
-          >
-            {confirmDelete ? 'Delete style?' : 'Delete'}
-          </button>
-        )}
-        <button
-          className="chip"
-          onClick={props.onSave}
-          title="Keep this style in My styles, in this browser, and choose it from the style menu"
+        <div
+          className="lab-actions"
+          role={props.confirmClose ? 'alert' : undefined}
+          aria-label={props.confirmClose ? 'Unsaved changes' : undefined}
         >
-          {props.saveState === 'saved' ? 'Saved' : props.isSaved ? 'Save changes' : 'Save'}
-        </button>
-        <button
-          className="chip"
-          onClick={props.onShare}
-          title="Copy a link that opens this style in OpenStand, with the tune on screen to hear it on"
-        >
-          {props.shareState === 'copied' ? 'Link copied' : props.shareState === 'failed' ? 'Copy failed' : 'Share link'}
-        </button>
-        <button className="chip" onClick={onCopy}>
-          {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy code'}
-        </button>
-        <button
-          className="chip chip-primary"
-          onClick={onSend}
-          title="Copies the code and opens GitHub, where you can propose it as a new style"
-        >
-          Send to OpenStand
-        </button>
-        <button className="icon-button lab-close" aria-label="Close the style lab" onClick={onClose}>
-          ×
-        </button>
+          {props.confirmClose ? (
+            <>
+              <button className="chip chip-primary" onClick={props.onSaveAndClose}>
+                Save &amp; close
+              </button>
+              <button className="chip chip-danger" onClick={props.onDiscardClose}>
+                Discard
+              </button>
+              <button className="chip" onClick={props.onKeepEditing}>
+                Keep editing
+              </button>
+            </>
+          ) : (
+            <>
+              {props.isSaved && (
+                <button
+                  className={confirmDelete ? 'chip chip-danger' : 'chip'}
+                  onClick={() => (confirmDelete ? props.onDelete() : setConfirmDelete(true))}
+                  onBlur={() => setConfirmDelete(false)}
+                >
+                  {confirmDelete ? 'Delete style?' : 'Delete'}
+                </button>
+              )}
+              <button
+                className="chip"
+                onClick={props.onShare}
+                title="Copy a link that opens this style in OpenStand, with the tune on screen to hear it on"
+              >
+                {props.shareState === 'copied' ? 'Link copied' : props.shareState === 'failed' ? 'Copy failed' : 'Share link'}
+              </button>
+              <button className="chip" onClick={onCopy}>
+                {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy code'}
+              </button>
+              <button
+                className="chip chip-primary"
+                onClick={onSend}
+                title="Copies the code and opens GitHub, where you can propose it as a new style"
+              >
+                Send to OpenStand
+              </button>
+              <button className="icon-button lab-close" aria-label="Close the style lab" onClick={onClose}>
+                ×
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="lab-tabs" role="tablist">

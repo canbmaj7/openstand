@@ -59,17 +59,65 @@ export function deleteBar(chart: Chart, index: number): Chart {
   return { ...chart, bars }
 }
 
+const sameTime = (a: TimeSignature, b: TimeSignature) => a[0] === b[0] && a[1] === b[1]
+
+function respreadBar(bar: ChartBar, time: TimeSignature): ChartBar {
+  const beats = beatsPerBar(time)
+  const total = bar.chords.reduce((a, c) => a + c.beats, 0)
+  if (total === beats || bar.chords.length === 0) return bar
+  const split = evenSplit(bar.chords.length, time)
+  return { ...bar, chords: bar.chords.map((c, j) => ({ ...c, beats: split[j] })) }
+}
+
+function effectiveTimes(chart: Chart): TimeSignature[] {
+  let time = chart.time
+  return chart.bars.map((bar) => {
+    if (bar.time) time = bar.time
+    return time
+  })
+}
+
 // After a meter change, chord lengths are spread over the new bar length
 export function setTime(chart: Chart, time: TimeSignature): Chart {
-  const beats = beatsPerBar(time)
-  const bars = chart.bars.map((bar, i) => {
-    if (i > 0 && underTimeChange(chart, i)) return bar
-    const total = bar.chords.reduce((a, c) => a + c.beats, 0)
-    if (total === beats || bar.chords.length === 0) return bar
-    const split = evenSplit(bar.chords.length, time)
-    return { ...bar, chords: bar.chords.map((c, j) => ({ ...c, beats: split[j] })) }
-  })
+  const bars = chart.bars.map((bar, i) => (i > 0 && underTimeChange(chart, i) ? bar : respreadBar(bar, time)))
   return { ...chart, time, bars }
+}
+
+/** Change the time signature at `index` (for just that bar or from there on), respreading affected chords. */
+export function setBarTime(chart: Chart, index: number, time: TimeSignature | null, onlyThisBar: boolean): Chart {
+  if (index < 0 || index >= chart.bars.length) return chart
+
+  const oldTimes = effectiveTimes(chart)
+  const prevMeter = index === 0 ? chart.time : oldTimes[index - 1]
+  let nextChartTime = chart.time
+  const bars = chart.bars.map((b) => ({ ...b }))
+
+  if (time === null) {
+    bars[index] = tidy({ ...bars[index], time: undefined })
+  } else {
+    if (index === 0) {
+      nextChartTime = time
+      bars[0] = tidy({ ...bars[0], time: undefined })
+    } else {
+      bars[index] = tidy({ ...bars[index], time })
+    }
+    if (onlyThisBar && index + 1 < bars.length && !bars[index + 1].time) {
+      bars[index + 1] = { ...bars[index + 1], time: prevMeter }
+    }
+  }
+
+  let running = nextChartTime
+  const cleanedBars = bars.map((bar, i) => {
+    let nextBar = bar
+    if (nextBar.time) {
+      if (sameTime(nextBar.time, running)) nextBar = tidy({ ...nextBar, time: undefined })
+      else running = nextBar.time
+    }
+    if (!sameTime(oldTimes[i], running)) nextBar = respreadBar(nextBar, running)
+    return nextBar
+  })
+
+  return { ...chart, time: nextChartTime, bars: cleanedBars }
 }
 
 // Whether a bar falls under a later time signature change rather than the chart's own

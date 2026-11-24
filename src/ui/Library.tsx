@@ -6,6 +6,8 @@ import { getStyle } from '../styles'
 interface LibraryProps {
   tunes: Tune[]
   selectedId: string
+  styleOverrides: Record<string, string>
+  styleNames: Record<string, string>
   onSelect: (id: string) => void
   onImport: () => void
   onNew: () => void
@@ -22,7 +24,7 @@ const fold = (s: string) =>
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
 
-export function Library({ tunes, selectedId, onSelect, onImport, onNew, disabled, onRemovePlaylist }: LibraryProps) {
+export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelect, onImport, onNew, disabled, onRemovePlaylist }: LibraryProps) {
   const [query, setQuery] = useState('')
   const [playlist, setPlaylist] = useState(ALL)
   const [confirming, setConfirming] = useState(false)
@@ -101,23 +103,26 @@ export function Library({ tunes, selectedId, onSelect, onImport, onNew, disabled
       )}
 
       <ul className="library-list">
-        {matches.slice(0, LIMIT).map((tune) => (
-          <li key={tune.id}>
-            <button
-              className="tune"
-              aria-current={tune.id === selectedId ? 'true' : undefined}
-              onClick={() => onSelect(tune.id)}
-            >
-              <span className="tune-title">{tune.chart.title}</span>
-              <span className="tune-meta">
-                {tune.chart.composer ? `${tune.chart.composer} · ` : ''}
-                {tune.chart.sourceStyle ?? getStyle(tune.chart.style).name} ·{' '}
-                {noteName(tune.chart.key, keyPrefersFlats(tune.chart.key))}
-                {tune.chart.minor ? '−' : ''}
-              </span>
-            </button>
-          </li>
-        ))}
+        {matches.slice(0, LIMIT).map((tune) => {
+          const overrideName = styleNames[styleOverrides[tune.id]]
+          const styleName = overrideName ?? tune.chart.sourceStyle ?? getStyle(tune.chart.style).name
+          return (
+            <li key={tune.id}>
+              <button
+                className="tune"
+                aria-current={tune.id === selectedId ? 'true' : undefined}
+                onClick={() => onSelect(tune.id)}
+              >
+                <span className="tune-title">{tune.chart.title}</span>
+                <span className="tune-meta">
+                  {tune.chart.composer ? `${tune.chart.composer} · ` : ''}
+                  {styleName} · {noteName(tune.chart.key, keyPrefersFlats(tune.chart.key))}
+                  {tune.chart.minor ? '−' : ''}
+                </span>
+              </button>
+            </li>
+          )
+        })}
       </ul>
       {matches.length > LIMIT && (
         <p className="library-more">{matches.length - LIMIT} more. Search to narrow the list.</p>

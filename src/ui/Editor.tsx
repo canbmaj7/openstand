@@ -4,6 +4,7 @@ import { keyPrefersFlats, noteName } from '../music/chords'
 import { deleteBar, insertBar, setTime, timeAt, updateBar } from '../music/edit'
 import { barToInput, parseBarInput } from '../music/notation'
 import { STYLES } from '../styles'
+import { BarTimeField } from './BarTimeField'
 
 const TIMES: TimeSignature[] = [
   [4, 4],
@@ -62,6 +63,7 @@ export function Editor({ chart, onChange, selected, onSelect, saveLabel, canDele
   const [text, setText] = useState(() => barToInput(bar.chords, time))
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [onlyThisBar, setOnlyThisBar] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // A newly selected bar shows its chords and takes the keyboard
@@ -76,6 +78,12 @@ export function Editor({ chart, onChange, selected, onSelect, saveLabel, canDele
   }, [index, chart])
 
   const patch = (p: Partial<ChartBar>) => onChange(updateBar(chart, index, p))
+
+  const applyTimeChange = (next: Chart) => {
+    onChange(next)
+    setText(barToInput(next.bars[index].chords, timeAt(next, index)))
+    setError('')
+  }
 
   const typeChords = (value: string) => {
     setText(value)
@@ -253,6 +261,14 @@ export function Editor({ chart, onChange, selected, onSelect, saveLabel, canDele
             {bar.directive && !DIRECTIVES.includes(bar.directive) && <option value={bar.directive}>{bar.directive}</option>}
           </select>
         </label>
+        <BarTimeField
+          chart={chart}
+          index={index}
+          times={TIMES}
+          onlyThisBar={onlyThisBar}
+          onOnlyThisBarChange={setOnlyThisBar}
+          onApply={applyTimeChange}
+        />
         <label className="field field-text">
           <span className="label">Text</span>
           <input className="text-input" value={bar.comment ?? ''} onChange={(e) => patch({ comment: e.target.value || undefined })} />
@@ -301,7 +317,7 @@ export function Editor({ chart, onChange, selected, onSelect, saveLabel, canDele
             value={chart.time.join('/')}
             onChange={(e) => {
               const t = TIMES.find((x) => x.join('/') === e.target.value)
-              if (t && !sameTime(t, chart.time)) onChange(setTime(chart, t))
+              if (t && !sameTime(t, chart.time)) applyTimeChange(setTime(chart, t))
             }}
           >
             {TIMES.map((t) => (

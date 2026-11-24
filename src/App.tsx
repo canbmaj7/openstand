@@ -3,6 +3,7 @@ import { Player } from './audio/player'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, type Timeline } from './engine/timeline'
+import { parseChartFile } from './formats/chartFile'
 import { parseIrealLinks } from './formats/ireal'
 import { irealLink } from './formats/irealWrite'
 import { reportError } from './errorReports'
@@ -20,6 +21,7 @@ import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type La
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
+import { downloadChartFile, downloadChordPro, downloadMidi } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
@@ -65,19 +67,19 @@ const offsetToKey = (from: number, to: number) => ((to - from + 17) % 12) - 5
 // The comp instrument is named after the style's General MIDI program
 const LAST_TUNE = 'openstand:last-tune'
 
-// The style being made in the style lab is kept in the browser between visits
-const LAB_KEY = 'openstand:style-lab'
 const MASTER_KEY = 'openstand:master-volume'
 const LATENCY_KEY = 'openstand:latency-offset'
 const INSTRUMENT_KEY = 'openstand:instrument'
+const TUNE_STYLES_KEY = 'openstand:tune-styles'
 const LAB_STYLE = 'lab' // style id used while the lab is open
 
-function loadLab(): LabStyle | null {
+function loadTuneStyles(): Record<string, string> {
   try {
-    const saved = localStorage.getItem(LAB_KEY)
-    return saved ? (JSON.parse(saved) as LabStyle) : null
+    const saved = JSON.parse(localStorage.getItem(TUNE_STYLES_KEY) ?? '{}') as unknown
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {}
+    return Object.fromEntries(Object.entries(saved).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
   } catch {
-    return null
+    return {}
   }
 }
 
@@ -152,12 +154,18 @@ export default function App() {
   const styleRef = useRef(styleId)
   const [lab, setLabState] = useState<LabStyle | null>(null)
   const labRef = useRef<LabStyle | null>(null)
-  const [labUndo, setLabUndo] = useState<LabStyle | null>(null)
+  const [labBaseline, setLabBaseline] = useState<LabStyle | null>(null)
+  const labReturnStyleRef = useRef<string | null>(null)
+  const labCloseActionRef = useRef<(() => void) | null>(null)
+  const [labClosePrompt, setLabClosePrompt] = useState(false)
+  const [labStartStyleId, setLabStartStyleId] = useState(EXAMPLES[0].chart.style)
+  const [labUndo, setLabUndo] = useState<{ lab: LabStyle; startStyleId: string } | null>(null)
   const [labCopy, setLabCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [labShare, setLabShare] = useState<'idle' | 'copied' | 'failed'>('idle')
-  const [labSaved, setLabSaved] = useState<'idle' | 'saved'>('idle')
   const [myStyles, setMyStylesState] = useState<LabStyle[]>(loadMyStyles)
   const myStylesRef = useRef(myStyles)
+  const [tuneStyles, setTuneStylesState] = useState<Record<string, string>>(loadTuneStyles)
+  const tuneStylesRef = useRef(tuneStyles)
   const openSharedStyleRef = useRef<(lab: LabStyle) => void>(() => {})
   const setMyStyles = (next: LabStyle[]) => {
     myStylesRef.current = next
@@ -168,6 +176,15 @@ export default function App() {
   const setSounds = (next: SoundChoice) => {
     soundsRef.current = next
     setSoundsState(next)
+  }
+  const setTuneStyles = (next: Record<string, string>) => {
+    tuneStylesRef.current = next
+    setTuneStylesState(next)
+    try {
+      localStorage.setItem(TUNE_STYLES_KEY, JSON.stringify(next))
+    } catch {
+      // Storage may be disabled in private browsing
+    }
   }
   useEffect(() => {
     styleRef.current = styleId
@@ -376,6 +393,12 @@ export default function App() {
     setTranspose(next.transpose)
     setChoruses(next.choruses)
     setPractice(next.practice)
+    if (patch.styleId && patch.styleId !== LAB_STYLE) {
+      const nextTuneStyles = { ...tuneStylesRef.current }
+      if (patch.styleId === tune.chart.style) delete nextTuneStyles[songId]
+      else nextTuneStyles[songId] = patch.styleId
+      setTuneStyles(nextTuneStyles)
+    }
     const player = playerRef.current
     const loopChanged = String(next.practice.loop) !== String(practice.loop)
     if (playing && player) void start(next, loopChanged ? 0 : player.position)
@@ -461,7 +484,9 @@ export default function App() {
     setPlaying(false)
     setPosition(null)
     setSongId(next.id)
-    setStyleId(labRef.current ? LAB_STYLE : next.chart.style)
+    const preferred = tuneStylesRef.current[next.id]
+    const known = preferred && (STYLES.some((style) => style.id === preferred) || myStylesRef.current.some((style) => myStyleId(style) === preferred))
+    setStyleId(labRef.current ? LAB_STYLE : known ? preferred : next.chart.style)
     setTranspose(0)
     setMode('original')
     setBpm(next.chart.bpm)
@@ -532,7 +557,14 @@ export default function App() {
   }, [showTune])
 
   const importText = useCallback(
-    async (text: string): Promise<ImportResult> => {
+    async (text: string, filename?: string): Promise<ImportResult> => {
+      if (filename?.toLowerCase().endsWith('.json') || text.trimStart().startsWith('{')) {
+        const imported = parseChartFile(text)
+        const [added] = await addTunes([imported], 'import', 'Imported tunes', setNotice)
+        setTunes((all) => [...all.filter((t) => t.id !== added.id), added])
+        showTune(added)
+        return { tunes: 1, playlists: ['Imported tunes'] }
+      }
       const lists = parseIrealLinks(text)
       const added: Tune[] = []
       for (const list of lists) added.push(...(await addTunes(list.charts, 'import', list.name, setNotice)))
@@ -581,11 +613,6 @@ export default function App() {
   const setLab = (next: LabStyle) => {
     labRef.current = next
     setLabState(next)
-    try {
-      localStorage.setItem(LAB_KEY, JSON.stringify(next))
-    } catch {
-      // Storage may be disabled in private browsing
-    }
     // While playing, the change is heard from the same spot; quick clicks are gathered into one update
     window.clearTimeout(labTimer.current)
     labTimer.current = window.setTimeout(() => rearrangeRef.current(), 120)
@@ -593,24 +620,57 @@ export default function App() {
 
   const openLab = () => {
     setLibraryOpen(false)
-    setLab(loadLab() ?? labFromStyle(getStyle(styleId)))
+    const saved = myStylesRef.current.find((item) => myStyleId(item) === styleId)
+    const starting = saved ?? labFromStyle(getStyle(styleId))
+    setLabBaseline(starting)
+    labReturnStyleRef.current = styleId
+    setLabClosePrompt(false)
+    setLabStartStyleId(styleId)
+    setLab(starting)
     setStyleId(LAB_STYLE)
   }
 
-  function closeLab() {
+  const labDirty = !!lab && !!labBaseline && JSON.stringify(lab) !== JSON.stringify(labBaseline)
+
+  function closeLab(afterClose?: () => void) {
     const current = labRef.current
     if (!current) return
+    labCloseActionRef.current = null
     window.clearTimeout(labTimer.current)
     labRef.current = null
+    setLabBaseline(null)
+    const returnStyle = labReturnStyleRef.current ?? current.base
+    labReturnStyleRef.current = null
     setLabState(null)
+    setLabClosePrompt(false)
     setLabUndo(null)
-    changeArrangement({ styleId: current.base })
+    changeArrangement({ styleId: returnStyle })
+    afterClose?.()
+  }
+
+  const requestCloseLab = (afterClose?: () => void) => {
+    if (!labRef.current) return afterClose?.()
+    if (!labDirty) return closeLab(afterClose)
+    labCloseActionRef.current = afterClose ?? null
+    setLabClosePrompt(true)
+  }
+
+  const saveLab = () => {
+    const current = labRef.current
+    if (!current) return
+    setMyStyles(saveMyStyle(myStylesRef.current, current))
+    setLabBaseline(current)
+    labReturnStyleRef.current = myStyleId(current)
+    setLabStartStyleId(myStyleId(current))
   }
 
   // A style link: the style is saved to My styles and opened in the lab
   useEffect(() => {
     openSharedStyleRef.current = (shared: LabStyle) => {
       setMyStyles(saveMyStyle(myStylesRef.current, shared))
+      setLabBaseline(shared)
+      labReturnStyleRef.current = myStyleId(shared)
+      setLabStartStyleId(myStyleId(shared))
       setLabUndo(null)
       setLab(shared)
       setStyleId(LAB_STYLE)
@@ -642,15 +702,18 @@ export default function App() {
   // ---- Editing ----
 
   const startEditing = (from: Tune | null) => {
-    stop()
-    closeLab()
-    setPicking(null)
-    setSelectedChord(null)
-    setSelectedChordAt(null)
-    setChordsOpen(false)
-    setLibraryOpen(false)
-    setDraft({ chart: from ? from.chart : emptyChart(), from })
-    setEditBar(0)
+    const start = () => {
+      stop()
+      setPicking(null)
+      setSelectedChord(null)
+      setSelectedChordAt(null)
+      setChordsOpen(false)
+      setLibraryOpen(false)
+      setDraft({ chart: from ? from.chart : emptyChart(), from })
+      setEditBar(0)
+    }
+    if (labRef.current) requestCloseLab(start)
+    else start()
   }
 
   const saveDraft = async () => {
@@ -726,7 +789,7 @@ export default function App() {
             <button
               className="topbar-button topbar-lab"
               aria-pressed={!!lab}
-              onClick={() => (lab ? closeLab() : openLab())}
+              onClick={() => (lab ? requestCloseLab() : openLab())}
               title="Make your own style: edit the drums, bass and chords and hear them as you go"
             >
               <span className="topbar-long">Style </span>lab
@@ -735,7 +798,7 @@ export default function App() {
               Edit
             </button>
             <Popover id="share" className="share" label="Share">
-              {() => (
+              {(close) => (
                 <div className="share-panel">
                   <button className="share-option" onClick={() => void copy(() => shareUrl(baseChart), setShareState)}>
                     <span className="share-name">
@@ -748,6 +811,37 @@ export default function App() {
                       {irealState === 'copied' ? 'Link copied' : irealState === 'failed' ? 'Copy failed' : 'Copy iReal Pro link'}
                     </span>
                     <span className="share-desc">An irealb:// link that opens in iReal Pro.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
+                      const { loop, keyStep } = practice
+                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep }, bpm)
+                      close()
+                    }}
+                  >
+                    <span className="share-name">Download MIDI</span>
+                    <span className="share-desc">Bass, piano and drums on separate tracks, at the current tempo.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
+                      downloadChordPro(chart, transpose)
+                      close()
+                    }}
+                  >
+                    <span className="share-name">Download ChordPro</span>
+                    <span className="share-desc">A chord grid for songbook apps (OnSong, SongbookPro).</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
+                      downloadChartFile(baseChart)
+                      close()
+                    }}
+                  >
+                    <span className="share-name">Save as file</span>
+                    <span className="share-desc">An OpenStand chart file you can open again or send to someone.</span>
                   </button>
                 </div>
               )}
@@ -787,6 +881,11 @@ export default function App() {
         <Library
           tunes={tunes}
           selectedId={tune.id}
+          styleOverrides={tuneStyles}
+          styleNames={Object.fromEntries([
+            ...STYLES.map((item) => [item.id, item.name]),
+            ...myStyles.map((item) => [myStyleId(item), item.name]),
+          ])}
           onSelect={selectSong}
           onImport={() => setImportOpen(true)}
           onNew={() => startEditing(null)}
@@ -852,40 +951,60 @@ export default function App() {
       {lab && (
         <StyleLab
           lab={lab}
+          startFromId={labStartStyleId}
+          dirty={labDirty}
+          confirmClose={labClosePrompt}
           onChange={(next) => {
             setLab(next)
             setLabUndo(null)
           }}
           onStartFrom={(id) => {
-            setLabUndo(lab)
+            setLabUndo({ lab, startStyleId: labStartStyleId })
+            setLabStartStyleId(id)
             const saved = myStyles.find((m) => myStyleId(m) === id)
             setLab(saved ?? labFromStyle(getStyle(id)))
           }}
           myStyles={myStyles.map((m) => ({ id: myStyleId(m), name: m.name }))}
           isSaved={myStyles.some((m) => myStyleId(m) === myStyleId(lab))}
-          onSave={() => {
-            setMyStyles(saveMyStyle(myStyles, lab))
-            setLabSaved('saved')
-            setTimeout(() => setLabSaved('idle'), 2200)
-          }}
-          saveState={labSaved}
           onShare={() => void copy(() => styleShareUrl(lab, baseChart), setLabShare)}
           shareState={labShare}
           onDelete={() => {
             const id = myStyleId(lab)
             setMyStyles(removeMyStyle(myStyles, id))
+            setTuneStyles(Object.fromEntries(Object.entries(tuneStylesRef.current).filter(([, style]) => style !== id)))
+            setLabBaseline(lab)
+            if (labReturnStyleRef.current === id) labReturnStyleRef.current = tune.chart.style
+            if (labStartStyleId === id) setLabStartStyleId(lab.base)
             if (styleId === id) changeArrangement({ styleId: LAB_STYLE })
           }}
           canUndo={labUndo !== null}
           onUndo={() => {
-            if (labUndo) setLab(labUndo)
+            if (labUndo) {
+              setLab(labUndo.lab)
+              setLabStartStyleId(labUndo.startStyleId)
+            }
             setLabUndo(null)
           }}
           step={playing ? labStep : null}
           onCopy={() => void copy(() => styleSource(styleFromLab(lab), getStyle(lab.base).name), setLabCopy)}
           copyState={labCopy}
           onSend={sendLab}
-          onClose={closeLab}
+          onClose={() => requestCloseLab()}
+          onSaveAndClose={() => {
+            saveLab()
+            const afterClose = labCloseActionRef.current
+            labCloseActionRef.current = null
+            closeLab(afterClose ?? undefined)
+          }}
+          onDiscardClose={() => {
+            const afterClose = labCloseActionRef.current
+            labCloseActionRef.current = null
+            closeLab(afterClose ?? undefined)
+          }}
+          onKeepEditing={() => {
+            labCloseActionRef.current = null
+            setLabClosePrompt(false)
+          }}
         />
       )}
       <Transport
