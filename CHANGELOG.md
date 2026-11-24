@@ -5,6 +5,8 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-24
+
 ### 2026-11-24
 
 #### Added
