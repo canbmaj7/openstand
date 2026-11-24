@@ -21,14 +21,14 @@ import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type La
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
-import { downloadChartFile, downloadChordPro, downloadMidi } from './ui/download'
+import { downloadChartFile, downloadChordPro, downloadMidi, downloadWav } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
 import { useEditorHistory } from './ui/useEditorHistory'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
 import { Mixer } from './ui/Mixer'
 import { Popover } from './ui/Popover'
-import { NO_PRACTICE, startBeatFor, type PracticeSettings } from './music/practice'
+import { loadCountIn, NO_PRACTICE, saveCountIn, startBeatFor, type PracticeSettings } from './music/practice'
 import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
 import { switchMode } from './music/mode'
@@ -228,7 +228,7 @@ export default function App() {
   })
   const [notice, setNotice] = useState<string | null>(null)
   const outputLevel = useCallback(() => playerRef.current?.level() ?? { peak: -100, rms: -100 }, [])
-  const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
+  const [practice, setPractice] = useState<PracticeSettings>(() => ({ ...NO_PRACTICE, countIn: loadCountIn() }))
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
   const [selectedChordAt, setSelectedChordAt] = useState<string | null>(null)
@@ -237,6 +237,8 @@ export default function App() {
   const draft = editor.draft
   const draftChart = editor.chart
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [wavState, setWavState] = useState<{ kind: 'idle' } | { kind: 'rendering'; progress: number } | { kind: 'failed' }>({ kind: 'idle' })
+  const wavResetTimer = useRef(0)
   const [mode, setMode] = useState<ModeOption>('original')
   const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
 
@@ -351,6 +353,10 @@ export default function App() {
     saveSounds(sounds)
   }, [sounds])
 
+  useEffect(() => {
+    saveCountIn(practice.countIn)
+  }, [practice.countIn])
+
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
     playerRef.current?.setRate(liveBpm / BASE_BPM)
@@ -360,8 +366,8 @@ export default function App() {
     const player = playerRef.current
     if (!player) return
     setNotice(null)
-    const { loop, keyStep, subs } = opts.practice
-    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs })
+    const { loop, keyStep, subs, countIn } = opts.practice
+    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs, countIn })
     timelineRef.current = timeline
 
     let offsetSeconds = fromSeconds
@@ -619,6 +625,25 @@ export default function App() {
     setTimeout(() => set('idle'), 2200)
   }
 
+  const exportWav = async (close: () => void) => {
+    if (wavState.kind === 'rendering') return
+    window.clearTimeout(wavResetTimer.current)
+    setWavState({ kind: 'rendering', progress: 0 })
+    const { loop, keyStep, subs, countIn } = practice
+    try {
+      await downloadWav(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm, {
+        mixer: { volumes, muted, master, masterMuted },
+        soundBank: playerRef.current?.soundBank,
+        onProgress: (ratio) => setWavState({ kind: 'rendering', progress: ratio }),
+      })
+      setWavState({ kind: 'idle' })
+      close()
+    } catch {
+      setWavState({ kind: 'failed' })
+      wavResetTimer.current = window.setTimeout(() => setWavState({ kind: 'idle' }), 3000)
+    }
+  }
+
   // ---- Style lab ----
 
   const labTimer = useRef(0)
@@ -831,13 +856,27 @@ export default function App() {
                   <button
                     className="share-option"
                     onClick={() => {
-                      const { loop, keyStep, subs } = practice
-                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs }, bpm)
+                      const { loop, keyStep, subs, countIn } = practice
+                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm)
                       close()
                     }}
                   >
                     <span className="share-name">Download MIDI</span>
                     <span className="share-desc">Bass, piano and drums on separate tracks, at the current tempo.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    disabled={wavState.kind === 'rendering'}
+                    onClick={() => void exportWav(close)}
+                  >
+                    <span className="share-name">
+                      {wavState.kind === 'rendering'
+                        ? `Rendering… ${Math.round(wavState.progress * 100)}%`
+                        : wavState.kind === 'failed'
+                          ? 'Export failed'
+                          : 'Download audio (WAV)'}
+                    </span>
+                    <span className="share-desc">The backing track at the current key, tempo and mixer levels.</span>
                   </button>
                   <button
                     className="share-option"

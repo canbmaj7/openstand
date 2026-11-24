@@ -1,6 +1,6 @@
-import type { SubMode } from '../engine/timeline'
+import type { CountInMode, SubMode } from '../engine/timeline'
 import type { Chart } from '../music/chart'
-import { KEY_STEPS, sections, type PracticeSettings } from '../music/practice'
+import { KEY_STEPS, parseCountIn, sections, type PracticeSettings } from '../music/practice'
 import { Popover } from './Popover'
 
 const barRange = ([a, b]: [number, number]) => (a === b ? `Bar ${a + 1}` : `Bars ${a + 1}–${b + 1}`)
@@ -14,7 +14,12 @@ interface PracticeProps {
 
 export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProps) {
   const hasSubs = chart.bars.some((b) => b.chords.some((c) => Boolean(c.alt)))
-  const active = settings.loop !== null || settings.keyStep !== 0 || settings.ramp !== 0 || settings.subs !== 'off'
+  const active =
+    settings.loop !== null ||
+    settings.keyStep !== 0 ||
+    settings.ramp !== 0 ||
+    settings.subs !== 'off' ||
+    settings.countIn !== 'auto'
   const marks = sections(chart)
 
   return (
@@ -122,6 +127,20 @@ export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProp
               <option value="random">Random</option>
             </select>
             {!hasSubs && <span className="practice-unit">Add one in the editor: C7(Gb7)</span>}
+          </label>
+
+          <label className="practice-row">
+            <span className="label">Count-in</span>
+            <select
+              className="select"
+              value={String(settings.countIn)}
+              onChange={(e) => onChange({ ...settings, countIn: parseCountIn(e.target.value) as CountInMode })}
+            >
+              <option value="auto">Auto</option>
+              <option value="off">Off</option>
+              <option value="1">1 bar</option>
+              <option value="2">2 bars</option>
+            </select>
           </label>
         </div>
       )}
