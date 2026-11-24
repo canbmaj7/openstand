@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Accompaniment engine for OpenStand: generate bass, comping, and drums MIDI from chord charts and iReal Pro links.",
   "type": "module",
-  "license": "AGPL-3.0-or-later",
+  "license": "MPL-2.0",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -55,4 +55,4 @@ writeFileSync('tune.mid', midi)
 
 ## License
 
-AGPL-3.0-or-later, like the OpenStand app ([https://github.com/canbmaj7/openstand](https://github.com/canbmaj7/openstand)).
+MPL-2.0. The engine, music, styles and formats code of [OpenStand](https://github.com/canbmaj7/openstand) is offered under both the AGPL-3.0-or-later and the MPL-2.0 (see its CONTRIBUTING); this package uses the MPL-2.0. The OpenStand app itself stays AGPL-3.0-or-later.
