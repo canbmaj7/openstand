@@ -262,7 +262,7 @@ export function Chart(props: ChartProps) {
     <article className="sheet" aria-label={`${chart.title} chord chart`}>
       {header ?? (
         <header className="sheet-head">
-          <span className="sheet-meta">({chart.sourceStyle ?? style.name})</span>
+          <span className="sheet-meta">({style.id === chart.style && chart.sourceStyle ? chart.sourceStyle : style.name})</span>
           <h1 className="sheet-title">{chart.title}</h1>
           <span className="sheet-meta sheet-meta-right">{chart.composer ?? `Key of ${keyName}`}</span>
         </header>

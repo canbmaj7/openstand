@@ -110,10 +110,12 @@ test('a tune link opens the same chart in another browser', async ({ page, brows
 })
 
 test('the style lab: edit while playing, save, and keep it after a reload', async ({ page }) => {
+  const style = control(page, 'Style')
+  await style.selectOption('bossa-nova')
   await labButton(page).click()
   const lab = page.getByRole('region', { name: 'Style lab' })
   await expect(lab).toBeVisible()
-  await lab.getByLabel('Start from').selectOption('bossa-nova')
+  await expect(lab.getByLabel('Start from')).toHaveValue('bossa-nova')
   await play(page)
 
   // Groove A, B and the fill are all there for bossa nova; add a hit to groove A
@@ -129,12 +131,88 @@ test('the style lab: edit while playing, save, and keep it after a reload', asyn
   await expect(lab.getByRole('button', { name: 'Pattern B' })).toBeVisible()
   await stop(page)
 
-  await lab.getByRole('button', { name: 'Save', exact: true }).click()
-  const style = control(page, 'Style')
+  await lab.getByRole('button', { name: 'Close the style lab' }).click()
+  await lab.getByRole('button', { name: 'Save & close' }).click()
   await expect(style.locator('option', { hasText: 'My Bossa Nova' }).first()).toBeAttached()
+  await expect(style).toHaveValue('my:my-bossa-nova')
+  await expect(page.locator('.sheet-meta').first()).toHaveText('(My Bossa Nova)')
+  await expect(page.getByRole('button', { name: /Jazz Blues My Bossa Nova · F/ })).toBeVisible()
+  await page.getByText('Bossa Workout', { exact: true }).click()
+  await page.getByText('Jazz Blues', { exact: true }).click()
+  await expect(style).toHaveValue('my:my-bossa-nova')
+  await labButton(page).click()
+  await expect(lab.getByLabel('Start from')).toHaveValue('my:my-bossa-nova')
+  await expect(lab.getByLabel('Name')).toHaveValue('My Bossa Nova')
+  await expect(lab.getByRole('button', { name: /^Cross-stick, beat 1, step 2: normal$/ })).toBeVisible()
+  await lab.getByRole('button', { name: 'Close the style lab' }).click()
 
   await page.reload()
   await expect(control(page, 'Style').locator('option', { hasText: 'My Bossa Nova' }).first()).toBeAttached()
+  await expect(control(page, 'Style')).toHaveValue('my:my-bossa-nova')
+  await expect(page.getByRole('button', { name: /Jazz Blues My Bossa Nova · F/ })).toBeVisible()
+})
+
+test('the style lab asks whether to save unsaved changes when it closes', async ({ page }) => {
+  await labButton(page).click()
+  const lab = page.getByRole('region', { name: 'Style lab' })
+  await lab.getByLabel('Name').fill('Unsaved session')
+  await expect(lab.getByText('Unsaved changes')).toBeVisible()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  const closeOptions = lab.getByRole('alert', { name: 'Unsaved changes' })
+  await expect(closeOptions.getByRole('button')).toHaveCount(3)
+  await lab.getByRole('button', { name: 'Keep editing' }).click()
+  await expect(lab.getByLabel('Name')).toHaveValue('Unsaved session')
+  await lab.getByRole('button', { name: 'Close the style lab' }).click()
+  await lab.getByRole('button', { name: 'Discard' }).click()
+  await expect(lab).not.toBeVisible()
+
+  await labButton(page).click()
+  await expect(lab.getByLabel('Start from')).toHaveValue('medium-swing')
+  await expect(lab.getByLabel('Name')).toHaveValue('My Medium Swing')
+  await lab.getByLabel('Name').fill('Saved from close prompt')
+  await lab.getByRole('button', { name: 'Close the style lab' }).click()
+  await lab.getByRole('button', { name: 'Save & close' }).click()
+  await expect(lab).not.toBeVisible()
+  await expect(control(page, 'Style')).toHaveValue('my:saved-from-close-prompt')
+})
+
+test('the style lab close button stays with the action buttons across tabs and bass modes', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 700 })
+  await labButton(page).click()
+  const lab = page.getByRole('region', { name: 'Style lab' })
+  const close = lab.getByRole('button', { name: 'Close the style lab' })
+  const send = lab.getByRole('button', { name: 'Send to OpenStand' })
+
+  await lab.getByRole('tab', { name: 'Bass' }).click()
+  await lab.getByRole('button', { name: 'Written' }).click()
+  await expect(close).toBeInViewport()
+  const [closeBox, sendBox] = await Promise.all([close.boundingBox(), send.boundingBox()])
+  expect(closeBox).not.toBeNull()
+  expect(sendBox).not.toBeNull()
+  expect(Math.abs(closeBox!.y - sendBox!.y)).toBeLessThan(4)
+
+  await lab.getByRole('button', { name: 'Walking (automatic)' }).click()
+  await expect(close).toBeInViewport()
+  await lab.getByRole('tab', { name: 'Drums' }).click()
+  await expect(close).toBeInViewport()
+})
+
+test('deleting a custom style restores the tune original style', async ({ page }) => {
+  const style = control(page, 'Style')
+  await style.selectOption('bossa-nova')
+  await labButton(page).click()
+  const lab = page.getByRole('region', { name: 'Style lab' })
+  await lab.getByLabel('Name').fill('Delete me')
+  await lab.getByRole('button', { name: 'Close the style lab' }).click()
+  await lab.getByRole('button', { name: 'Save & close' }).click()
+  await expect(style).toHaveValue('my:delete-me')
+
+  await labButton(page).click()
+  await lab.getByRole('button', { name: 'Delete' }).click()
+  await lab.getByRole('button', { name: 'Delete style?' }).click()
+  await lab.getByRole('button', { name: 'Close the style lab' }).click()
+  await expect(style).toHaveValue('medium-swing')
+  await expect(page.getByRole('button', { name: /Jazz Blues Medium Swing · F/ })).toBeVisible()
 })
 
 test('a style link opens in the style lab of another browser', async ({ page, browser }) => {
@@ -153,6 +231,8 @@ test('a style link opens in the style lab of another browser', async ({ page, br
   const freshLab = fresh.getByRole('region', { name: 'Style lab' })
   await expect(freshLab).toBeVisible()
   await expect(freshLab.getByLabel('Name')).toHaveValue('Samba for the band')
+  await freshLab.getByRole('button', { name: 'Close the style lab' }).click()
+  await expect(control(fresh, 'Style')).toHaveValue('my:samba-for-the-band')
   await other.close()
 })
 
