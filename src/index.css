@@ -395,6 +395,7 @@ button:disabled {
   min-height: 84px;
   padding: 0 10px;
   border-left: 1.5px solid var(--ink);
+  scroll-margin: 32px 0;
 }
 
 .bar-no-left,
@@ -1559,6 +1560,7 @@ input.fader::-moz-range-thumb {
   .bar {
     min-height: 60px;
     padding: 0 6px;
+    scroll-margin: 24px 0;
   }
 
   .bar-with-time {
