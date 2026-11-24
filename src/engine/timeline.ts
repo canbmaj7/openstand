@@ -1,5 +1,7 @@
 import { beatsPerBar, isCompound, playbackOrder, type BarChord, type Chart, type TimeSignature } from '../music/chart'
 import { parseChord, transposeChord, type Chord } from '../music/chords'
+import { groupsFor } from '../music/meter'
+import { groupStarts } from '../styles/aksak'
 import { PULSE } from './meter'
 
 // One click of the count-in: where it falls, the number shown, and how strong it is
@@ -17,6 +19,14 @@ export interface Click {
 export function countInClicks(chart: Chart): Click[] {
   const beats = beatsPerBar(chart.time)
   const click = (at: number, count: number, level: Click['level']): Click => ({ at, count, level })
+  const groups = groupsFor(chart.time, chart.groups ?? chart.bars[0]?.groups)
+  if (groups) {
+    const starts = groupStarts(groups)
+    const count = beats <= 4 ? 2 : 1
+    return Array.from({ length: count }, (_, b) =>
+      starts.map((at, i) => click(b * beats + at, i + 1, i === 0 ? 'bar' : 'beat')),
+    ).flat()
+  }
   if (isCompound(chart.time)) {
     const eighths = (start: number, counted: (i: number) => number) =>
       Array.from({ length: Math.round(beats * 2) }, (_, i) =>
@@ -48,6 +58,8 @@ export function countInClicks(chart: Chart): Click[] {
 // Count-in length in beats: two bars of short meters, one bar of long ones
 export function countInBeats(chart: Chart): number {
   const beats = beatsPerBar(chart.time)
+  const groups = groupsFor(chart.time, chart.groups ?? chart.bars[0]?.groups)
+  if (groups) return beats <= 4 ? 2 * beats : beats
   if (isCompound(chart.time)) return beats === 2 * PULSE ? 2 * beats : beats
   if (!Number.isInteger(beats)) return 4
   return beats <= 4 ? 2 * beats : beats
@@ -61,6 +73,8 @@ export interface Slot {
   measure: number // bar index in the chart; -1 for the final chord
   chorus: number
   compound?: boolean // in 6/8, 9/8 or 12/8
+  groups?: number[] // eighth-note beat grouping for aksak / odd meters
+  barOffset?: number // offset in beats from the start of the bar (when grouped)
   sub?: true // true when this slot uses the chord's substitution (alt)
 }
 
@@ -72,6 +86,7 @@ export interface Bar {
   isFirst: boolean
   isLast: boolean
   compound?: boolean // in 6/8, 9/8 or 12/8
+  groups?: number[] // eighth-note beat grouping for aksak / odd meters
 }
 
 export interface Timeline {
@@ -147,11 +162,22 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
     return { chord: toChord(c.symbol, chorus), sub: false }
   }
 
-  // Time signature in force at each written bar
+  // Time signature and beat grouping in force at each written bar
   let time: TimeSignature = chart.time
+  let rawGroups: number[] | undefined = chart.groups
   const meters = chart.bars.map((bar) => {
-    if (bar.time) time = bar.time
-    return { beats: beatsPerBar(time), compound: isCompound(time) || undefined }
+    if (bar.time) {
+      time = bar.time
+      rawGroups = bar.groups
+    } else if (bar.groups !== undefined) {
+      rawGroups = bar.groups
+    }
+    const groups = groupsFor(time, rawGroups)
+    return {
+      beats: beatsPerBar(time),
+      compound: groups ? undefined : isCompound(time) || undefined,
+      groups,
+    }
   })
 
   const order = practiceOrder(chart, practice.loop)
@@ -176,18 +202,42 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
     let heldSub = initial.sub
     order.forEach((measure, n) => {
       const bar = chart.bars[measure]
-      const { beats, compound } = meters[measure]
-      bars.push({ start: beat, beats, measure, isFirst: n === 0, isLast: n === order.length - 1, compound })
+      const { beats, compound, groups } = meters[measure]
+      bars.push({ start: beat, beats, measure, isFirst: n === 0, isLast: n === order.length - 1, compound, ...(groups ? { groups } : {}) })
 
       if (bar.chords.length === 0) {
-        if (held) slots.push({ chord: held, start: beat, beats, measure, chorus, compound, ...(heldSub ? { sub: true as const } : {}) })
+        if (held) {
+          slots.push({
+            chord: held,
+            start: beat,
+            beats,
+            measure,
+            chorus,
+            compound,
+            ...(groups ? { groups } : {}),
+            ...(heldSub ? { sub: true as const } : {}),
+          })
+        }
       } else {
         let at = beat
         bar.chords.forEach((c, chordIndex) => {
           const resolved = resolveBarChord(c, chorus, measure, chordIndex)
           held = resolved.chord
           heldSub = resolved.sub
-          if (held) slots.push({ chord: held, start: at, beats: c.beats, measure, chorus, compound, ...(heldSub ? { sub: true as const } : {}) })
+          if (held) {
+            const barOffset = groups && at > beat ? at - beat : undefined
+            slots.push({
+              chord: held,
+              start: at,
+              beats: c.beats,
+              measure,
+              chorus,
+              compound,
+              ...(groups ? { groups } : {}),
+              ...(barOffset !== undefined ? { barOffset } : {}),
+              ...(heldSub ? { sub: true as const } : {}),
+            })
+          }
           at += c.beats
         })
       }
@@ -201,8 +251,16 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
   if (first && choruses > 0) {
     const last = meters[order[order.length - 1]] ?? { beats: 4 }
     const beats = last.beats >= 3 ? last.beats : last.beats * 2
-    bars.push({ start: beat, beats, measure: -1, isFirst: false, isLast: false, compound: last.compound })
-    slots.push({ chord: toChord(first, choruses - 1), start: beat, beats, measure: -1, chorus: choruses, compound: last.compound })
+    bars.push({ start: beat, beats, measure: -1, isFirst: false, isLast: false, compound: last.compound, ...(last.groups ? { groups: last.groups } : {}) })
+    slots.push({
+      chord: toChord(first, choruses - 1),
+      start: beat,
+      beats,
+      measure: -1,
+      chorus: choruses,
+      compound: last.compound,
+      ...(last.groups ? { groups: last.groups } : {}),
+    })
     beat += beats
   }
 

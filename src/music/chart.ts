@@ -20,6 +20,7 @@ export interface ChartBar {
   rowStart?: boolean
   section?: string // rehearsal mark: A, B, C, i (intro), v (verse)…
   time?: TimeSignature // time signature change at this bar
+  groups?: number[] // beat grouping in eighth notes from this bar on (e.g. [2, 2, 2, 3])
   repeatStart?: boolean
   repeatEnd?: boolean
   repeatTimes?: number // total passes through a repeat (default 2)
@@ -45,6 +46,7 @@ export interface Chart {
   minor?: boolean
   bpm: number
   time: TimeSignature
+  groups?: number[] // beat grouping in eighth notes (e.g. [2, 2, 2, 3] for aksak 9/8)
   bars: ChartBar[]
 }
 

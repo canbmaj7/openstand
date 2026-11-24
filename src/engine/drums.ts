@@ -1,5 +1,6 @@
+import { aksakDrums } from '../styles/aksak'
 import { DRUM_NOTES } from '../styles/drums'
-import type { DrumHit, DrumPart, Groove } from '../styles/types'
+import type { DrumHit, DrumPart, Groove, StyleFamily } from '../styles/types'
 import { chance, humanize, pick, place, toTicks, type NoteEvent } from './events'
 import { beatMap } from './meter'
 import type { Bar, Click } from './timeline'
@@ -29,7 +30,15 @@ function render(hits: DrumHit[], start: number, swing: number, from = 0, to = In
 
 // Plays each bar by its position in the form: first bar, middle bars (two-bar grooves), last bar.
 // Bars in a compound meter (6/8) play `compound`, the style's 6/8 grooves, with straight eighths.
-export function generateDrums(bars: Bar[], part: DrumPart, swing: number, clicks: Click[], compound: DrumPart = part): NoteEvent[] {
+// Bars with an odd/aksak grouping play `aksakDrums` for the style family with straight eighths.
+export function generateDrums(
+  bars: Bar[],
+  part: DrumPart,
+  swing: number,
+  clicks: Click[],
+  compound: DrumPart = part,
+  family: StyleFamily = 'pop',
+): NoteEvent[] {
   const startsCompound = bars[0]?.compound ?? false
   // The count-in is played on the cross-stick in every style (a closed hi-hat is too quiet to count by)
   const velocity = { bar: 112, beat: 94, sub: 64 }
@@ -47,6 +56,13 @@ export function generateDrums(bars: Bar[], part: DrumPart, swing: number, clicks
     const feel = bar.compound ? 0.5 : swing
     if (bar.measure === -1) {
       events.push(...render(drums.ending, bar.start, feel))
+      continue
+    }
+    if (bar.groups) {
+      groove = null
+      grooveBar = 0
+      const hits = aksakDrums(bar.groups, family, { isFirst: bar.isFirst, isLast: bar.isLast })
+      events.push(...render(hits, bar.start, 0.5, 0, bar.beats))
       continue
     }
     // A change of meter starts a fresh groove

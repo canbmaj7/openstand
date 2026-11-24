@@ -38,10 +38,10 @@ OpenStand is an **early but usable** practice tool (see the [changelog](CHANGELO
 - **Import from iReal Pro or OpenStand files.** Paste an `irealb://` link or a whole playlist (or choose an iReal Pro HTML export or `.openstand.json` chart file) and the tunes land in your library. Sections, repeats, first and second endings, D.C./D.S. al Coda/Fine, time signatures and N.C. bars are all read and played in the right order. Tested against public playlists of almost 2,000 tunes.
 - **Write your own charts.** Type chords the way you would say them (`Dm7 G7`, `Cmaj7`, `Bø`, `F#dim7`) and press Enter for the next bar. Add sections, repeats, endings, segno and coda, D.C./D.S. jumps, time signature (for the whole tune or a single bar), key, style and tempo. Edit any tune in the library the same way.
 - **Export to MIDI, ChordPro, `.openstand.json`, and iReal Pro.** Download the generated band as a Standard MIDI File (bass, piano and drums on separate tracks at the current tempo), a ChordPro chord grid (`.cho`) for songbook apps, an `.openstand.json` file you can reopen or share, or copy an `irealb://` link that opens in iReal Pro. All ~2,000 test tunes come back unchanged after going out and in again.
-- **A tune library in your browser.** It starts with fifteen example tunes in 4/4, 3/4, 6/8, 12/8 and 5/4. Search by title or composer, filter by playlist. Everything is stored locally (IndexedDB); there is no server and no account.
+- **A tune library in your browser.** It starts with seventeen example tunes in 4/4, 3/4, 5/4, 6/8, 7/8, 9/8 and 12/8. Search by title or composer, filter by playlist. Everything is stored locally (IndexedDB); there is no server and no account.
 - **Share a tune as a link.** The whole chart is compressed into the URL, so whoever opens it sees and hears the same tune.
-- **Eleven styles:** Medium Swing, Up-Tempo Swing, Ballad (brushes), Jazz Waltz (3/4), Bossa Nova (nylon guitar), Samba, Afro-Cuban (montuno piano, 2-3 clave), Pop Rock, Funk (electric piano, sixteenth-note groove), Shuffle (boogie bass) and Reggae (one drop). Imported tunes get the closest style automatically, and you can switch styles while the band is playing.
-- **Every style in every meter.** In 3/4, 5/4 or 6/4 a style's 4/4 patterns are rearranged so the accents stay right (a rock beat in 3/4 becomes boom-chick-chick). 6/8 and 12/8 are felt in dotted quarters with straight eighths, with their own grooves for jazz, Latin and pop styles.
+- **Twelve styles:** Medium Swing, Up-Tempo Swing, Ballad (brushes), Jazz Waltz (3/4), Bossa Nova (nylon guitar), Samba, Afro-Cuban (montuno piano, 2-3 clave), Pop Rock, Funk (electric piano, sixteenth-note groove), Shuffle (boogie bass), Reggae (one drop) and Aksak (Turkish/Balkan). Imported tunes get the closest style automatically, and you can switch styles while the band is playing.
+- **Every style in every meter.** In 3/4, 5/4 or 6/4 a style's 4/4 patterns are rearranged so the accents stay right (a rock beat in 3/4 becomes boom-chick-chick). 6/8 and 12/8 are felt in dotted quarters with straight eighths, with their own grooves for jazz, Latin and pop styles. Odd/aksak meters (5/8, 7/8, aksak 9/8, 10/8, 11/8) use eighth-note beat groupings (`2+2+2+3`, `3+2+2`, etc.) so every style accents the group starts.
 - **Generated accompaniment:**
   - **Bass** walks through chord tones in swing, or plays style patterns (bossa root–fifth, rock eighths), always approaching the next chord smoothly
   - **Piano / guitar** comps with rootless jazz voicings or close-position chords, choosing the shape whose notes move least from the previous one (voice leading); ballad and pop piano use the sustain pedal so chords ring into each other
@@ -128,7 +128,7 @@ A style is **data, not code**. Each one lives in `src/styles/library/` and descr
 | `comp` | Voicing type (`rootless` or `close`), rhythms per chord length, and `pedal` for a legato piano |
 | `drums` | Kit, count-in, grooves for the first / middle / last bar of the form (1 or 2 bars long; `beats: 3` for a waltz), ending |
 
-Positions are in beats from the start of the bar or chord. Off-beat eighths are written as `x.5` and are swung automatically when the style has `swing` above `0.5`. A drum hit can carry a probability, so a groove varies on every pass. A style is written for 4/4 (or 3/4 for a waltz); the engine fits it to other meters (`src/engine/meter.ts`), and the 6/8 and 12/8 patterns live in `src/styles/compound.ts`.
+Positions are in beats from the start of the bar or chord. Off-beat eighths are written as `x.5` and are swung automatically when the style has `swing` above `0.5`. A drum hit can carry a probability, so a groove varies on every pass. A style is written for 4/4 (or 3/4 for a waltz); the engine fits it to other meters (`src/engine/meter.ts`), the 6/8 and 12/8 patterns live in `src/styles/compound.ts`, and odd/aksak grouped meters (`5/8`, `7/8`, `9/8`, `10/8`, `11/8`) live in `src/styles/aksak.ts`.
 
 ```ts
 // A bossa bass: root on 1, fifth below on the "and" of 2 and on 3, root on the "and" of 4
@@ -150,7 +150,7 @@ Positions are in beats from the start of the bar or chord. Off-beat eighths are 
 - [x] Trimmed, compressed sound bank
 - [x] Works offline after the first visit (PWA), installable on phones
 - [x] Every style in 3/4, 6/8, 12/8, 5/4 and 6/4, with a count-in in the tune's meter
-- [ ] More styles: up-tempo swing, Afro-Cuban, reggae — and beyond (Balkan, Turkish *usul*, Afrobeat…)
+- [x] More styles: up-tempo swing, Afro-Cuban, reggae, aksak (Turkish/Balkan) — and beyond (Afrobeat…)
 - [x] A style lab: edit a groove in the browser and hear it right away
 - [x] Chart editor, and export back to iReal Pro
 - [x] Practice modes: tempo ramp per chorus, loop a section, cycle through all 12 keys

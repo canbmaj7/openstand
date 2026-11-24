@@ -11,6 +11,7 @@ export {
   type ChartBar,
   type TimeSignature,
 } from '../../../src/music/chart'
+export { groupsFor } from '../../../src/music/meter'
 
 export {
   chordLabel,

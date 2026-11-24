@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { type Chart, type ChartBar, type TimeSignature } from '../music/chart'
 import { keyPrefersFlats, noteName } from '../music/chords'
-import { deleteBar, insertBar, setTime, timeAt, updateBar } from '../music/edit'
+import { deleteBar, insertBar, setGroups, setTime, timeAt, updateBar } from '../music/edit'
 import { barToInput, parseBarInput } from '../music/notation'
 import { STYLES } from '../styles'
 import { BarTimeField } from './BarTimeField'
+import { GroupingField } from './GroupingField'
 
 const TIMES: TimeSignature[] = [
   [4, 4],
@@ -12,7 +13,12 @@ const TIMES: TimeSignature[] = [
   [2, 4],
   [5, 4],
   [6, 4],
+  [5, 8],
   [6, 8],
+  [7, 8],
+  [9, 8],
+  [10, 8],
+  [11, 8],
   [12, 8],
 ]
 
@@ -327,6 +333,7 @@ export function Editor({ chart, onChange, selected, onSelect, saveLabel, canDele
             ))}
           </select>
         </label>
+        <GroupingField time={chart.time} groups={chart.groups} onChange={(g) => onChange(setGroups(chart, g))} />
         <label className="field">
           <span className="label">Style</span>
           <select

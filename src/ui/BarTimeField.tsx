@@ -1,5 +1,6 @@
 import type { Chart, TimeSignature } from '../music/chart'
-import { setBarTime, timeAt } from '../music/edit'
+import { groupsAt, setBarGroups, setBarTime, timeAt } from '../music/edit'
+import { GroupingField } from './GroupingField'
 
 const sameTime = (a: TimeSignature, b: TimeSignature) => a[0] === b[0] && a[1] === b[1]
 
@@ -16,6 +17,7 @@ interface BarTimeFieldProps {
 export function BarTimeField({ chart, index, times, onlyThisBar, onOnlyThisBarChange, onApply }: BarTimeFieldProps) {
   const bar = chart.bars[index]
   const current = timeAt(chart, index)
+  const currentGroups = groupsAt(chart, index)
   const currentKey = current.join('/')
   const value = index === 0 ? currentKey : bar.time ? bar.time.join('/') : ''
   const options =
@@ -50,6 +52,12 @@ export function BarTimeField({ chart, index, times, onlyThisBar, onOnlyThisBarCh
           ))}
         </select>
       </label>
+      <GroupingField
+        time={current}
+        groups={currentGroups}
+        ariaLabel="Bar grouping"
+        onChange={(next) => onApply(setBarGroups(chart, index, next, onlyThisBar))}
+      />
       <label className="check">
         <input type="checkbox" checked={onlyThisBar} onChange={(e) => onOnlyThisBarChange(e.target.checked)} />
         Only this bar

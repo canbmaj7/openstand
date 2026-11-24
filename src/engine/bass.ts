@@ -1,5 +1,6 @@
 import { chordTones, type Chord } from '../music/chords'
-import type { BassNote, BassPart } from '../styles/types'
+import { aksakBass } from '../styles/aksak'
+import type { BassNote, BassPart, StyleFamily } from '../styles/types'
 import { chance, humanize, place, rand, toTicks, type NoteEvent } from './events'
 import { patternFor } from './meter'
 import type { Slot } from './timeline'
@@ -184,9 +185,87 @@ function patternBass(slots: Slot[], reg: Register, patterns: Partial<Record<stri
 const play = (slots: Slot[], part: BassPart, swing: number, reg: Register) =>
   part.mode === 'walking' ? walkingBass(slots, reg) : patternBass(slots, reg, part.patterns, swing)
 
+function playMixedWithGroups(
+  slots: Slot[],
+  part: BassPart,
+  swing: number,
+  reg: Register,
+  compound: BassPart,
+  family: StyleFamily,
+): NoteEvent[] {
+  const events: NoteEvent[] = []
+  let prev = reg.nearest(slots[0]?.chord.bass ?? 0, reg.center)
+
+  slots.forEach((slot, i) => {
+    const next = slots[i + 1]?.chord ?? slot.chord
+    if (slot.measure === -1) {
+      events.push(endingNote(reg, slot))
+      return
+    }
+    if (slot.groups) {
+      const pattern = aksakBass(slot.groups, family, slot.barOffset ?? 0, slot.beats)
+      const root = reg.nearest(slot.chord.bass, reg.anchor(prev))
+      for (const note of pattern) {
+        const n = resolveTone(reg, note, root, slot.chord, next)
+        events.push(
+          humanize(
+            {
+              tick: toTicks(slot.start + place(note.at, 0.5)),
+              channel: CHANNEL,
+              note: n,
+              velocity: note.vel ?? (note.at === 0 ? 96 : 86),
+              duration: toTicks(note.dur),
+            },
+            6,
+            5,
+          ),
+        )
+        prev = n
+      }
+      return
+    }
+    const activePart = slot.compound ? compound : part
+    if (activePart.mode === 'walking') {
+      const walked = walkingBass([slot, ...(slots[i + 1] ? [slots[i + 1]] : [])], reg).slice(0, Math.ceil(slot.beats))
+      events.push(...walked)
+      if (walked.length) prev = walked[walked.length - 1].note
+      return
+    }
+    const pattern = patternFor(activePart.patterns, slot.beats, !!slot.compound, { at: 0, dur: 0.9, tone: 'R' })
+    const root = reg.nearest(slot.chord.bass, reg.anchor(prev))
+    const feel = slot.compound ? 0.5 : swing
+    for (const note of pattern) {
+      const n = resolveTone(reg, note, root, slot.chord, next)
+      events.push(
+        humanize(
+          {
+            tick: toTicks(slot.start + place(note.at, feel)),
+            channel: CHANNEL,
+            note: n,
+            velocity: note.vel ?? (note.at === 0 ? 96 : 86),
+            duration: toTicks(note.dur),
+          },
+          6,
+          5,
+        ),
+      )
+      prev = n
+    }
+  })
+
+  return events
+}
+
 // Chords in a compound meter (6/8) are played from `compound`, the style's 6/8 patterns
-export function generateBass(slots: Slot[], part: BassPart, swing: number, compound: BassPart = part): NoteEvent[] {
+export function generateBass(
+  slots: Slot[],
+  part: BassPart,
+  swing: number,
+  compound: BassPart = part,
+  family: StyleFamily = 'pop',
+): NoteEvent[] {
   const reg = new Register(part.range ?? DEFAULT_RANGE)
+  if (slots.some((s) => s.groups)) return playMixedWithGroups(slots, part, swing, reg, compound, family)
   if (!slots.some((s) => s.compound)) return play(slots, part, swing, reg)
   return [
     ...play(slots.filter((s) => !s.compound), part, swing, reg),

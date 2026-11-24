@@ -4,6 +4,8 @@ import type { BarChord, Chart, ChartBar, TimeSignature } from '../music/chart'
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isPosNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0
+const isPosIntArray = (v: unknown): v is number[] =>
+  Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'number' && Number.isInteger(x) && x > 0)
 
 function isTimeSignature(v: unknown): v is TimeSignature {
   return Array.isArray(v) && v.length === 2 && isPosNum(v[0]) && isPosNum(v[1])
@@ -46,6 +48,9 @@ function validateBar(raw: unknown, index: number): ChartBar {
   if (raw.time !== undefined && !isTimeSignature(raw.time)) {
     throw new Error(`Invalid bar ${index + 1}: "time" must be a [beats, unit] pair.`)
   }
+  if (raw.groups !== undefined && !isPosIntArray(raw.groups)) {
+    throw new Error(`Invalid bar ${index + 1}: "groups" must be a non-empty array of positive integers.`)
+  }
   if (raw.repeatTimes !== undefined && !isPosNum(raw.repeatTimes)) {
     throw new Error(`Invalid bar ${index + 1}: "repeatTimes" must be a positive number.`)
   }
@@ -83,6 +88,9 @@ export function validateChart(data: unknown): Chart {
   }
   if (!isPosNum(data.bpm)) throw new Error('Invalid chart: "bpm" must be a positive number.')
   if (!isTimeSignature(data.time)) throw new Error('Invalid chart: "time" must be a [beats, unit] pair.')
+  if (data.groups !== undefined && !isPosIntArray(data.groups)) {
+    throw new Error('Invalid chart: "groups" must be a non-empty array of positive integers.')
+  }
   if (!Array.isArray(data.bars) || data.bars.length === 0) {
     throw new Error('Invalid chart: "bars" must be a non-empty array.')
   }

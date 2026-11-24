@@ -1,6 +1,7 @@
 import { chordTones, closeVoicingTones, rootlessVoicings, type Chord } from '../music/chords'
 import { guitarShapes } from '../music/fretboard'
-import type { CompHit, CompPart } from '../styles/types'
+import { aksakComp } from '../styles/aksak'
+import type { CompHit, CompPart, StyleFamily } from '../styles/types'
 import { chance, humanize, pick, place, rand, toTicks, type NoteEvent } from './events'
 import { patternFor } from './meter'
 import type { Slot } from './timeline'
@@ -104,14 +105,21 @@ function chooseVoicing(chord: Chord, kind: CompPart['voicing'], prev: number[]):
 
 // Chords lasting 3 beats in a style written for 4 play beats 1, 2 and 4 of a 4-beat rhythm;
 // chords in a compound meter (6/8) play `compound`, the style's 6/8 rhythms, with straight eighths.
-export function generateComp(slots: Slot[], part: CompPart, swing: number, countIn: number, compound: CompPart = part): NoteEvent[] {
+export function generateComp(
+  slots: Slot[],
+  part: CompPart,
+  swing: number,
+  countIn: number,
+  compound: CompPart = part,
+  family: StyleFamily = 'pop',
+): NoteEvent[] {
   const events: NoteEvent[] = []
   let prev: number[] = []
   let activeTwoBar: CompHit[] | null = null
 
   slots.forEach((slot) => {
     const { rhythms, twoBar, anticipation = 0 } = slot.compound ? compound : part
-    const feel = slot.compound ? 0.5 : swing
+    const feel = slot.groups || slot.compound ? 0.5 : swing
     const voicing = chooseVoicing(slot.chord, part.voicing, prev)
     prev = voicing
 
@@ -125,7 +133,10 @@ export function generateComp(slots: Slot[], part: CompPart, swing: number, count
     }
 
     let hits: CompHit[]
-    if (twoBar?.length && !slot.compound && slot.beats === 4) {
+    if (slot.groups) {
+      activeTwoBar = null
+      hits = aksakComp(slot.groups, family, slot.barOffset ?? 0, slot.beats)
+    } else if (twoBar?.length && !slot.compound && slot.beats === 4) {
       // Two-bar comping figures (0..8 beats): split across even/odd 4/4 bars on the timeline
       const barIndex = Math.max(0, Math.round((slot.start - countIn) / 4))
       const half = barIndex % 2
@@ -144,8 +155,8 @@ export function generateComp(slots: Slot[], part: CompPart, swing: number, count
     }
     if (!hits.length) return
 
-    // Sometimes anticipate the chord by an eighth
-    if (hits[0][0] === 0 && slot.start > countIn && chance(anticipation)) {
+    // Sometimes anticipate the chord by an eighth (not in grouped meters)
+    if (!slot.groups && hits[0][0] === 0 && slot.start > countIn && chance(anticipation)) {
       hits[0] = [-0.5, hits[0][1] + (1 - feel), hits[0][2]]
     }
 

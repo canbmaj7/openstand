@@ -1,4 +1,5 @@
 import { afroCuban } from './library/afro-cuban'
+import { aksak } from './library/aksak'
 import { ballad } from './library/ballad'
 import { bossaNova } from './library/bossa-nova'
 import { funk } from './library/funk'
@@ -23,6 +24,7 @@ export const STYLES: StyleDefinition[] = [
   funk,
   shuffle,
   reggae,
+  aksak,
 ]
 
 export function getStyle(id: string): StyleDefinition {
