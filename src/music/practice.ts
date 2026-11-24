@@ -1,6 +1,6 @@
 // Practice settings: loop part of a tune, go round the keys, speed up each chorus
 
-import type { SubMode } from '../engine/timeline'
+import type { CountInMode, SubMode } from '../engine/timeline'
 import type { Chart } from './chart'
 
 export interface PracticeSettings {
@@ -8,9 +8,36 @@ export interface PracticeSettings {
   keyStep: number // semitones per chorus
   ramp: number // bpm added per chorus
   subs: SubMode // play optional chord substitutions
+  countIn: CountInMode // count-in bars: 'auto', 'off', 1, or 2
 }
 
-export const NO_PRACTICE: PracticeSettings = { loop: null, keyStep: 0, ramp: 0, subs: 'off' }
+export const NO_PRACTICE: PracticeSettings = { loop: null, keyStep: 0, ramp: 0, subs: 'off', countIn: 'auto' }
+
+export const COUNT_IN_KEY = 'openstand:count-in'
+
+export function parseCountIn(value: unknown): CountInMode {
+  if (value === 'off') return 'off'
+  if (value === '1' || value === 1) return 1
+  if (value === '2' || value === 2) return 2
+  return 'auto'
+}
+
+export function loadCountIn(): CountInMode {
+  try {
+    if (typeof localStorage === 'undefined') return 'auto'
+    return parseCountIn(localStorage.getItem(COUNT_IN_KEY))
+  } catch {
+    return 'auto'
+  }
+}
+
+export function saveCountIn(mode: CountInMode): void {
+  try {
+    localStorage.setItem(COUNT_IN_KEY, String(mode))
+  } catch {
+    // Storage may be disabled in private browsing
+  }
+}
 
 export const KEY_STEPS: { step: number; label: string }[] = [
   { step: 0, label: 'Stay in the written key' },

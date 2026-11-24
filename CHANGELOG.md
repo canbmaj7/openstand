@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Ukulele chord diagrams in the chord helper, and a count-in setting (auto, off, one or two bars) (#74).
 - **Odd meters and an Aksak style**: 5/8, 7/8, 9/8, 10/8 and 11/8 with a grouping (9/8 as 2+2+2+3, 7/8 as 3+2+2, 10/8 curcuna as 3+2+2+3…) chosen in the editor for the tune or a single bar and shown under the time signature. Every style plays the strong beats where the groups start; the new Aksak (Turkish/Balkan) style plays düm and tek on congas with a def on tambourine. Two new examples: Aksak 9/8 Vamp and Balkan 7/8. [#9]
 - **Chord substitutions**: a chord can carry an alternate, written `C7(Gb7)` in the editor and shown small above it like in iReal Pro (iReal Pro alternates are now kept on import and export). In Practice, choose Substitutions: every other chorus or at random, and the band switches to them and back. The Jazz Blues example has a few tritone subs. [#54]
 - **`@openstand/engine` package**: the accompaniment engine as its own package (no dependencies, Node 20+ and browsers). `backingTrack({ ireal | chart, style, bpm })` returns a MIDI file and the timeline; parsers and writers for iReal Pro, ChordPro and chart files are exported too. MPL-2.0, as promised in CONTRIBUTING (the app stays AGPL). [#10]

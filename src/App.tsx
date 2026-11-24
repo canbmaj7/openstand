@@ -27,7 +27,7 @@ import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
 import { Mixer } from './ui/Mixer'
 import { Popover } from './ui/Popover'
-import { NO_PRACTICE, startBeatFor, type PracticeSettings } from './music/practice'
+import { loadCountIn, NO_PRACTICE, saveCountIn, startBeatFor, type PracticeSettings } from './music/practice'
 import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
 import { switchMode } from './music/mode'
@@ -233,7 +233,7 @@ export default function App() {
   })
   const [notice, setNotice] = useState<string | null>(null)
   const outputLevel = useCallback(() => playerRef.current?.level() ?? { peak: -100, rms: -100 }, [])
-  const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
+  const [practice, setPractice] = useState<PracticeSettings>(() => ({ ...NO_PRACTICE, countIn: loadCountIn() }))
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
   const [selectedChordAt, setSelectedChordAt] = useState<string | null>(null)
@@ -355,6 +355,10 @@ export default function App() {
     saveSounds(sounds)
   }, [sounds])
 
+  useEffect(() => {
+    saveCountIn(practice.countIn)
+  }, [practice.countIn])
+
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
     playerRef.current?.setRate(liveBpm / BASE_BPM)
@@ -364,8 +368,8 @@ export default function App() {
     const player = playerRef.current
     if (!player) return
     setNotice(null)
-    const { loop, keyStep, subs } = opts.practice
-    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs })
+    const { loop, keyStep, subs, countIn } = opts.practice
+    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs, countIn })
     timelineRef.current = timeline
 
     let offsetSeconds = fromSeconds
@@ -823,8 +827,8 @@ export default function App() {
                   <button
                     className="share-option"
                     onClick={() => {
-                      const { loop, keyStep, subs } = practice
-                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs }, bpm)
+                      const { loop, keyStep, subs, countIn } = practice
+                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm)
                       close()
                     }}
                   >
