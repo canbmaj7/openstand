@@ -8,7 +8,7 @@ export interface ImportResult {
 interface ImportDialogProps {
   open: boolean
   onClose: () => void
-  onImport: (text: string) => Promise<ImportResult>
+  onImport: (text: string, filename?: string) => Promise<ImportResult>
 }
 
 export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
@@ -28,10 +28,10 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
     if (!open && dialog.open) dialog.close()
   }, [open])
 
-  const run = async (input: string) => {
+  const run = async (input: string, filename?: string) => {
     setStatus({ kind: 'busy' })
     try {
-      const result = await onImport(input)
+      const result = await onImport(input, filename)
       if (result.tunes === 0) {
         setStatus({ kind: 'error', message: 'No iReal Pro links found. Paste a link that starts with irealb://' })
         return
@@ -42,7 +42,7 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
         message: `Added ${result.tunes} ${result.tunes === 1 ? 'tune' : 'tunes'} to ${result.playlists.join(', ')}.`,
       })
     } catch (err) {
-      setStatus({ kind: 'error', message: String(err) })
+      setStatus({ kind: 'error', message: err instanceof Error ? err.message : String(err) })
     }
   }
 
@@ -59,8 +59,9 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
           Import tunes
         </h2>
         <p className="dialog-text">
-          Paste an iReal Pro link (<code>irealb://…</code>) or a whole playlist, or choose an iReal Pro HTML export.
-          Thousands of user-made playlists are shared on the iReal Pro forums. Tunes are stored in this browser only.
+          Paste an iReal Pro link (<code>irealb://…</code>) or a whole playlist, or choose an iReal Pro HTML export or{' '}
+          <code>.openstand.json</code> chart file. Thousands of user-made playlists are shared on the iReal Pro forums.
+          Tunes are stored in this browser only.
         </p>
         <textarea
           className="dialog-input"
@@ -75,10 +76,10 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
             Choose file
             <input
               type="file"
-              accept=".html,.htm,.txt"
+              accept=".html,.htm,.txt,.json,.openstand.json"
               onChange={async (e) => {
                 const file = e.target.files?.[0]
-                if (file) await run(await file.text())
+                if (file) await run(await file.text(), file.name)
                 e.target.value = ''
               }}
             />

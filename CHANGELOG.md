@@ -6,6 +6,9 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- **Download MIDI**: the Share menu saves the backing track as a MIDI file at the current tempo, with bass, piano and drums on separate tracks. [#1]
+- **ChordPro export**: download the chart as a ChordPro chord grid for songbook apps. [#4]
+- **Chart files**: save a chart as `.openstand.json` and open it again from Import; broken files show an error instead of failing. [#5]
 - **Choose the sounds**: in the mixer, pick the bass (acoustic, electric, fretless, synth), the comping instrument (pianos, guitars, organs, vibraphone) and the drum kit (standard, room, power, jazz, brush). "Style" keeps the style's own sound; the choice is remembered. [#29]
 - **Start from a chord**: click a chord before pressing Play and the band starts from it (without a count-in). The chord is marked while stopped; click it again with the chord helper open to clear it. [#51]
 - **Chart follows the music**: while playing, the chart scrolls so the playing bar stays in view, and leaves you alone for a few seconds after you scroll yourself. [#50]

@@ -3,6 +3,7 @@
 
 import type { Chart } from '../music/chart'
 import { normalizeLab, type LabStyle } from '../styles/lab'
+import { validateChart } from './chartFile'
 
 const PARAM = 'tune'
 const STYLE_PARAM = 'style'
@@ -40,8 +41,13 @@ async function decodeJson(value: string): Promise<unknown> {
 export const encodeChart = (chart: Chart) => encodeJson(chart)
 
 export async function decodeChart(value: string): Promise<Chart | null> {
-  const chart = (await decodeJson(value)) as Chart | null
-  return chart && chart.format === 'openstand-chart' && Array.isArray(chart.bars) ? chart : null
+  const data = await decodeJson(value)
+  if (!data) return null
+  try {
+    return validateChart(data)
+  } catch {
+    return null
+  }
 }
 
 function linkWith(params: Record<string, string>): string {

@@ -3,6 +3,7 @@ import { Player } from './audio/player'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, type Timeline } from './engine/timeline'
+import { parseChartFile } from './formats/chartFile'
 import { parseIrealLinks } from './formats/ireal'
 import { irealLink } from './formats/irealWrite'
 import { reportError } from './errorReports'
@@ -20,6 +21,7 @@ import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type La
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
+import { downloadChartFile, downloadChordPro, downloadMidi } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
@@ -532,7 +534,14 @@ export default function App() {
   }, [showTune])
 
   const importText = useCallback(
-    async (text: string): Promise<ImportResult> => {
+    async (text: string, filename?: string): Promise<ImportResult> => {
+      if (filename?.toLowerCase().endsWith('.json') || text.trimStart().startsWith('{')) {
+        const imported = parseChartFile(text)
+        const [added] = await addTunes([imported], 'import', 'Imported tunes', setNotice)
+        setTunes((all) => [...all.filter((t) => t.id !== added.id), added])
+        showTune(added)
+        return { tunes: 1, playlists: ['Imported tunes'] }
+      }
       const lists = parseIrealLinks(text)
       const added: Tune[] = []
       for (const list of lists) added.push(...(await addTunes(list.charts, 'import', list.name, setNotice)))
@@ -735,7 +744,7 @@ export default function App() {
               Edit
             </button>
             <Popover id="share" className="share" label="Share">
-              {() => (
+              {(close) => (
                 <div className="share-panel">
                   <button className="share-option" onClick={() => void copy(() => shareUrl(baseChart), setShareState)}>
                     <span className="share-name">
@@ -748,6 +757,37 @@ export default function App() {
                       {irealState === 'copied' ? 'Link copied' : irealState === 'failed' ? 'Copy failed' : 'Copy iReal Pro link'}
                     </span>
                     <span className="share-desc">An irealb:// link that opens in iReal Pro.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
+                      const { loop, keyStep } = practice
+                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep }, bpm)
+                      close()
+                    }}
+                  >
+                    <span className="share-name">Download MIDI</span>
+                    <span className="share-desc">Bass, piano and drums on separate tracks, at the current tempo.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
+                      downloadChordPro(chart, transpose)
+                      close()
+                    }}
+                  >
+                    <span className="share-name">Download ChordPro</span>
+                    <span className="share-desc">A chord grid for songbook apps (OnSong, SongbookPro).</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
+                      downloadChartFile(baseChart)
+                      close()
+                    }}
+                  >
+                    <span className="share-name">Save as file</span>
+                    <span className="share-desc">An OpenStand chart file you can open again or send to someone.</span>
                   </button>
                 </div>
               )}
