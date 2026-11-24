@@ -17,6 +17,7 @@ import { isInstrumentId, viewOffset, type InstrumentId } from './music/instrumen
 import { EXAMPLES, type Tune } from './music/songs'
 import { getStyle, STYLES, type StyleDefinition } from './styles'
 import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type LabStyle } from './styles/lab'
+import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
 import { Editor, EditorHeader } from './ui/Editor'
@@ -162,6 +163,12 @@ export default function App() {
     myStylesRef.current = next
     setMyStylesState(next)
   }
+  const [sounds, setSoundsState] = useState<SoundChoice>(loadSounds)
+  const soundsRef = useRef(sounds)
+  const setSounds = (next: SoundChoice) => {
+    soundsRef.current = next
+    setSoundsState(next)
+  }
   useEffect(() => {
     styleRef.current = styleId
   }, [styleId])
@@ -227,8 +234,8 @@ export default function App() {
     const saved = id.startsWith('my:') ? mine.find((m) => myStyleId(m) === id) : undefined
     return saved ? { ...styleFromLab(saved), id } : getStyle(id)
   }
-  const resolveStyle = (id: string) => styleFor(id, labRef.current, myStylesRef.current)
-  const style = draft ? getStyle(draft.chart.style) : styleFor(styleId, lab, myStyles)
+  const resolveStyle = (id: string) => withSounds(styleFor(id, labRef.current, myStylesRef.current), soundsRef.current)
+  const style = withSounds(draft ? getStyle(draft.chart.style) : styleFor(styleId, lab, myStyles), sounds)
   const keyPc = (chart.key + transpose + 12) % 12
 
   // During practice the chorus decides the key on the stand and the tempo
@@ -256,8 +263,10 @@ export default function App() {
         if (!active) return
         setReadiness({ kind: 'ready' })
         // Decode the sounds in the background, the style on screen first
+        // (with the saved sound choices, so a chosen bass, comping sound or kit is ready too)
         const first = getStyle(styleRef.current)
-        void player.warmUp([first, ...STYLES.filter((s) => s !== first)].map(warmUpMidi))
+        const styles = [first, ...STYLES.filter((s) => s !== first)].map((s) => withSounds(s, soundsRef.current))
+        void player.warmUp(styles.map(warmUpMidi))
       })
       .catch((err: unknown) => {
         if (!active) return
@@ -316,6 +325,10 @@ export default function App() {
       delete document.documentElement.dataset.chordFont
     }
   }, [chordFont])
+
+  useEffect(() => {
+    saveSounds(sounds)
+  }, [sounds])
 
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
@@ -920,8 +933,13 @@ export default function App() {
           labels={{ bass: 'Bass', comp: compLabel(style.comp.program), drums: 'Drums' }}
           volumes={volumes}
           muted={muted}
+          sounds={sounds}
           onVolume={(part, v) => setVolumes((all) => ({ ...all, [part]: v }))}
           onMute={(part) => setMuted((all) => ({ ...all, [part]: !all[part] }))}
+          onSound={(part, program) => {
+            setSounds({ ...soundsRef.current, [part]: program })
+            changeArrangement({})
+          }}
           master={master}
           masterMuted={masterMuted}
           onMaster={setMaster}
