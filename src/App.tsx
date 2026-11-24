@@ -142,6 +142,7 @@ function positionAt(timeline: Timeline, beat: number): Position | null {
 export default function App() {
   const playerRef = useRef<Player | null>(null)
   const timelineRef = useRef<Timeline | null>(null)
+  const pointerFocusedButtonRef = useRef<HTMLElement | null>(null)
 
   const [readiness, setReadiness] = useState<Readiness>({ kind: 'loading', progress: 0 })
   const [tunes, setTunes] = useState<Tune[]>(EXAMPLES)
@@ -205,6 +206,7 @@ export default function App() {
   const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
+  const [selectedChordAt, setSelectedChordAt] = useState<string | null>(null)
   const [chordsOpen, setChordsOpen] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [editBar, setEditBar] = useState(0)
@@ -360,6 +362,7 @@ export default function App() {
   const changeMode = (nextMode: ModeOption) => {
     setMode(nextMode)
     setSelectedChord(null)
+    setSelectedChordAt(null)
     const nextChart = !draft && nextMode !== 'original' ? switchMode(baseChart, nextMode) : baseChart
     const player = playerRef.current
     if (playing && player) {
@@ -396,10 +399,25 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPicking(null)
-      handlePracticeShortcut(e, editing, shortcutsRef.current)
+      handlePracticeShortcut(e, editing, shortcutsRef.current, pointerFocusedButtonRef.current)
     }
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null
+      pointerFocusedButtonRef.current = target?.closest<HTMLElement>('button, [role="button"]') ?? null
+    }
+    // Focus that did not come from the recorded pointer target was established
+    // by keyboard navigation, script, or assistive technology.
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target !== pointerFocusedButtonRef.current) pointerFocusedButtonRef.current = null
+    }
+    window.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('focusin', onFocusIn)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('focusin', onFocusIn)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [editing])
 
   // Follow the audio clock to highlight the current bar
@@ -428,6 +446,7 @@ export default function App() {
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
     setSelectedChord(null)
+    setSelectedChordAt(null)
     setLibraryOpen(false)
     try {
       localStorage.setItem(LAST_TUNE, next.id)
@@ -769,8 +788,14 @@ export default function App() {
             onBarClick={draft ? setEditBar : picking ? pickBar : undefined}
             onChordClick={
               !draft && !picking
-                ? (c) => {
+                ? (c, barIndex, chordIndex) => {
+                    const at = `${barIndex}:${chordIndex}`
+                    if (chordsOpen && selectedChordAt === at) {
+                      setChordsOpen(false)
+                      return
+                    }
                     setSelectedChord(transposeChord(c, -viewTranspose))
+                    setSelectedChordAt(at)
                     setChordsOpen(true)
                   }
                 : undefined
@@ -867,7 +892,10 @@ export default function App() {
           chord={shownChord}
           keyPc={shownKeyPc}
           following={selectedChord === null}
-          onFollowChange={(follow) => setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))}
+          onFollowChange={(follow) => {
+            setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))
+            setSelectedChordAt(null)
+          }}
           open={chordsOpen}
           onOpenChange={setChordsOpen}
         />

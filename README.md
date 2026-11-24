@@ -40,7 +40,7 @@ OpenStand is an **early but usable** practice tool (see the [changelog](CHANGELO
 - **Export to iReal Pro.** Any chart, imported or written here, can be copied as an `irealb://` link that opens in iReal Pro. All ~2,000 test tunes come back unchanged after going out and in again.
 - **A tune library in your browser.** It starts with fifteen example tunes in 4/4, 3/4, 6/8, 12/8 and 5/4. Search by title or composer, filter by playlist. Everything is stored locally (IndexedDB); there is no server and no account.
 - **Share a tune as a link.** The whole chart is compressed into the URL, so whoever opens it sees and hears the same tune.
-- **Eight styles:** Medium Swing, Ballad (brushes), Jazz Waltz (3/4), Bossa Nova (nylon guitar), Samba, Pop Rock, Funk (electric piano, sixteenth-note groove) and Shuffle (boogie bass). Imported tunes get the closest style automatically, and you can switch styles while the band is playing.
+- **Nine styles:** Medium Swing, Ballad (brushes), Jazz Waltz (3/4), Bossa Nova (nylon guitar), Samba, Pop Rock, Funk (electric piano, sixteenth-note groove), Shuffle (boogie bass) and Reggae (one drop). Imported tunes get the closest style automatically, and you can switch styles while the band is playing.
 - **Every style in every meter.** In 3/4, 5/4 or 6/4 a style's 4/4 patterns are rearranged so the accents stay right (a rock beat in 3/4 becomes boom-chick-chick). 6/8 and 12/8 are felt in dotted quarters with straight eighths, with their own grooves for jazz, Latin and pop styles.
 - **Generated accompaniment:**
   - **Bass** walks through chord tones in swing, or plays style patterns (bossa root–fifth, rock eighths), always approaching the next chord smoothly
@@ -49,7 +49,7 @@ OpenStand is an **early but usable** practice tool (see the [changelog](CHANGELO
   - Every chorus is played a little differently
 - **A real-looking lead sheet.** Chord symbols in a handwritten jazz hand (Petaluma), rehearsal marks, repeat signs, endings, segno and coda, correct flat/sharp spelling in every key, and the current bar marked with a highlighter stroke as it plays.
 - **Plain chord font option for easier reading on small screens.**
-- **Practice controls:** tempo (40–300 BPM, changes instantly), transpose to any key while playing, number of choruses, and a count-in in the tune's meter (4/4 "1 . 2 . 1 2 3 4", 6/8 two pulses then six eighths). Keyboard shortcuts: <kbd>Space</kbd> to play/stop, <kbd>↑</kbd>/<kbd>↓</kbd> for ±5 BPM, <kbd>→</kbd>/<kbd>←</kbd> to transpose by a half step, and <kbd>L</kbd> to clear the loop. Shortcuts are inactive while editing a chart or focusing a form control.
+- **Practice controls:** tempo (40–300 BPM, changes instantly), transpose to any key while playing, number of choruses, and a count-in in the tune's meter (4/4 "1 . 2 . 1 2 3 4", 6/8 two pulses then six eighths). Keyboard shortcuts: <kbd>Space</kbd> to play/stop, <kbd>↑</kbd>/<kbd>↓</kbd> for ±5 BPM, <kbd>→</kbd>/<kbd>←</kbd> to transpose by a half step, and <kbd>L</kbd> to clear the loop. Shortcuts are inactive while editing a chart or typing in a form control; after clicking a button with the mouse, Space still plays and stops.
 - **Practice modes:** loop any bars or a rehearsal section, go round all 12 keys (or step up a half or whole tone each chorus), and speed up a few BPM every chorus.
 - **Switch a tune between major and minor (same tonic) with one click.**
 - **Transposing instruments:** read the chart in Bb or Eb while the band plays in concert pitch.
@@ -140,7 +140,7 @@ Positions are in beats from the start of the bar or chord. Off-beat eighths are 
 
 ## Roadmap
 
-- [x] Style format with eight styles: swing, ballad, jazz waltz, bossa nova, samba, pop rock, funk, shuffle
+- [x] Style format with nine styles: swing, ballad, jazz waltz, bossa nova, samba, pop rock, funk, shuffle, reggae
 - [x] Import iReal Pro links and playlists
 - [x] Tune library in the browser, share links
 - [x] Trimmed, compressed sound bank

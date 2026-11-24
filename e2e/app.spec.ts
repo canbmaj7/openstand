@@ -35,12 +35,57 @@ test('a tune plays and the bar counter moves', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('Space toggles playback after a pointer click but keeps keyboard button activation', async ({ page }) => {
+  const plainChords = page.getByRole('button', { name: 'Plain chords' })
+
+  await plainChords.focus()
+  await plainChords.press('Space')
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+  await plainChords.press('Space')
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'false')
+
+  await plainChords.click()
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
+  await plainChords.press('Space')
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Space')
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+})
+
 test('changing the key re-spells the chords', async ({ page }) => {
   const before = await chords(page).first().getAttribute('aria-label')
   const key = control(page, 'Key')
   const current = await key.inputValue()
   await key.selectOption(String((Number(current) + 2) % 12))
   await expect(chords(page).first()).not.toHaveAttribute('aria-label', before!)
+})
+
+test('clicking the selected chord again closes the chord helper', async ({ page }) => {
+  const helper = page.getByLabel('Chord helper')
+  const first = chords(page).first()
+  const sameSymbolElsewhere = page.locator('.chord[aria-label="F7"]').nth(1)
+  const another = chords(page).nth(1)
+
+  await first.click()
+  await expect(helper).toBeVisible()
+  await expect(helper.getByRole('heading')).toHaveText('F7')
+
+  // The chart position, not just the chord symbol, identifies the selection.
+  await sameSymbolElsewhere.click()
+  await expect(helper).toBeVisible()
+  await sameSymbolElsewhere.click()
+  await expect(helper).not.toBeVisible()
+
+  await another.click()
+  await expect(helper).toBeVisible()
+  await expect(helper.getByRole('heading')).toHaveText('Bb7')
+
+  await another.press('Enter')
+  await expect(helper).not.toBeVisible()
+  await another.press('Enter')
+  await expect(helper).toBeVisible()
 })
 
 test('a tune can be found in the library', async ({ page }) => {
