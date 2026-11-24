@@ -65,7 +65,7 @@ test('changing the key re-spells the chords', async ({ page }) => {
 test('clicking the selected chord again closes the chord helper', async ({ page }) => {
   const helper = page.getByLabel('Chord helper')
   const first = chords(page).first()
-  const sameSymbolElsewhere = page.locator('.chord[aria-label="F7"]').nth(1)
+  const sameSymbolElsewhere = page.locator('.chord[aria-label="F7"], .chord[aria-label="F7, start point"]').nth(1)
   const another = chords(page).nth(1)
 
   await first.click()

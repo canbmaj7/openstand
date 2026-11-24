@@ -17,6 +17,7 @@ interface ChartProps {
   range?: [number, number] | null // looped bars
   selectedBar?: number | null // the bar being edited
   plain?: boolean
+  startAt?: string | null
   onBarClick?: (index: number) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   header?: ReactNode // replaces the title block, e.g. with inputs in the editor
@@ -76,12 +77,13 @@ interface BarProps {
   inRange: boolean
   selected: boolean
   plain?: boolean
+  startChordIndex?: number | null
   onClick?: (index: number) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   barRef?: (el: HTMLDivElement | null) => void
 }
 
-function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, plain, onClick, onChordClick, barRef }: BarProps) {
+function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, plain, startChordIndex, onClick, onChordClick, barRef }: BarProps) {
   const { bar, chords, column, closesRow, index } = placed
   const classes = ['bar']
   if (bar.spacer) classes.push('bar-spacer')
@@ -158,6 +160,7 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
             chord={chord}
             keyPc={keyPc}
             plain={plain}
+            isStart={startChordIndex === j}
             onSelect={onChordClick ? (selected) => onChordClick(selected, index, j) : undefined}
           />
         ) : symbol === null ? (
@@ -191,10 +194,11 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, beatInBar, barBeats, range, selectedBar, plain, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, beatInBar, barBeats, range, selectedBar, plain, startAt, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
   const keyName = prettyKey(noteName(keyPc, keyPrefersFlats(keyPc))) + (chart.minor ? '−' : '')
+  const [startBar, startChord] = startAt ? startAt.split(':').map(Number) : [-1, -1]
 
   const activeBarRef = useRef<HTMLDivElement | null>(null)
   const lastUserScrollRef = useRef(0)
@@ -280,6 +284,7 @@ export function Chart(props: ChartProps) {
                 inRange={!!range && placed.index >= Math.min(...range) && placed.index <= Math.max(...range)}
                 selected={selectedBar === placed.index}
                 plain={plain}
+                startChordIndex={placed.index === startBar ? startChord : null}
                 onClick={onBarClick}
                 onChordClick={onChordClick}
               />

@@ -24,7 +24,7 @@ import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
 import { Mixer } from './ui/Mixer'
 import { Popover } from './ui/Popover'
-import { NO_PRACTICE, type PracticeSettings } from './music/practice'
+import { NO_PRACTICE, startBeatFor, type PracticeSettings } from './music/practice'
 import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
 import { switchMode } from './music/mode'
@@ -322,15 +322,24 @@ export default function App() {
     playerRef.current?.setRate(liveBpm / BASE_BPM)
   }, [liveBpm])
 
-  const start = async (opts: ArrangeOptions, fromSeconds = 0, chartToUse = chart) => {
+  const start = async (opts: ArrangeOptions, fromSeconds = 0, chartToUse = chart, fromStartPoint = false) => {
     const player = playerRef.current
     if (!player) return
     setNotice(null)
     const { loop, keyStep } = opts.practice
     const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep })
     timelineRef.current = timeline
+
+    let offsetSeconds = fromSeconds
+    if (fromStartPoint && !loop && selectedChordAt) {
+      const [barStr, chordStr] = selectedChordAt.split(':')
+      const startBeat = startBeatFor(timeline, Number(barStr), Number(chordStr), chartToUse)
+      // When starting from a selected chord, count-in is skipped and playback begins directly at the chord.
+      offsetSeconds = (startBeat * 60) / BASE_BPM
+    }
+
     try {
-      await player.play(midi, fromSeconds)
+      await player.play(midi, offsetSeconds)
       player.setRate(liveBpm / BASE_BPM)
       setPlaying(true)
     } catch (err) {
@@ -377,7 +386,7 @@ export default function App() {
     changeArrangement({ practice: next, choruses: nextChoruses })
   }
 
-  const toggle = () => (playing ? stop() : void start({ styleId, transpose, choruses, practice }))
+  const toggle = () => (playing ? stop() : void start({ styleId, transpose, choruses, practice }, 0, chart, true))
   const shortcuts: PracticeShortcuts = {
     toggle: () => {
       if (readiness.kind === 'ready') toggle()
@@ -447,6 +456,7 @@ export default function App() {
     setPicking(null)
     setSelectedChord(null)
     setSelectedChordAt(null)
+    setChordsOpen(false)
     setLibraryOpen(false)
     try {
       localStorage.setItem(LAST_TUNE, next.id)
@@ -622,6 +632,9 @@ export default function App() {
     stop()
     closeLab()
     setPicking(null)
+    setSelectedChord(null)
+    setSelectedChordAt(null)
+    setChordsOpen(false)
     setLibraryOpen(false)
     setDraft({ chart: from ? from.chart : emptyChart(), from })
     setEditBar(0)
@@ -785,13 +798,17 @@ export default function App() {
             range={picking && picking !== 'first' ? [picking.from, picking.from] : draft ? null : practice.loop}
             selectedBar={draft ? editBar : null}
             plain={chordFont === 'Plain'}
+            startAt={!playing ? selectedChordAt : null}
             onBarClick={draft ? setEditBar : picking ? pickBar : undefined}
             onChordClick={
               !draft && !picking
                 ? (c, barIndex, chordIndex) => {
                     const at = `${barIndex}:${chordIndex}`
+                    // Clicking the open chord again closes the helper and clears the start point
                     if (chordsOpen && selectedChordAt === at) {
                       setChordsOpen(false)
+                      setSelectedChord(null)
+                      setSelectedChordAt(null)
                       return
                     }
                     setSelectedChord(transposeChord(c, -viewTranspose))

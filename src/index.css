@@ -597,6 +597,28 @@ button:disabled {
   line-height: 1;
 }
 
+.chord.chord-start::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 3px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.chord.chord-start::before {
+  content: '▶';
+  position: absolute;
+  left: 0;
+  top: -10px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink);
+  pointer-events: none;
+}
+
 .chord-quality {
   font-size: 0.72em;
   margin-left: 0.04em;

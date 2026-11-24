@@ -41,21 +41,25 @@ export function ChordSymbol({
   chord,
   keyPc,
   plain = false,
+  isStart = false,
   onSelect,
 }: {
   chord: Chord
   keyPc: number
   plain?: boolean
+  isStart?: boolean
   onSelect?: (chord: Chord) => void
 }) {
   const name = spellRoot(chord.root, keyPc)
+  const baseLabel = `${name}${chord.suffix}`
+  const label = isStart ? `${baseLabel}, start point` : baseLabel
 
   if (plain) {
     const parts = plainChordParts(chord, keyPc)
     return (
       <span
-        className={onSelect ? 'chord chord-interactive' : 'chord'}
-        aria-label={`${name}${chord.suffix}`}
+        className={[onSelect ? 'chord chord-interactive' : 'chord', isStart && 'chord-start'].filter(Boolean).join(' ')}
+        aria-label={label}
         role={onSelect ? 'button' : undefined}
         tabIndex={onSelect ? 0 : undefined}
         data-opens={onSelect ? 'chords' : undefined}
@@ -90,8 +94,8 @@ export function ChordSymbol({
   const { quality, extensions } = typeset(chord.suffix)
   return (
     <span
-      className={onSelect ? 'chord chord-interactive' : 'chord'}
-      aria-label={`${name}${chord.suffix}`}
+      className={[onSelect ? 'chord chord-interactive' : 'chord', isStart && 'chord-start'].filter(Boolean).join(' ')}
+      aria-label={label}
       role={onSelect ? 'button' : undefined}
       tabIndex={onSelect ? 0 : undefined}
       data-opens={onSelect ? 'chords' : undefined}
