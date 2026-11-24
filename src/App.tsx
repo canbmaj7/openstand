@@ -205,6 +205,7 @@ export default function App() {
   const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
+  const [selectedChordAt, setSelectedChordAt] = useState<string | null>(null)
   const [chordsOpen, setChordsOpen] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [editBar, setEditBar] = useState(0)
@@ -360,6 +361,7 @@ export default function App() {
   const changeMode = (nextMode: ModeOption) => {
     setMode(nextMode)
     setSelectedChord(null)
+    setSelectedChordAt(null)
     const nextChart = !draft && nextMode !== 'original' ? switchMode(baseChart, nextMode) : baseChart
     const player = playerRef.current
     if (playing && player) {
@@ -428,6 +430,7 @@ export default function App() {
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
     setSelectedChord(null)
+    setSelectedChordAt(null)
     setLibraryOpen(false)
     try {
       localStorage.setItem(LAST_TUNE, next.id)
@@ -769,8 +772,14 @@ export default function App() {
             onBarClick={draft ? setEditBar : picking ? pickBar : undefined}
             onChordClick={
               !draft && !picking
-                ? (c) => {
+                ? (c, barIndex, chordIndex) => {
+                    const at = `${barIndex}:${chordIndex}`
+                    if (chordsOpen && selectedChordAt === at) {
+                      setChordsOpen(false)
+                      return
+                    }
                     setSelectedChord(transposeChord(c, -viewTranspose))
+                    setSelectedChordAt(at)
                     setChordsOpen(true)
                   }
                 : undefined
@@ -867,7 +876,10 @@ export default function App() {
           chord={shownChord}
           keyPc={shownKeyPc}
           following={selectedChord === null}
-          onFollowChange={(follow) => setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))}
+          onFollowChange={(follow) => {
+            setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))
+            setSelectedChordAt(null)
+          }}
           open={chordsOpen}
           onOpenChange={setChordsOpen}
         />

@@ -43,6 +43,32 @@ test('changing the key re-spells the chords', async ({ page }) => {
   await expect(chords(page).first()).not.toHaveAttribute('aria-label', before!)
 })
 
+test('clicking the selected chord again closes the chord helper', async ({ page }) => {
+  const helper = page.getByLabel('Chord helper')
+  const first = chords(page).first()
+  const sameSymbolElsewhere = page.locator('.chord[aria-label="F7"]').nth(1)
+  const another = chords(page).nth(1)
+
+  await first.click()
+  await expect(helper).toBeVisible()
+  await expect(helper.getByRole('heading')).toHaveText('F7')
+
+  // The chart position, not just the chord symbol, identifies the selection.
+  await sameSymbolElsewhere.click()
+  await expect(helper).toBeVisible()
+  await sameSymbolElsewhere.click()
+  await expect(helper).not.toBeVisible()
+
+  await another.click()
+  await expect(helper).toBeVisible()
+  await expect(helper.getByRole('heading')).toHaveText('Bb7')
+
+  await another.press('Enter')
+  await expect(helper).not.toBeVisible()
+  await another.press('Enter')
+  await expect(helper).toBeVisible()
+})
+
 test('a tune can be found in the library', async ({ page }) => {
   await page.getByLabel('Search tunes').fill('bossa')
   await page.getByText('Bossa Workout', { exact: true }).click()

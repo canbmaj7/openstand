@@ -18,7 +18,7 @@ interface ChartProps {
   selectedBar?: number | null // the bar being edited
   plain?: boolean
   onBarClick?: (index: number) => void
-  onChordClick?: (chord: Chord) => void
+  onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   header?: ReactNode // replaces the title block, e.g. with inputs in the editor
 }
 
@@ -77,7 +77,7 @@ interface BarProps {
   selected: boolean
   plain?: boolean
   onClick?: (index: number) => void
-  onChordClick?: (chord: Chord) => void
+  onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
 }
 
 function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, plain, onClick, onChordClick }: BarProps) {
@@ -150,7 +150,13 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
       {active && <span className="bar-highlight" style={{ transform: `scaleX(${progress})` }} />}
       {chords.map(({ chord, symbol }, j) =>
         chord ? (
-          <ChordSymbol key={j} chord={chord} keyPc={keyPc} plain={plain} onSelect={onChordClick} />
+          <ChordSymbol
+            key={j}
+            chord={chord}
+            keyPc={keyPc}
+            plain={plain}
+            onSelect={onChordClick ? (selected) => onChordClick(selected, index, j) : undefined}
+          />
         ) : symbol === null ? (
           <span key={j} className="chord chord-nc">
             N.C.
