@@ -142,6 +142,7 @@ function positionAt(timeline: Timeline, beat: number): Position | null {
 export default function App() {
   const playerRef = useRef<Player | null>(null)
   const timelineRef = useRef<Timeline | null>(null)
+  const pointerFocusedButtonRef = useRef<HTMLElement | null>(null)
 
   const [readiness, setReadiness] = useState<Readiness>({ kind: 'loading', progress: 0 })
   const [tunes, setTunes] = useState<Tune[]>(EXAMPLES)
@@ -398,10 +399,25 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPicking(null)
-      handlePracticeShortcut(e, editing, shortcutsRef.current)
+      handlePracticeShortcut(e, editing, shortcutsRef.current, pointerFocusedButtonRef.current)
     }
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null
+      pointerFocusedButtonRef.current = target?.closest<HTMLElement>('button, [role="button"]') ?? null
+    }
+    // Focus that did not come from the recorded pointer target was established
+    // by keyboard navigation, script, or assistive technology.
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target !== pointerFocusedButtonRef.current) pointerFocusedButtonRef.current = null
+    }
+    window.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('focusin', onFocusIn)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('focusin', onFocusIn)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [editing])
 
   // Follow the audio clock to highlight the current bar
