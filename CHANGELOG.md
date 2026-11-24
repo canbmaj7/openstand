@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- **`@openstand/engine` package**: the accompaniment engine as its own package (no dependencies, Node 20+ and browsers). `backingTrack({ ireal | chart, style, bpm })` returns a MIDI file and the timeline; parsers and writers for iReal Pro, ChordPro and chart files are exported too. AGPL-3.0-or-later, like the app. [#10]
 - **Afro-Cuban style**: tumbao bass, a two-bar piano montuno, 2-3 son clave, congas and cowbell or cáscara. iReal Pro tunes marked Afro, Latin, Mambo, Cha Cha, Salsa, Montuno, Rumba or Son now open in it instead of Bossa Nova. The comping engine can now play two-bar figures. [#8]
 - **Time signature per bar**: in the editor, select a bar and change its time signature, for just that bar or from there on. [#23]
 - **Download MIDI**: the Share menu saves the backing track as a MIDI file at the current tempo, with bass, piano and drums on separate tracks. [#1]
