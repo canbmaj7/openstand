@@ -30,7 +30,8 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   const s = name.toLowerCase()
   const inThree = beatsPerBar(time) === 3
   if (/samba|partido|baião|baiao|afox|frevo/.test(s)) return 'samba'
-  if (/bossa|latin|bolero|cha|son |montuno|tango|salsa|afro|chacarera|rumba|mambo/.test(s)) return 'bossa-nova'
+  if (/bossa|bolero|tango|chacarera/.test(s)) return 'bossa-nova'
+  if (/afro|mambo|cha|salsa|montuno|rumba|\bson\b|latin/.test(s)) return 'afro-cuban'
   if (/waltz/.test(s)) return 'jazz-waltz'
   if (/funk|rnb|r&b|disco/.test(s) || (/soul/.test(s) && !/ballad/.test(s))) return 'funk'
   if (/shuffle|blues|boogie|rock'?n'?roll/.test(s) && !/swing/.test(s)) return 'shuffle'

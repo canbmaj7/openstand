@@ -1,3 +1,4 @@
+import { afroCuban } from './library/afro-cuban'
 import { ballad } from './library/ballad'
 import { bossaNova } from './library/bossa-nova'
 import { funk } from './library/funk'
@@ -10,7 +11,19 @@ import { shuffle } from './library/shuffle'
 import { upTempoSwing } from './library/up-tempo-swing'
 import type { StyleDefinition } from './types'
 
-export const STYLES: StyleDefinition[] = [mediumSwing, upTempoSwing, ballad, jazzWaltz, bossaNova, samba, popRock, funk, shuffle, reggae]
+export const STYLES: StyleDefinition[] = [
+  mediumSwing,
+  upTempoSwing,
+  ballad,
+  jazzWaltz,
+  bossaNova,
+  samba,
+  afroCuban,
+  popRock,
+  funk,
+  shuffle,
+  reggae,
+]
 
 export function getStyle(id: string): StyleDefinition {
   return STYLES.find((s) => s.id === id) ?? STYLES[0]
