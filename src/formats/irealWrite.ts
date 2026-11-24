@@ -6,41 +6,54 @@ import { keyPrefersFlats, noteName } from '../music/chords'
 import { getStyle } from '../styles'
 import { durations, MUSIC_PREFIX, swapBlocks } from './ireal'
 
+interface WriteCell {
+  symbol: string | null
+  alt?: string
+}
+
 const sameBeats = (a: BarChord[], b: BarChord[]) =>
-  a.length === b.length && a.every((c, i) => c.symbol === b[i].symbol && Math.abs(c.beats - b[i].beats) < 1e-6)
+  a.length === b.length &&
+  a.every((c, i) => c.symbol === b[i].symbol && c.alt === b[i].alt && Math.abs(c.beats - b[i].beats) < 1e-6)
 
 // Chords placed in cells so the reader gets the same lengths back
-function cellsFor(chords: BarChord[], width: number, time: TimeSignature): (string | null | undefined)[] {
+function cellsFor(chords: BarChord[], width: number, time: TimeSignature): (WriteCell | undefined)[] {
   const barBeats = beatsPerBar(time)
   for (const n of [width, chords.length, barBeats, barBeats * 2, barBeats * 4]) {
     if (n < chords.length) continue
-    const cells: (string | null | undefined)[] = Array.from({ length: n }, () => undefined)
+    const cells: (WriteCell | undefined)[] = Array.from({ length: n }, () => undefined)
     let at = 0
     let ok = true
     for (const c of chords) {
       const pos = Math.round((at / barBeats) * n)
       if (pos >= n || cells[pos] !== undefined) ok = false
-      else cells[pos] = c.symbol
+      else cells[pos] = c.alt !== undefined ? { symbol: c.symbol, alt: c.alt } : { symbol: c.symbol }
       at += c.beats
     }
     const back = durations(
-      cells.map((chord) => ({ chord })),
+      cells.map((cell) => (cell ? { chord: cell.symbol, alt: cell.alt } : {})),
       time,
     )
     if (ok && sameBeats(back, chords)) return cells
   }
   // Fall back to an even spread; lengths may round
-  return chords.map((c) => c.symbol)
+  return chords.map((c) => (c.alt !== undefined ? { symbol: c.symbol, alt: c.alt } : { symbol: c.symbol }))
 }
 
-const cellText = (chord: string | null | undefined) => (chord === undefined ? ' ' : chord === null ? 'n' : chord)
+const toIrealChord = (symbol: string) => symbol
+
+const cellText = (cell: WriteCell | undefined) => {
+  if (cell === undefined) return ' '
+  if (cell.symbol === null) return 'n'
+  const main = toIrealChord(cell.symbol)
+  return cell.alt ? `${main}(${toIrealChord(cell.alt)})` : main
+}
 
 // Chords in a row are separated by commas, which take no cell
-function writeCells(cells: (string | null | undefined)[]): string {
+function writeCells(cells: (WriteCell | undefined)[]): string {
   let out = ''
   cells.forEach((c, i) => {
     out += cellText(c)
-    if (typeof c === 'string' && i + 1 < cells.length && cells[i + 1] !== undefined) out += ','
+    if (c && c.symbol !== null && i + 1 < cells.length && cells[i + 1] !== undefined) out += ','
   })
   return out
 }
@@ -78,7 +91,6 @@ export function chartToMusic(chart: Chart): string {
     if (bar.coda) out += 'Q'
     if (bar.fermata) out += 'f'
 
-    let cells: (string | null | undefined)[]
     let body: string
     if (bar.chords.length === 0) {
       // A blank bar holds the chord: the repeat sign does this when the previous bar had one chord.
@@ -89,10 +101,9 @@ export function chartToMusic(chart: Chart): string {
         !prev || prev.repeatEnd || prev.barline || prev.directive || prev.end || bar.coda || bar.segno || bar.ending || bar.repeatStart
       if (bar.spacer || held === null || arrivedFrom) body = ' '.repeat(width)
       else if (prevChords.length === 1) body = 'x' + ' '.repeat(width - 1)
-      else body = writeCells([held, ...Array.from({ length: width - 1 }, () => undefined)])
-      cells = []
+      else body = writeCells([{ symbol: held }, ...Array.from({ length: width - 1 }, () => undefined)])
     } else {
-      cells = cellsFor(bar.chords, Math.max(1, bar.cells), time)
+      const cells = cellsFor(bar.chords, Math.max(1, bar.cells), time)
       body = writeCells(cells)
     }
 

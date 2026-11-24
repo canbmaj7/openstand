@@ -37,14 +37,46 @@ function typeset(suffix: string): { quality: string; extensions: string } {
   return { quality: marker + number, extensions }
 }
 
+function ChordBody({ chord, keyPc, plain }: { chord: Chord; keyPc: number; plain: boolean }) {
+  if (plain) {
+    const parts = plainChordParts(chord, keyPc)
+    return (
+      <>
+        <span>{parts.root}</span>
+        {parts.accidental && <span className="chord-accidental">{parts.accidental}</span>}
+        {parts.quality && <span className="chord-quality">{parts.quality}</span>}
+        {parts.extensions && <span className="chord-ext">{parts.extensions}</span>}
+        {parts.bass && <span className="chord-bass">/{parts.bass}</span>}
+      </>
+    )
+  }
+  const name = spellRoot(chord.root, keyPc)
+  const { quality, extensions } = typeset(chord.suffix)
+  return (
+    <>
+      <span>{name[0]}</span>
+      {name[1] && <span className="chord-accidental">{accidental(name[1])}</span>}
+      {quality && <span className="chord-quality">{quality}</span>}
+      {extensions && <span className="chord-ext">{extensions}</span>}
+      {chord.bass !== chord.root && (
+        <span className="chord-bass">/{spellRoot(chord.bass, keyPc).replace(/[b#]/, accidental)}</span>
+      )}
+    </>
+  )
+}
+
 export function ChordSymbol({
   chord,
+  alt,
+  subActive = false,
   keyPc,
   plain = false,
   isStart = false,
   onSelect,
 }: {
   chord: Chord
+  alt?: Chord | null
+  subActive?: boolean
   keyPc: number
   plain?: boolean
   isStart?: boolean
@@ -52,49 +84,16 @@ export function ChordSymbol({
 }) {
   const name = spellRoot(chord.root, keyPc)
   const baseLabel = `${name}${chord.suffix}`
-  const label = isStart ? `${baseLabel}, start point` : baseLabel
+  const altLabel = alt
+    ? `${spellRoot(alt.root, keyPc)}${alt.suffix}${alt.bass !== alt.root ? `/${spellRoot(alt.bass, keyPc)}` : ''}`
+    : ''
+  const label = [baseLabel, altLabel && `or ${altLabel}`, isStart && 'start point'].filter(Boolean).join(', ')
 
-  if (plain) {
-    const parts = plainChordParts(chord, keyPc)
-    return (
-      <span
-        className={[onSelect ? 'chord chord-interactive' : 'chord', isStart && 'chord-start'].filter(Boolean).join(' ')}
-        aria-label={label}
-        role={onSelect ? 'button' : undefined}
-        tabIndex={onSelect ? 0 : undefined}
-        data-opens={onSelect ? 'chords' : undefined}
-        onClick={
-          onSelect
-            ? (e) => {
-                e.stopPropagation()
-                onSelect(chord)
-              }
-            : undefined
-        }
-        onKeyDown={
-          onSelect
-            ? (e) => {
-                if (e.key !== 'Enter' && e.key !== ' ') return
-                e.preventDefault()
-                e.stopPropagation()
-                onSelect(chord)
-              }
-            : undefined
-        }
-      >
-        <span>{parts.root}</span>
-        {parts.accidental && <span className="chord-accidental">{parts.accidental}</span>}
-        {parts.quality && <span className="chord-quality">{parts.quality}</span>}
-        {parts.extensions && <span className="chord-ext">{parts.extensions}</span>}
-        {parts.bass && <span className="chord-bass">/{parts.bass}</span>}
-      </span>
-    )
-  }
-
-  const { quality, extensions } = typeset(chord.suffix)
   return (
     <span
-      className={[onSelect ? 'chord chord-interactive' : 'chord', isStart && 'chord-start'].filter(Boolean).join(' ')}
+      className={[onSelect ? 'chord chord-interactive' : 'chord', isStart && 'chord-start', subActive && 'chord-sub-active']
+        .filter(Boolean)
+        .join(' ')}
       aria-label={label}
       role={onSelect ? 'button' : undefined}
       tabIndex={onSelect ? 0 : undefined}
@@ -118,13 +117,14 @@ export function ChordSymbol({
           : undefined
       }
     >
-      <span>{name[0]}</span>
-      {name[1] && <span className="chord-accidental">{accidental(name[1])}</span>}
-      {quality && <span className="chord-quality">{quality}</span>}
-      {extensions && <span className="chord-ext">{extensions}</span>}
-      {chord.bass !== chord.root && (
-        <span className="chord-bass">/{spellRoot(chord.bass, keyPc).replace(/[b#]/, accidental)}</span>
+      {alt && (
+        <span className="chord-alt" aria-hidden="true">
+          <ChordBody chord={alt} keyPc={keyPc} plain={plain} />
+        </span>
       )}
+      <span className="chord-main">
+        <ChordBody chord={chord} keyPc={keyPc} plain={plain} />
+      </span>
     </span>
   )
 }

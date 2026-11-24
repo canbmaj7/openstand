@@ -1,4 +1,4 @@
-import { beatsPerBar, isCompound, playbackOrder, type Chart, type TimeSignature } from '../music/chart'
+import { beatsPerBar, isCompound, playbackOrder, type BarChord, type Chart, type TimeSignature } from '../music/chart'
 import { parseChord, transposeChord, type Chord } from '../music/chords'
 import { PULSE } from './meter'
 
@@ -61,6 +61,7 @@ export interface Slot {
   measure: number // bar index in the chart; -1 for the final chord
   chorus: number
   compound?: boolean // in 6/8, 9/8 or 12/8
+  sub?: true // true when this slot uses the chord's substitution (alt)
 }
 
 // One bar as played; drum grooves are chosen per bar
@@ -81,10 +82,29 @@ export interface Timeline {
   clicks: Click[] // the count-in
 }
 
-// Practice options: loop a range of written bars, change key every chorus
+export type SubMode = 'off' | 'alternate' | 'random'
+
+// Practice options: loop a range of written bars, change key every chorus, play chord substitutions
 export interface PracticeOptions {
   loop?: [from: number, to: number] | null // written bar indices, inclusive
   keyStep?: number // semitones added to the key on each chorus (5 = round the cycle of fourths)
+  subs?: SubMode // whether to play optional substitution chords ('off' by default)
+}
+
+function shouldSubRandom(chorus: number, measure: number, chordIndex: number): boolean {
+  let h = Math.imul(chorus + 1, 0x9e3779b1) ^ Math.imul(measure + 1, 0x85ebca6b) ^ Math.imul(chordIndex + 1, 0xc2b2ae35)
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  h ^= h >>> 16
+  return (h & 1) === 1
+}
+
+function shouldUseSub(subs: SubMode, chorus: number, measure: number, chordIndex: number): boolean {
+  if (subs === 'alternate') return chorus % 2 === 1
+  if (subs === 'random') return shouldSubRandom(chorus, measure, chordIndex)
+  return false
 }
 
 // Transposition for each chorus, kept within -5..+6 so the band's register doesn't drift
@@ -105,6 +125,7 @@ export function practiceOrder(chart: Chart, loop: PracticeOptions['loop']): numb
 
 export function buildTimeline(chart: Chart, transpose: number, choruses: number, practice: PracticeOptions = {}): Timeline {
   const keyStep = practice.keyStep ?? 0
+  const subs: SubMode = practice.subs ?? 'off'
   const chords = new Map<string, Chord>()
   const toChord = (symbol: string, chorus: number): Chord => {
     const semitones = chorusTranspose(transpose, keyStep, chorus)
@@ -117,6 +138,13 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
       chords.set(id, chord)
     }
     return chord
+  }
+  const resolveBarChord = (c: BarChord, chorus: number, measure: number, chordIndex: number): { chord: Chord | null; sub: boolean } => {
+    if (!c.symbol) return { chord: null, sub: false }
+    if (c.alt && shouldUseSub(subs, chorus, measure, chordIndex) && parseChord(c.alt)) {
+      return { chord: toChord(c.alt, chorus), sub: true }
+    }
+    return { chord: toChord(c.symbol, chorus), sub: false }
   }
 
   // Time signature in force at each written bar
@@ -132,31 +160,36 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
   const countIn = countInBeats(chart)
   let beat = countIn
 
-  const carried = practice.loop
-    ? (chart.bars
-        .slice(0, order[0])
-        .flatMap((b) => b.chords)
-        .at(-1)?.symbol ?? null)
-    : null
+  let carried: { measure: number; chordIndex: number; chord: BarChord } | null = null
+  if (practice.loop) {
+    for (let bi = order[0] - 1; bi >= 0 && !carried; bi--) {
+      const chs = chart.bars[bi].chords
+      if (chs.length > 0) carried = { measure: bi, chordIndex: chs.length - 1, chord: chs[chs.length - 1] }
+    }
+  }
 
   for (let chorus = 0; chorus < choruses; chorus++) {
     // A blank bar keeps the chord that was sounding at the end of the previous one;
     // a loop starting on a blank bar picks up the chord written before it
-    let held: Chord | null = carried ? toChord(carried, chorus) : null
+    const initial = carried ? resolveBarChord(carried.chord, chorus, carried.measure, carried.chordIndex) : { chord: null, sub: false }
+    let held: Chord | null = initial.chord
+    let heldSub = initial.sub
     order.forEach((measure, n) => {
       const bar = chart.bars[measure]
       const { beats, compound } = meters[measure]
       bars.push({ start: beat, beats, measure, isFirst: n === 0, isLast: n === order.length - 1, compound })
 
       if (bar.chords.length === 0) {
-        if (held) slots.push({ chord: held, start: beat, beats, measure, chorus, compound })
+        if (held) slots.push({ chord: held, start: beat, beats, measure, chorus, compound, ...(heldSub ? { sub: true as const } : {}) })
       } else {
         let at = beat
-        for (const c of bar.chords) {
-          held = c.symbol ? toChord(c.symbol, chorus) : null // N.C. leaves a gap
-          if (held) slots.push({ chord: held, start: at, beats: c.beats, measure, chorus, compound })
+        bar.chords.forEach((c, chordIndex) => {
+          const resolved = resolveBarChord(c, chorus, measure, chordIndex)
+          held = resolved.chord
+          heldSub = resolved.sub
+          if (held) slots.push({ chord: held, start: at, beats: c.beats, measure, chorus, compound, ...(heldSub ? { sub: true as const } : {}) })
           at += c.beats
-        }
+        })
       }
       beat += beats
     })

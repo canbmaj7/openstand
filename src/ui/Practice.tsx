@@ -1,3 +1,4 @@
+import type { SubMode } from '../engine/timeline'
 import type { Chart } from '../music/chart'
 import { KEY_STEPS, sections, type PracticeSettings } from '../music/practice'
 import { Popover } from './Popover'
@@ -12,7 +13,8 @@ interface PracticeProps {
 }
 
 export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProps) {
-  const active = settings.loop !== null || settings.keyStep !== 0 || settings.ramp !== 0
+  const hasSubs = chart.bars.some((b) => b.chords.some((c) => Boolean(c.alt)))
+  const active = settings.loop !== null || settings.keyStep !== 0 || settings.ramp !== 0 || settings.subs !== 'off'
   const marks = sections(chart)
 
   return (
@@ -106,6 +108,21 @@ export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProp
               <span className="practice-unit">bpm each chorus</span>
             </div>
           </div>
+
+          <label className="practice-row">
+            <span className="label">Substitutions</span>
+            <select
+              className="select"
+              disabled={!hasSubs}
+              value={settings.subs}
+              onChange={(e) => onChange({ ...settings, subs: e.target.value as SubMode })}
+            >
+              <option value="off">Off</option>
+              <option value="alternate">Every other chorus</option>
+              <option value="random">Random</option>
+            </select>
+            {!hasSubs && <span className="practice-unit">Add one in the editor: C7(Gb7)</span>}
+          </label>
         </div>
       )}
     </Popover>

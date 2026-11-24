@@ -597,6 +597,38 @@ button:disabled {
   line-height: 1;
 }
 
+.chord-main {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.chord-alt {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 2px);
+  display: inline-flex;
+  align-items: baseline;
+  font-size: max(10px, 0.42em);
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.chord.chord-start .chord-alt {
+  left: 12px;
+}
+
+.chord.chord-sub-active .chord-main {
+  opacity: 0.35;
+}
+
+.chord.chord-sub-active .chord-alt {
+  color: var(--ink);
+  opacity: 1;
+  font-size: max(11px, 0.52em);
+}
+
 .chord.chord-start::after {
   content: '';
   position: absolute;
@@ -650,6 +682,8 @@ button:disabled {
 
 /* Plain chord font (sans-serif) */
 [data-chord-font='plain'] .chord,
+[data-chord-font='plain'] .chord-main,
+[data-chord-font='plain'] .chord-alt,
 [data-chord-font='plain'] .chord-accidental,
 [data-chord-font='plain'] .chord-quality,
 [data-chord-font='plain'] .chord-ext,
@@ -787,8 +821,13 @@ button:disabled {
     right 9px center / 12px no-repeat;
 }
 
-.select:hover {
+.select:hover:not(:disabled) {
   border-color: var(--ink-2);
+}
+
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .stepper {

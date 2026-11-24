@@ -58,26 +58,39 @@ export function parseBarInput(text: string, time: TimeSignature): BarInput {
   const tokens = text.trim().split(/[\s,|]+/).filter(Boolean)
   if (tokens.length === 0) return { ok: true, chords: [] }
   const barBeats = beatsPerBar(time)
-  const symbols: (string | null)[] = []
+  const entries: { symbol: string | null; alt?: string }[] = []
   const given: (number | null)[] = []
   for (const token of tokens) {
     const [name, beatsRaw] = token.split(':')
     let symbol: string | null
+    let alt: string | undefined
     if (/^(n\.?c\.?|nc)$/i.test(name)) symbol = null
     else {
+      const altMatch = /^(.+?)\(([^()]*)\)$/.exec(name)
+      if (altMatch && !altMatch[2].trim()) return { ok: false, error: `Can't read "${name}"` }
       const parsed = toChartSymbol(name)
-      if (!parsed) return { ok: false, error: `Can't read "${name}"` }
-      symbol = parsed
+      if (parsed) {
+        symbol = parsed
+      } else {
+        if (!altMatch) return { ok: false, error: `Can't read "${name}"` }
+        const [, mainRaw, altRaw] = altMatch
+        const mainParsed = toChartSymbol(mainRaw)
+        if (!mainParsed) return { ok: false, error: `Can't read "${mainRaw}"` }
+        const altParsed = toChartSymbol(altRaw)
+        if (!altParsed) return { ok: false, error: `Can't read "${altRaw}"` }
+        symbol = mainParsed
+        alt = altParsed
+      }
     }
     const beats = beatsRaw === undefined ? null : Number(beatsRaw)
     if (beats !== null && !(beats > 0)) return { ok: false, error: `"${token}": beats must be a number` }
-    symbols.push(symbol)
+    entries.push(alt !== undefined ? { symbol, alt } : { symbol })
     given.push(beats)
   }
-  if (symbols.length > barBeats * 2) return { ok: false, error: `Too many chords for one bar` }
+  if (entries.length > barBeats * 2) return { ok: false, error: `Too many chords for one bar` }
 
   let beats: number[]
-  if (given.every((b) => b === null)) beats = evenSplit(symbols.length, time)
+  if (given.every((b) => b === null)) beats = evenSplit(entries.length, time)
   else {
     // Chords without a length share what is left of the bar
     const fixed = given.reduce<number>((sum, b) => sum + (b ?? 0), 0)
@@ -88,12 +101,20 @@ export function parseBarInput(text: string, time: TimeSignature): BarInput {
     if (beats.some((b) => b <= 0) || Math.abs(total - barBeats) > 1e-6)
       return { ok: false, error: `Beats add up to ${total}, the bar has ${barBeats}` }
   }
-  return { ok: true, chords: symbols.map((symbol, i) => ({ symbol, beats: beats[i] })) }
+  return {
+    ok: true,
+    chords: entries.map(({ symbol, alt }, i) => (alt !== undefined ? { symbol, alt, beats: beats[i] } : { symbol, beats: beats[i] })),
+  }
 }
 
 // The text shown for a bar; lengths are written only when they differ from an even split
 export function barToInput(chords: BarChord[], time: TimeSignature): string {
   const even = evenSplit(chords.length, time)
   const uneven = chords.some((c, i) => Math.abs(c.beats - even[i]) > 1e-6)
-  return chords.map((c) => (c.symbol ?? 'NC') + (uneven ? `:${c.beats}` : '')).join(' ')
+  return chords
+    .map((c) => {
+      const base = c.symbol === null ? 'NC' : c.alt ? `${c.symbol}(${c.alt})` : c.symbol
+      return base + (uneven ? `:${c.beats}` : '')
+    })
+    .join(' ')
 }

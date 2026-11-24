@@ -78,6 +78,7 @@ export function normalizeChord(symbol: string): string {
 // One cell of the bar being read
 interface Cell {
   chord?: string | null // undefined = blank cell, null = N.C.
+  alt?: string
 }
 
 interface PendingBar {
@@ -193,8 +194,17 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
       current.marks.end = true
       s = s.slice(1)
     } else if (s[0] === '(') {
-      // Alternative chord shown small above the real one: not played
+      // Alternative chord shown small above the real one; attach to the preceding chord cell if valid
       const close = s.indexOf(')')
+      if (close !== -1) {
+        const inside = s.slice(1, close).trim()
+        const last = current.cells.at(-1)
+        const cm = inside ? CHORD_RE.exec(inside) : null
+        if (last && typeof last.chord === 'string' && cm && cm[0].length === inside.length && !inside.startsWith('W')) {
+          const normalized = normalizeChord(inside)
+          if (parseChord(normalized)) last.alt = normalized
+        }
+      }
       s = s.slice(close === -1 ? 1 : close + 1)
     } else if (s[0] === 'n') {
       current.cells.push({ chord: null })
@@ -258,7 +268,11 @@ export function durations(cells: Cell[], time: TimeSignature): BarChord[] {
   let beats = lengths.map((l) => Math.max(1, Math.round(l * barBeats)))
   const sum = beats.reduce((a, b) => a + b, 0)
   if (sum !== barBeats) beats = evenSplit(chords.length, time)
-  return chords.map((symbol, i) => ({ symbol, beats: beats[i] }))
+  return positions.map((p, i) => {
+    const symbol = cells[p].chord ?? null
+    const alt = cells[p].alt
+    return alt !== undefined ? { symbol, alt, beats: beats[i] } : { symbol, beats: beats[i] }
+  })
 }
 
 function parseKey(raw: string): { key: number; minor: boolean } {
