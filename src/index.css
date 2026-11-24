@@ -412,12 +412,20 @@ button:disabled {
   padding-left: 44px;
 }
 
+.bar-with-groups {
+  padding-left: 62px;
+}
+
 .bar-repeat-start {
   padding-left: 30px;
 }
 
 .bar-repeat-start.bar-with-time {
   padding-left: 62px;
+}
+
+.bar-repeat-start.bar-with-groups {
+  padding-left: 80px;
 }
 
 .bar-repeat-start.bar-with-time .timesig {
@@ -536,6 +544,14 @@ button:disabled {
   font-size: 26px;
   line-height: 0.9;
   text-align: center;
+}
+
+.timesig-groups {
+  font: 500 10px/1 var(--mono);
+  letter-spacing: -0.03em;
+  color: var(--muted);
+  margin-top: 3px;
+  white-space: nowrap;
 }
 
 /* A looped stretch is bracketed underneath, like a pencil mark */
@@ -1646,12 +1662,20 @@ input.fader::-moz-range-thumb {
     padding-left: 24px;
   }
 
+  .bar-with-groups {
+    padding-left: 42px;
+  }
+
   .bar-repeat-start {
     padding-left: 16px;
   }
 
   .bar-repeat-start.bar-with-time {
     padding-left: 36px;
+  }
+
+  .bar-repeat-start.bar-with-groups {
+    padding-left: 54px;
   }
 
   .bar-repeat-start.bar-with-time .timesig {
@@ -1683,6 +1707,10 @@ input.fader::-moz-range-thumb {
   .timesig {
     left: 6px;
     font-size: 18px;
+  }
+
+  .timesig-groups {
+    font-size: 8px;
   }
 
   .chord {

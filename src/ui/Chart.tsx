@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { ROW_CELLS, type Chart as ChartData, type ChartBar, type TimeSignature } from '../music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from '../music/chords'
+import { groupsAt } from '../music/edit'
 import type { StyleDefinition } from '../styles/types'
 import { ChordSymbol } from './ChordSymbol'
 
@@ -65,11 +66,13 @@ function rows(chart: ChartData, transpose: number): PlacedBar[][] {
   return out
 }
 
-function TimeSig({ time }: { time: TimeSignature }) {
+function TimeSig({ time, groups }: { time: TimeSignature; groups?: number[] }) {
+  const label = groups ? `${time[0]}/${time[1]} time, ${groups.join('+')}` : `${time[0]}/${time[1]} time`
   return (
-    <span className="timesig" aria-label={`${time[0]}/${time[1]} time`}>
+    <span className="timesig" aria-label={label}>
       <span>{time[0]}</span>
       <span>{time[1]}</span>
+      {groups && <span className="timesig-groups">{groups.join('+')}</span>}
     </span>
   )
 }
@@ -83,6 +86,7 @@ interface BarProps {
   beatInBar: number
   progress: number
   showTime: TimeSignature | null
+  showGroups?: number[]
   inRange: boolean
   selected: boolean
   plain?: boolean
@@ -101,6 +105,7 @@ function Bar({
   beatInBar,
   progress,
   showTime,
+  showGroups,
   inRange,
   selected,
   plain,
@@ -119,6 +124,7 @@ function Bar({
   else if (bar.barline) classes.push(`bar-${bar.barline}`)
   else if (closesRow && !bar.spacer) classes.push('bar-close')
   if (showTime) classes.push('bar-with-time')
+  if (showTime && showGroups) classes.push('bar-with-groups')
   if (chords.length > 2) classes.push('bar-dense')
   else if (chords.length === 2 && bar.cells <= 4) classes.push('bar-pair')
   if (inRange) classes.push('bar-in-range')
@@ -188,7 +194,7 @@ function Bar({
           {GLYPH.repeatRight}
         </span>
       )}
-      {showTime && <TimeSig time={showTime} />}
+      {showTime && <TimeSig time={showTime} groups={showGroups} />}
       {active && <span className="bar-highlight" style={{ transform: `scaleX(${progress})` }} />}
       {chords.map(({ chord, altChord, symbol }, j) =>
         chord ? (
@@ -310,26 +316,30 @@ export function Chart(props: ChartProps) {
       <div className="rows">
         {layout.map((row, r) => (
           <div className="row" key={r}>
-            {row.map((placed, b) => (
-              <Bar
-                key={placed.index}
-                placed={placed}
-                prev={row[b - 1]}
-                keyPc={keyPc}
-                active={activeMeasure === placed.index}
-                activeSub={activeMeasure === placed.index && activeSub}
-                beatInBar={activeMeasure === placed.index ? beatInBar : 0}
-                barRef={activeMeasure === placed.index ? (el) => { activeBarRef.current = el } : undefined}
-                progress={Math.min(1, beatInBar / barBeats)}
-                showTime={placed.index === 0 ? chart.time : (placed.bar.time ?? null)}
-                inRange={!!range && placed.index >= Math.min(...range) && placed.index <= Math.max(...range)}
-                selected={selectedBar === placed.index}
-                plain={plain}
-                startChordIndex={placed.index === startBar ? startChord : null}
-                onClick={onBarClick}
-                onChordClick={onChordClick}
-              />
-            ))}
+            {row.map((placed, b) => {
+              const showTime = placed.index === 0 ? chart.time : (placed.bar.time ?? null)
+              return (
+                <Bar
+                  key={placed.index}
+                  placed={placed}
+                  prev={row[b - 1]}
+                  keyPc={keyPc}
+                  active={activeMeasure === placed.index}
+                  activeSub={activeMeasure === placed.index && activeSub}
+                  beatInBar={activeMeasure === placed.index ? beatInBar : 0}
+                  barRef={activeMeasure === placed.index ? (el) => { activeBarRef.current = el } : undefined}
+                  progress={Math.min(1, beatInBar / barBeats)}
+                  showTime={showTime}
+                  showGroups={showTime ? groupsAt(chart, placed.index) : undefined}
+                  inRange={!!range && placed.index >= Math.min(...range) && placed.index <= Math.max(...range)}
+                  selected={selectedBar === placed.index}
+                  plain={plain}
+                  startChordIndex={placed.index === startBar ? startChord : null}
+                  onClick={onBarClick}
+                  onChordClick={onChordClick}
+                />
+              )
+            })}
           </div>
         ))}
       </div>

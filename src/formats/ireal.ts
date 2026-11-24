@@ -123,7 +123,13 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
   while (s.length > 0) {
     let m: RegExpExecArray | null
 
-    if ((m = /^T(\d)(\d)/.exec(s))) {
+    if ((m = /^T(1[01])8/.exec(s))) {
+      const t: TimeSignature = [Number(m[1]), 8]
+      if (!firstTime && bars.length === 0) firstTime = t
+      else current.marks.time = t
+      barTime = t
+      s = s.slice(4)
+    } else if ((m = /^T(\d)(\d)/.exec(s))) {
       const t: TimeSignature = m[1] === '1' && m[2] === '2' ? [12, 8] : [Number(m[1]), Number(m[2])]
       if (!firstTime && bars.length === 0) firstTime = t
       else current.marks.time = t

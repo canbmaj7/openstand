@@ -35,6 +35,7 @@ accompaniment engine reads. The TypeScript types live in [`src/music/chart.ts`](
 | `minor` | boolean, optional | Minor key |
 | `bpm` | number | Default tempo |
 | `time` | `[beats, unit]` | Time signature at the start, e.g. `[3, 4]` |
+| `groups` | `number[]`, optional | Beat grouping in eighth notes for odd/aksak meters, e.g. `[2, 2, 2, 3]` |
 | `bars` | Bar[] | The bars as written, before repeats are expanded |
 
 ## Bar
@@ -46,6 +47,7 @@ accompaniment engine reads. The TypeScript types live in [`src/music/chart.ts`](
 | `rowStart` | boolean | The bar starts a new row |
 | `section` | string | Rehearsal mark: `A`, `B`, `C`…, `i` (intro), `v` (verse) |
 | `time` | `[beats, unit]` | Time signature change from this bar on |
+| `groups` | `number[]`, optional | Beat grouping in eighth notes from this bar on (must sum to the bar's eighths) |
 | `repeatStart`, `repeatEnd` | boolean | Repeat signs |
 | `repeatTimes` | number | Total passes through the repeat (default 2) |
 | `ending` | number | A first/second/third ending bracket starts here |

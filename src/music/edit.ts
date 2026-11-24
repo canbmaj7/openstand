@@ -1,6 +1,7 @@
 // Chart edits used by the editor. Every function returns a new chart.
 
-import { beatsPerBar, evenSplit, type Chart, type ChartBar, type TimeSignature } from './chart'
+import { beatsPerBar, evenSplit, isCompound, type Chart, type ChartBar, type TimeSignature } from './chart'
+import { groupsFor, isValidGroups, sameGroups } from './meter'
 
 export function emptyChart(): Chart {
   return {
@@ -20,6 +21,21 @@ export function timeAt(chart: Chart, index: number): TimeSignature {
   let time = chart.time
   for (let i = 0; i <= index && i < chart.bars.length; i++) time = chart.bars[i].time ?? time
   return time
+}
+
+function rawGroupsAt(chart: Chart, index: number): number[] | undefined {
+  let raw = chart.groups
+  for (let i = 0; i <= index && i < chart.bars.length; i++) {
+    const bar = chart.bars[i]
+    if (bar.time) raw = bar.groups
+    else if (bar.groups !== undefined) raw = bar.groups
+  }
+  return raw
+}
+
+// Effective eighth-note beat grouping in force at a bar, or undefined when simple/compound
+export function groupsAt(chart: Chart, index: number): number[] | undefined {
+  return groupsFor(timeAt(chart, index), rawGroupsAt(chart, index))
 }
 
 // Drops keys set to undefined/false so saved charts stay small
@@ -77,10 +93,35 @@ function effectiveTimes(chart: Chart): TimeSignature[] {
   })
 }
 
-// After a meter change, chord lengths are spread over the new bar length
+function withoutChartGroups(chart: Chart): Chart {
+  const { groups: _, ...rest } = chart
+  return rest
+}
+
+// After a meter change, chord lengths are spread over the new bar length and incompatible groups are cleared
 export function setTime(chart: Chart, time: TimeSignature): Chart {
-  const bars = chart.bars.map((bar, i) => (i > 0 && underTimeChange(chart, i) ? bar : respreadBar(bar, time)))
-  return { ...chart, time, bars }
+  const bars = chart.bars.map((bar, i) => {
+    if (i > 0 && underTimeChange(chart, i)) return bar
+    let next = respreadBar(bar, time)
+    if (next.groups !== undefined && !isValidGroups(time, next.groups)) {
+      next = tidy({ ...next, groups: undefined })
+    }
+    return next
+  })
+  const base = chart.groups !== undefined && !isValidGroups(time, chart.groups) ? withoutChartGroups(chart) : chart
+  return { ...base, time, bars }
+}
+
+/** Set or clear (undefined) the chart-level eighth-note grouping. */
+export function setGroups(chart: Chart, groups: number[] | undefined): Chart {
+  const bars =
+    chart.bars[0] && !chart.bars[0].time && chart.bars[0].groups !== undefined
+      ? chart.bars.map((b, i) => (i === 0 ? tidy({ ...b, groups: undefined }) : b))
+      : chart.bars
+  if (groups === undefined || !isValidGroups(chart.time, groups)) {
+    return { ...withoutChartGroups(chart), bars }
+  }
+  return { ...chart, groups: [...groups], bars }
 }
 
 /** Change the time signature at `index` (for just that bar or from there on), respreading affected chords. */
@@ -89,35 +130,105 @@ export function setBarTime(chart: Chart, index: number, time: TimeSignature | nu
 
   const oldTimes = effectiveTimes(chart)
   const prevMeter = index === 0 ? chart.time : oldTimes[index - 1]
+  const prevRawGroups = index === 0 ? chart.groups : rawGroupsAt(chart, index - 1)
   let nextChartTime = chart.time
+  let nextChartGroups = chart.groups
   const bars = chart.bars.map((b) => ({ ...b }))
 
   if (time === null) {
-    bars[index] = tidy({ ...bars[index], time: undefined })
+    bars[index] = tidy({ ...bars[index], time: undefined, groups: undefined })
   } else {
     if (index === 0) {
       nextChartTime = time
-      bars[0] = tidy({ ...bars[0], time: undefined })
+      if (nextChartGroups !== undefined && !isValidGroups(time, nextChartGroups)) nextChartGroups = undefined
+      bars[0] = tidy({ ...bars[0], time: undefined, groups: undefined })
     } else {
-      bars[index] = tidy({ ...bars[index], time })
+      const keepGroups = bars[index].groups !== undefined && isValidGroups(time, bars[index].groups)
+      bars[index] = tidy({ ...bars[index], time, groups: keepGroups ? bars[index].groups : undefined })
     }
     if (onlyThisBar && index + 1 < bars.length && !bars[index + 1].time) {
-      bars[index + 1] = { ...bars[index + 1], time: prevMeter }
+      const restoreGroups =
+        prevRawGroups !== undefined && isValidGroups(prevMeter, prevRawGroups) ? [...prevRawGroups] : undefined
+      bars[index + 1] = tidy({ ...bars[index + 1], time: prevMeter, groups: restoreGroups })
     }
   }
 
   let running = nextChartTime
+  let runningRawGroups = nextChartGroups
   const cleanedBars = bars.map((bar, i) => {
     let nextBar = bar
     if (nextBar.time) {
-      if (sameTime(nextBar.time, running)) nextBar = tidy({ ...nextBar, time: undefined })
-      else running = nextBar.time
+      const keepsCompoundReset =
+        sameTime(nextBar.time, running) && isCompound(running) && runningRawGroups !== undefined && nextBar.groups === undefined
+      if (sameTime(nextBar.time, running) && !keepsCompoundReset) {
+        nextBar = tidy({ ...nextBar, time: undefined })
+        if (nextBar.groups !== undefined) runningRawGroups = nextBar.groups
+      } else {
+        running = nextBar.time
+        runningRawGroups = nextBar.groups
+      }
+    } else if (nextBar.groups !== undefined) {
+      runningRawGroups = nextBar.groups
+    }
+    if (nextBar.groups !== undefined && !isValidGroups(running, nextBar.groups)) {
+      nextBar = tidy({ ...nextBar, groups: undefined })
     }
     if (!sameTime(oldTimes[i], running)) nextBar = respreadBar(nextBar, running)
     return nextBar
   })
 
-  return { ...chart, time: nextChartTime, bars: cleanedBars }
+  const base = nextChartGroups !== undefined ? { ...chart, groups: nextChartGroups } : withoutChartGroups(chart)
+  return { ...base, time: nextChartTime, bars: cleanedBars }
+}
+
+/** Change the eighth-note grouping at `index` (for just that bar or from there on). */
+export function setBarGroups(chart: Chart, index: number, groups: number[] | undefined, onlyThisBar: boolean): Chart {
+  if (index < 0 || index >= chart.bars.length) return chart
+  const current = timeAt(chart, index)
+  if (groups !== undefined && !isValidGroups(current, groups)) return chart
+
+  if (index === 0) {
+    const prevRaw = rawGroupsAt(chart, 0)
+    const next = setGroups(chart, groups)
+    if (onlyThisBar && next.bars.length > 1 && !next.bars[1].time && next.bars[1].groups === undefined) {
+      const bars = next.bars.slice()
+      if (prevRaw !== undefined && !sameGroups(prevRaw, groups)) {
+        bars[1] = { ...bars[1], groups: [...prevRaw] }
+      } else if (prevRaw === undefined && groups !== undefined) {
+        if (isCompound(next.time)) bars[1] = { ...bars[1], time: next.time }
+        else {
+          const def = groupsFor(next.time)
+          if (def && !sameGroups(def, groups)) bars[1] = { ...bars[1], groups: def }
+        }
+      }
+      return { ...next, bars }
+    }
+    return next
+  }
+
+  const prevRaw = rawGroupsAt(chart, index - 1)
+  const bars = chart.bars.map((b) => ({ ...b }))
+  if (groups === undefined) {
+    bars[index] = tidy({ ...bars[index], groups: undefined })
+    if (prevRaw !== undefined && isCompound(current) && !bars[index].time) {
+      bars[index] = { ...bars[index], time: current }
+    }
+  } else {
+    bars[index] = tidy({ ...bars[index], groups: [...groups] })
+  }
+
+  if (onlyThisBar && index + 1 < bars.length && !bars[index + 1].time && bars[index + 1].groups === undefined) {
+    if (prevRaw !== undefined) {
+      bars[index + 1] = { ...bars[index + 1], groups: [...prevRaw] }
+    } else if (isCompound(current)) {
+      bars[index + 1] = { ...bars[index + 1], time: current }
+    } else {
+      const def = groupsFor(current)
+      if (def && !sameGroups(def, groups)) bars[index + 1] = { ...bars[index + 1], groups: def }
+    }
+  }
+
+  return { ...chart, bars }
 }
 
 // Whether a bar falls under a later time signature change rather than the chart's own

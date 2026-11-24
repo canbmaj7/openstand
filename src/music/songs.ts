@@ -21,6 +21,7 @@ interface Example {
   minor?: boolean
   bpm: number // quarter notes per minute, in every meter
   time?: TimeSignature // default 4/4
+  groups?: number[]
   measures: string[][]
 }
 
@@ -266,6 +267,28 @@ const RAW: Example[] = [
     bpm: 168,
     time: [5, 4],
     measures: [['Eb-7'], ['Bb-7'], ['Eb-7'], ['Bb-7'], ['Eb-7'], ['Bb-7'], ['Cb^7'], ['Bb7alt']],
+  },
+  {
+    id: 'aksak-98-a',
+    style: 'aksak',
+    title: 'Aksak 9/8 Vamp',
+    key: 9,
+    minor: true,
+    bpm: 200,
+    time: [9, 8],
+    groups: [2, 2, 2, 3],
+    measures: [['A-'], ['A-'], ['D-'], ['E7'], ['A-'], ['D-'], ['Bb'], ['E7']],
+  },
+  {
+    id: 'balkan-78-d',
+    style: 'aksak',
+    title: 'Balkan 7/8',
+    key: 2,
+    minor: true,
+    bpm: 200,
+    time: [7, 8],
+    groups: [3, 2, 2],
+    measures: [['D-'], ['C'], ['Bb'], ['A7'], ['D-'], ['G-'], ['C', 'Bb'], ['A7']],
   },
 ]
 
