@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Player } from './audio/player'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { warmUpMidi } from './engine/warmup'
-import { chorusTranspose, type Timeline } from './engine/timeline'
+import { chorusTranspose, slotAtBeat, type Timeline } from './engine/timeline'
 import { parseChartFile } from './formats/chartFile'
 import { parseIrealLinks } from './formats/ireal'
 import { irealLink } from './formats/irealWrite'
@@ -42,6 +42,8 @@ interface Position {
   ending: boolean
   barBeats: number
   barNumber: number // bars played since the start, -1 during the count-in
+  sub?: boolean
+  slotChord?: Chord
 }
 
 interface ArrangeOptions {
@@ -130,7 +132,9 @@ function positionAt(timeline: Timeline, beat: number): Position | null {
   const barNumber = timeline.bars.findLastIndex((b) => b.start <= beat)
   const bar = timeline.bars[barNumber]
   if (!bar) return null
-  const chorus = timeline.slots.findLast((s) => s.start <= beat)?.chorus ?? 0
+  const slot = slotAtBeat(timeline, beat)
+  const activeSlot = slot && beat >= slot.start && beat < slot.start + slot.beats ? slot : undefined
+  const chorus = activeSlot?.chorus ?? timeline.slots.findLast((s) => s.start <= beat)?.chorus ?? 0
   return {
     measure: bar.measure,
     chorus,
@@ -139,6 +143,8 @@ function positionAt(timeline: Timeline, beat: number): Position | null {
     ending: bar.measure === -1,
     barBeats: bar.beats,
     barNumber,
+    sub: Boolean(activeSlot?.sub),
+    slotChord: activeSlot?.chord,
   }
 }
 
@@ -263,7 +269,9 @@ export default function App() {
   const liveBpm = clampBpm(bpm + practice.ramp * (playing ? chorus : 0))
   const shownChord = selectedChord
     ? transposeChord(selectedChord, viewTranspose)
-    : (playing ? playingChord(chart, position, viewTranspose) : null) ?? firstChord(chart, viewTranspose)
+    : (playing && position?.slotChord ? transposeChord(position.slotChord, viewOffset(instrument)) : null) ??
+      (playing ? playingChord(chart, position, viewTranspose) : null) ??
+      firstChord(chart, viewTranspose)
 
   useEffect(() => {
     // The effect may run twice (StrictMode); a discarded player must not update the UI
@@ -356,8 +364,8 @@ export default function App() {
     const player = playerRef.current
     if (!player) return
     setNotice(null)
-    const { loop, keyStep } = opts.practice
-    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep })
+    const { loop, keyStep, subs } = opts.practice
+    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs })
     timelineRef.current = timeline
 
     let offsetSeconds = fromSeconds
@@ -815,8 +823,8 @@ export default function App() {
                   <button
                     className="share-option"
                     onClick={() => {
-                      const { loop, keyStep } = practice
-                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep }, bpm)
+                      const { loop, keyStep, subs } = practice
+                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs }, bpm)
                       close()
                     }}
                   >
@@ -905,6 +913,7 @@ export default function App() {
             style={style}
             transpose={draft ? 0 : viewTranspose}
             activeMeasure={position && position.measure >= 0 ? position.measure : null}
+            activeSub={position?.sub ?? false}
             beatInBar={position?.beatInBar ?? 0}
             barBeats={position?.barBeats ?? 4}
             range={picking && picking !== 'first' ? [picking.from, picking.from] : draft ? null : practice.loop}

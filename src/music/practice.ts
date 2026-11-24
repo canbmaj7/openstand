@@ -1,14 +1,16 @@
 // Practice settings: loop part of a tune, go round the keys, speed up each chorus
 
+import type { SubMode } from '../engine/timeline'
 import type { Chart } from './chart'
 
 export interface PracticeSettings {
   loop: [number, number] | null // written bar indices
   keyStep: number // semitones per chorus
   ramp: number // bpm added per chorus
+  subs: SubMode // play optional chord substitutions
 }
 
-export const NO_PRACTICE: PracticeSettings = { loop: null, keyStep: 0, ramp: 0 }
+export const NO_PRACTICE: PracticeSettings = { loop: null, keyStep: 0, ramp: 0, subs: 'off' }
 
 export const KEY_STEPS: { step: number; label: string }[] = [
   { step: 0, label: 'Stay in the written key' },

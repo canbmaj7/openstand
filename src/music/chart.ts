@@ -4,10 +4,13 @@
 // lead sheet. Each bar carries its chords with their length in beats, plus the
 // markings a player reads: rehearsal marks, repeats, endings, D.C./D.S., coda.
 
+import { parseChord } from './chords'
+
 export type TimeSignature = [beats: number, unit: number]
 
 export interface BarChord {
   symbol: string | null // null = N.C. (no chord)
+  alt?: string // optional substitution chord symbol, same duration
   beats: number
 }
 
@@ -81,7 +84,13 @@ export function chartFromMeasures(
     bars: measures.map((symbols, i) => {
       const split = evenSplit(symbols.length, time)
       return {
-        chords: symbols.map((symbol, j) => ({ symbol, beats: split[j] })),
+        chords: symbols.map((raw, j) => {
+          const m = /^(.+?)\(([^()]+)\)$/.exec(raw)
+          if (m && parseChord(m[1]) && parseChord(m[2])) {
+            return { symbol: m[1], alt: m[2], beats: split[j] }
+          }
+          return { symbol: raw, beats: split[j] }
+        }),
         cells: 4,
         rowStart: i % 4 === 0 || undefined,
         barline: i === measures.length - 1 ? 'final' : undefined,

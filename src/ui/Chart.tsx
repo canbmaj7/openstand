@@ -12,6 +12,7 @@ interface ChartProps {
   style: StyleDefinition
   transpose: number
   activeMeasure: number | null
+  activeSub?: boolean
   beatInBar: number
   barBeats: number
   range?: [number, number] | null // looped bars
@@ -27,7 +28,7 @@ interface PlacedBar {
   index: number
   bar: ChartBar
   column: number
-  chords: { chord: Chord | null; symbol: string | null; beats: number }[]
+  chords: { chord: Chord | null; altChord: Chord | null; symbol: string | null; beats: number }[]
   closesRow: boolean
 }
 
@@ -46,9 +47,15 @@ function rows(chart: ChartData, transpose: number): PlacedBar[][] {
       row = []
       column = 0
     }
-    const chords = bar.chords.map(({ symbol, beats }) => {
+    const chords = bar.chords.map(({ symbol, alt, beats }) => {
       const parsed = symbol ? parseChord(symbol) : null
-      return { symbol, beats, chord: parsed ? transposeChord(parsed, transpose) : null }
+      const parsedAlt = alt ? parseChord(alt) : null
+      return {
+        symbol,
+        beats,
+        chord: parsed ? transposeChord(parsed, transpose) : null,
+        altChord: parsedAlt ? transposeChord(parsedAlt, transpose) : null,
+      }
     })
     row.push({ index, bar, column, chords, closesRow: false })
     column += bar.cells
@@ -72,6 +79,8 @@ interface BarProps {
   prev: PlacedBar | undefined
   keyPc: number
   active: boolean
+  activeSub: boolean
+  beatInBar: number
   progress: number
   showTime: TimeSignature | null
   inRange: boolean
@@ -83,7 +92,23 @@ interface BarProps {
   barRef?: (el: HTMLDivElement | null) => void
 }
 
-function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, plain, startChordIndex, onClick, onChordClick, barRef }: BarProps) {
+function Bar({
+  placed,
+  prev,
+  keyPc,
+  active,
+  activeSub,
+  beatInBar,
+  progress,
+  showTime,
+  inRange,
+  selected,
+  plain,
+  startChordIndex,
+  onClick,
+  onChordClick,
+  barRef,
+}: BarProps) {
   const { bar, chords, column, closesRow, index } = placed
   const classes = ['bar']
   if (bar.spacer) classes.push('bar-spacer')
@@ -109,6 +134,18 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
   const note = [bar.comment, bar.directive, bar.repeatTimes && bar.repeatTimes > 2 ? `${bar.repeatTimes}x` : '']
     .filter(Boolean)
     .join(' · ')
+
+  let activeChordIdx = -1
+  if (active && chords.length > 0) {
+    let at = 0
+    for (let k = 0; k < chords.length; k++) {
+      at += chords[k].beats
+      if (beatInBar < at || k === chords.length - 1) {
+        activeChordIdx = k
+        break
+      }
+    }
+  }
 
   return (
     <div
@@ -153,11 +190,13 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
       )}
       {showTime && <TimeSig time={showTime} />}
       {active && <span className="bar-highlight" style={{ transform: `scaleX(${progress})` }} />}
-      {chords.map(({ chord, symbol }, j) =>
+      {chords.map(({ chord, altChord, symbol }, j) =>
         chord ? (
           <ChordSymbol
             key={j}
             chord={chord}
+            alt={altChord}
+            subActive={Boolean(active && activeSub && activeChordIdx === j && altChord)}
             keyPc={keyPc}
             plain={plain}
             isStart={startChordIndex === j}
@@ -194,7 +233,7 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, beatInBar, barBeats, range, selectedBar, plain, startAt, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, plain, startAt, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
   const keyName = prettyKey(noteName(keyPc, keyPrefersFlats(keyPc))) + (chart.minor ? '−' : '')
@@ -278,6 +317,8 @@ export function Chart(props: ChartProps) {
                 prev={row[b - 1]}
                 keyPc={keyPc}
                 active={activeMeasure === placed.index}
+                activeSub={activeMeasure === placed.index && activeSub}
+                beatInBar={activeMeasure === placed.index ? beatInBar : 0}
                 barRef={activeMeasure === placed.index ? (el) => { activeBarRef.current = el } : undefined}
                 progress={Math.min(1, beatInBar / barBeats)}
                 showTime={placed.index === 0 ? chart.time : (placed.bar.time ?? null)}

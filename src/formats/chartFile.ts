@@ -14,6 +14,9 @@ function validateBarChord(raw: unknown, barIndex: number, chordIndex: number): B
   if (raw.symbol !== null && typeof raw.symbol !== 'string') {
     throw new Error(`Invalid bar ${barIndex + 1} chord ${chordIndex + 1}: "symbol" must be a string or null.`)
   }
+  if (raw.alt !== undefined && typeof raw.alt !== 'string') {
+    throw new Error(`Invalid bar ${barIndex + 1} chord ${chordIndex + 1}: "alt" must be a string.`)
+  }
   if (!isPosNum(raw.beats)) {
     throw new Error(`Invalid bar ${barIndex + 1} chord ${chordIndex + 1}: "beats" must be a positive number.`)
   }

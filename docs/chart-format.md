@@ -41,7 +41,7 @@ accompaniment engine reads. The TypeScript types live in [`src/music/chart.ts`](
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `chords` | `{ symbol, beats }[]` | Chords in the bar. `symbol: null` is N.C. An empty list keeps the previous chord sounding |
+| `chords` | `BarChord[]` | Chords in the bar. An empty list keeps the previous chord sounding |
 | `cells` | number | Width in a 16-cell row. A 4/4 bar is usually 4 cells |
 | `rowStart` | boolean | The bar starts a new row |
 | `section` | string | Rehearsal mark: `A`, `B`, `C`…, `i` (intro), `v` (verse) |
@@ -56,6 +56,14 @@ accompaniment engine reads. The TypeScript types live in [`src/music/chart.ts`](
 | `comment` | string | Free text shown on the chart |
 | `end` | boolean | The player stops here after a jump |
 | `spacer` | boolean | Blank room on the row (e.g. before a coda). Shown, not played |
+
+## BarChord
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `symbol` | string or `null` | Chord symbol in chart notation, or `null` for N.C. |
+| `alt` | string, optional | Optional substitution chord symbol with the same duration |
+| `beats` | number | Duration of the chord in beats |
 
 ## Chord symbols
 
