@@ -21,7 +21,7 @@ import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type La
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
-import { downloadChartFile, downloadChordPro, downloadMidi } from './ui/download'
+import { downloadChartFile, downloadChordPro, downloadMidi, downloadWav } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
@@ -241,6 +241,8 @@ export default function App() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [editBar, setEditBar] = useState(0)
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [wavState, setWavState] = useState<{ kind: 'idle' } | { kind: 'rendering'; progress: number } | { kind: 'failed' }>({ kind: 'idle' })
+  const wavResetTimer = useRef(0)
   const [mode, setMode] = useState<ModeOption>('original')
   const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
 
@@ -610,6 +612,25 @@ export default function App() {
     setTimeout(() => set('idle'), 2200)
   }
 
+  const exportWav = async (close: () => void) => {
+    if (wavState.kind === 'rendering') return
+    window.clearTimeout(wavResetTimer.current)
+    setWavState({ kind: 'rendering', progress: 0 })
+    const { loop, keyStep, subs } = practice
+    try {
+      await downloadWav(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs }, bpm, {
+        mixer: { volumes, muted, master, masterMuted },
+        soundBank: playerRef.current?.soundBank,
+        onProgress: (ratio) => setWavState({ kind: 'rendering', progress: ratio }),
+      })
+      setWavState({ kind: 'idle' })
+      close()
+    } catch {
+      setWavState({ kind: 'failed' })
+      wavResetTimer.current = window.setTimeout(() => setWavState({ kind: 'idle' }), 3000)
+    }
+  }
+
   // ---- Style lab ----
 
   const labTimer = useRef(0)
@@ -830,6 +851,20 @@ export default function App() {
                   >
                     <span className="share-name">Download MIDI</span>
                     <span className="share-desc">Bass, piano and drums on separate tracks, at the current tempo.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    disabled={wavState.kind === 'rendering'}
+                    onClick={() => void exportWav(close)}
+                  >
+                    <span className="share-name">
+                      {wavState.kind === 'rendering'
+                        ? `Rendering… ${Math.round(wavState.progress * 100)}%`
+                        : wavState.kind === 'failed'
+                          ? 'Export failed'
+                          : 'Download audio (WAV)'}
+                    </span>
+                    <span className="share-desc">The backing track at the current key, tempo and mixer levels.</span>
                   </button>
                   <button
                     className="share-option"
