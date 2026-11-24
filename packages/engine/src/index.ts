@@ -59,6 +59,7 @@ export {
   slotAtBeat,
   type Bar,
   type Click,
+  type CountInMode,
   type PracticeOptions,
   type Slot,
   type Timeline,
