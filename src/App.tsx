@@ -622,7 +622,7 @@ export default function App() {
     setWavState({ kind: 'rendering', progress: 0 })
     const { loop, keyStep, subs, countIn } = practice
     try {
-      await downloadWav(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs }, bpm, {
+      await downloadWav(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm, {
         mixer: { volumes, muted, master, masterMuted },
         soundBank: playerRef.current?.soundBank,
         onProgress: (ratio) => setWavState({ kind: 'rendering', progress: ratio }),
