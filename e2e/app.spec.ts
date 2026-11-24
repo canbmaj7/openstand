@@ -43,6 +43,32 @@ test('changing the key re-spells the chords', async ({ page }) => {
   await expect(chords(page).first()).not.toHaveAttribute('aria-label', before!)
 })
 
+test('clicking the selected chord again closes the chord helper', async ({ page }) => {
+  const helper = page.getByLabel('Chord helper')
+  const first = chords(page).first()
+  const sameSymbolElsewhere = page.locator('.chord[aria-label="F7"]').nth(1)
+  const another = chords(page).nth(1)
+
+  await first.click()
+  await expect(helper).toBeVisible()
+  await expect(helper.getByRole('heading')).toHaveText('F7')
+
+  // The chart position, not just the chord symbol, identifies the selection.
+  await sameSymbolElsewhere.click()
+  await expect(helper).toBeVisible()
+  await sameSymbolElsewhere.click()
+  await expect(helper).not.toBeVisible()
+
+  await another.click()
+  await expect(helper).toBeVisible()
+  await expect(helper.getByRole('heading')).toHaveText('Bb7')
+
+  await another.press('Enter')
+  await expect(helper).not.toBeVisible()
+  await another.press('Enter')
+  await expect(helper).toBeVisible()
+})
+
 test('a tune can be found in the library', async ({ page }) => {
   await page.getByLabel('Search tunes').fill('bossa')
   await page.getByText('Bossa Workout', { exact: true }).click()
@@ -147,4 +173,25 @@ test('copies of the app and local builds send no error reports', async ({ page }
   }))
   await page.waitForTimeout(500)
   expect(reports).toEqual([])
+})
+
+test('chords iReal Pro lacks can be typed, are drawn and play', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  const typed = ['C5', 'Csus2', 'Cdim(maj7)', 'C+maj7', 'Cmaj7sus4', 'Cadd11']
+  for (const [i, symbol] of typed.entries()) {
+    const input = page.getByLabel(`Chords in bar ${i + 1}`)
+    await input.fill(symbol)
+    await expect(input).toHaveAttribute('aria-invalid', 'false')
+    await input.press('Enter')
+  }
+  for (const label of ['C5', 'Csus2', 'Co^7', 'C+^7', 'C^7sus', 'Cadd11'])
+    await expect(page.locator(`.chord[aria-label="${label}"]`).first()).toBeVisible()
+  await page.getByRole('button', { name: /^Save/ }).click()
+  await expect(page.locator('.chord[aria-label="Co^7"]').first()).toBeVisible()
+  await play(page)
+  await page.waitForTimeout(1500)
+  await stop(page)
+  expect(errors).toEqual([])
 })

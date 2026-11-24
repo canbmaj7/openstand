@@ -10,6 +10,8 @@ const ROOT_RE = /^([A-Ga-g])([b#♭♯]?)(.*)$/
 const QUALITY: [RegExp, string][] = [
   [/^(ø7?|m7b5|-7b5|min7b5|mi7b5)/, 'h7'],
   [/^(mmaj|m\(maj\)|-maj|-Δ|minmaj|-\^)/i, '-^'],
+  [/^(dim\(?maj7?\)?|dimΔ|°Δ|o\^|°\^)/i, 'o^'],
+  [/^(aug\(?maj7?\)?|augΔ|\+maj7?|\+Δ|\+\^)/i, '+^'],
   [/^(maj|Maj|MA|M(?=7|9|13|$)|Δ|\^)/, '^'],
   [/^(min|mi|m|-)/, '-'],
   [/^(dim|°|o)/, 'o'],
@@ -35,8 +37,8 @@ export function toChartSymbol(input: string): string | null {
   }
   // h7 already carries its seventh; a bare Δ means major seventh
   if (quality === 'h7') rest = rest.replace(/^7/, '')
-  if ((quality === '^' || quality === '-^') && rest === '') rest = '7'
-  rest = rest.replace(/sus4/g, 'sus').replace(/^7sus$/, '7sus')
+  if (['^', '-^', 'o^', '+^'].includes(quality) && rest === '') rest = '7'
+  rest = rest.replace(/sus4/g, 'sus').replace(/^add2$/, 'add9')
   if (!/^(\d|b|#|sus|add|alt)*$/.test(rest)) return null
 
   let bass = ''

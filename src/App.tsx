@@ -12,6 +12,7 @@ import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/m
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
 import { emptyChart } from './music/edit'
+import { CHORD_FONT_KEY, loadChordFont, type ChordFont } from './music/chordText'
 import { isInstrumentId, viewOffset, type InstrumentId } from './music/instrument'
 import { EXAMPLES, type Tune } from './music/songs'
 import { getStyle, STYLES, type StyleDefinition } from './styles'
@@ -204,11 +205,13 @@ export default function App() {
   const [practice, setPractice] = useState<PracticeSettings>(NO_PRACTICE)
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
+  const [selectedChordAt, setSelectedChordAt] = useState<string | null>(null)
   const [chordsOpen, setChordsOpen] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [editBar, setEditBar] = useState(0)
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [mode, setMode] = useState<ModeOption>('original')
+  const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
 
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
   const baseChart = draft?.chart ?? tune.chart
@@ -300,6 +303,19 @@ export default function App() {
     }
   }, [instrument])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHORD_FONT_KEY, chordFont)
+    } catch {
+      // Storage may be disabled in private browsing
+    }
+    if (chordFont === 'Plain') {
+      document.documentElement.dataset.chordFont = 'plain'
+    } else {
+      delete document.documentElement.dataset.chordFont
+    }
+  }, [chordFont])
+
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
     playerRef.current?.setRate(liveBpm / BASE_BPM)
@@ -345,6 +361,7 @@ export default function App() {
   const changeMode = (nextMode: ModeOption) => {
     setMode(nextMode)
     setSelectedChord(null)
+    setSelectedChordAt(null)
     const nextChart = !draft && nextMode !== 'original' ? switchMode(baseChart, nextMode) : baseChart
     const player = playerRef.current
     if (playing && player) {
@@ -413,6 +430,7 @@ export default function App() {
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
     setSelectedChord(null)
+    setSelectedChordAt(null)
     setLibraryOpen(false)
     try {
       localStorage.setItem(LAST_TUNE, next.id)
@@ -649,7 +667,7 @@ export default function App() {
   })()
 
   return (
-    <div className="app">
+    <div className="app" data-chord-font={chordFont === 'Plain' ? 'plain' : undefined}>
       <header className="topbar">
         <a className="wordmark" href="/" aria-label="OpenStand home">
           <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -657,7 +675,7 @@ export default function App() {
             <path d="M5 15h22" />
             <path d="M16 15v12M16 27l-6 3M16 27l6 3" />
           </svg>
-          OpenStand
+          <span className="wordmark-name">OpenStand</span>
         </a>
         <span className="topbar-tag">Practice with a band in your browser</span>
         <span className="topbar-spacer" />
@@ -694,9 +712,27 @@ export default function App() {
             </Popover>
           </>
         )}
+        <button
+          type="button"
+          className="topbar-button topbar-chord-font"
+          aria-pressed={chordFont === 'Plain'}
+          aria-label="Plain chords"
+          title="Plain chords"
+          onClick={() => setChordFont((f) => (f === 'Plain' ? 'Handwritten' : 'Plain'))}
+        >
+          Aa
+        </button>
         <button className="tunes-toggle" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(!libraryOpen)}>
           Tunes
         </button>
+        <a
+          className="topbar-link topbar-whatsnew"
+          href="https://github.com/canbmaj7/openstand/blob/main/CHANGELOG.md"
+          target="_blank"
+          rel="noreferrer"
+        >
+          What's new
+        </a>
         <a className="topbar-link" href="https://github.com/canbmaj7/openstand" target="_blank" rel="noreferrer">
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
@@ -732,11 +768,18 @@ export default function App() {
             barBeats={position?.barBeats ?? 4}
             range={picking && picking !== 'first' ? [picking.from, picking.from] : draft ? null : practice.loop}
             selectedBar={draft ? editBar : null}
+            plain={chordFont === 'Plain'}
             onBarClick={draft ? setEditBar : picking ? pickBar : undefined}
             onChordClick={
               !draft && !picking
-                ? (c) => {
+                ? (c, barIndex, chordIndex) => {
+                    const at = `${barIndex}:${chordIndex}`
+                    if (chordsOpen && selectedChordAt === at) {
+                      setChordsOpen(false)
+                      return
+                    }
                     setSelectedChord(transposeChord(c, -viewTranspose))
+                    setSelectedChordAt(at)
                     setChordsOpen(true)
                   }
                 : undefined
@@ -833,7 +876,10 @@ export default function App() {
           chord={shownChord}
           keyPc={shownKeyPc}
           following={selectedChord === null}
-          onFollowChange={(follow) => setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))}
+          onFollowChange={(follow) => {
+            setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))
+            setSelectedChordAt(null)
+          }}
           open={chordsOpen}
           onOpenChange={setChordsOpen}
         />

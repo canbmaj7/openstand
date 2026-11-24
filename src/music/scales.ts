@@ -145,6 +145,11 @@ const BY_QUALITY: Record<Exclude<Quality, 'dom7'>, string[]> = {
   half: ['locrian', 'locrian-nat2'],
   dim7: ['whole-half'],
   aug: ['whole-tone', 'lydian-augmented'],
+  power: ['ionian', 'aeolian', 'minor-pentatonic', 'major-pentatonic'],
+  sus2: ['ionian', 'mixolydian', 'major-pentatonic'],
+  dimMaj7: ['whole-half'],
+  maj7sus: ['ionian', 'lydian'],
+  augMaj7: ['lydian-augmented'],
 }
 
 function dom7ScaleIds(tensions: string[]): string[] {
