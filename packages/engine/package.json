@@ -1,0 +1,38 @@
+{
+  "name": "@openstand/engine",
+  "version": "0.1.0",
+  "description": "Accompaniment engine for OpenStand: generate bass, comping, and drums MIDI from chord charts and iReal Pro links.",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/canbmaj7/openstand",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/canbmaj7/openstand",
+  "keywords": [
+    "midi",
+    "ireal",
+    "backing-track",
+    "jazz",
+    "chord-chart"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
