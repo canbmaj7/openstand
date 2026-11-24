@@ -53,6 +53,30 @@
   cursor: pointer;
 }
 
+.chords-view {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control);
+  max-width: 100%;
+}
+
+.chords-view-btn {
+  padding: 3px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.chords-view-btn:hover { color: var(--ink); }
+.chords-view-btn[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
+
 .chords-piano {
   display: block;
   width: 100%;
@@ -90,16 +114,13 @@
   stroke-width: 1.4;
 }
 
-.piano-scale-dot {
+.piano-scale-dot,
+.piano-scale-dot-on-mark {
   fill: var(--ink);
 }
 
 .piano-scale-dot-black {
   fill: var(--paper);
-}
-
-.piano-scale-dot-on-mark {
-  fill: var(--ink);
 }
 
 .chords-guitars {
