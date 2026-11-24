@@ -5,6 +5,32 @@ import { scaleNoteNames, scalesForChord } from '../music/scales'
 import { Popover } from './Popover'
 import './chordHelper.css'
 
+export type HelperView = 'both' | 'keyboard' | 'guitar'
+
+const HELPER_VIEW_KEY = 'openstand:helper-view'
+
+function isHelperView(value: unknown): value is HelperView {
+  return value === 'both' || value === 'keyboard' || value === 'guitar'
+}
+
+function loadHelperView(): HelperView {
+  try {
+    if (typeof localStorage === 'undefined') return 'both'
+    const saved = localStorage.getItem(HELPER_VIEW_KEY)
+    return isHelperView(saved) ? saved : 'both'
+  } catch {
+    return 'both'
+  }
+}
+
+function saveHelperView(view: HelperView): void {
+  try {
+    localStorage.setItem(HELPER_VIEW_KEY, view)
+  } catch {
+    // Storage may be disabled in private browsing
+  }
+}
+
 const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11] as const
 const BLACK_PCS = [
   { pc: 1, after: 0 },
@@ -122,6 +148,12 @@ function GuitarDiagram({ label, shape, position }: { label: string; shape: FretS
 export function ChordHelper({ chord, keyPc, following, onFollowChange, open, onOpenChange }: ChordHelperProps) {
   const chordKey = `${chord.root}:${chord.bass}:${chord.quality}:${chord.tensions.join(',')}`
   const [picked, setPicked] = useState<{ chordKey: string; scaleId: string } | null>(null)
+  const [view, setView] = useState<HelperView>(loadHelperView)
+
+  const handleViewChange = (next: HelperView) => {
+    setView(next)
+    saveHelperView(next)
+  }
 
   const scales = scalesForChord(chord)
   const activeScale = (picked?.chordKey === chordKey && scales.find((s) => s.id === picked.scaleId)) || scales[0]
@@ -172,12 +204,43 @@ export function ChordHelper({ chord, keyPc, following, onFollowChange, open, onO
             </label>
           </div>
 
-          <PianoKeyboard label={label} toneNames={toneNames} chordKeys={chordKeys} scaleKeys={scaleKeys} />
-
-          <div className="chords-guitars">
-            <GuitarDiagram label={label} shape={shapes[0]} position={1} />
-            <GuitarDiagram label={label} shape={shapes[1]} position={2} />
+          <div className="chords-view" role="group" aria-label="Show">
+            <button
+              type="button"
+              className="chords-view-btn"
+              aria-pressed={view === 'both'}
+              onClick={() => handleViewChange('both')}
+            >
+              Both
+            </button>
+            <button
+              type="button"
+              className="chords-view-btn"
+              aria-pressed={view === 'keyboard'}
+              onClick={() => handleViewChange('keyboard')}
+            >
+              Keyboard
+            </button>
+            <button
+              type="button"
+              className="chords-view-btn"
+              aria-pressed={view === 'guitar'}
+              onClick={() => handleViewChange('guitar')}
+            >
+              Guitar
+            </button>
           </div>
+
+          {(view === 'both' || view === 'keyboard') && (
+            <PianoKeyboard label={label} toneNames={toneNames} chordKeys={chordKeys} scaleKeys={scaleKeys} />
+          )}
+
+          {(view === 'both' || view === 'guitar') && (
+            <div className="chords-guitars">
+              <GuitarDiagram label={label} shape={shapes[0]} position={1} />
+              <GuitarDiagram label={label} shape={shapes[1]} position={2} />
+            </div>
+          )}
 
           <div className="chords-scales">
             <div className="chords-scale-bar">

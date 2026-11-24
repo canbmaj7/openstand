@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { ROW_CELLS, type Chart as ChartData, type ChartBar, type TimeSignature } from '../music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from '../music/chords'
 import type { StyleDefinition } from '../styles/types'
@@ -17,6 +17,7 @@ interface ChartProps {
   range?: [number, number] | null // looped bars
   selectedBar?: number | null // the bar being edited
   plain?: boolean
+  startAt?: string | null
   onBarClick?: (index: number) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   header?: ReactNode // replaces the title block, e.g. with inputs in the editor
@@ -76,11 +77,13 @@ interface BarProps {
   inRange: boolean
   selected: boolean
   plain?: boolean
+  startChordIndex?: number | null
   onClick?: (index: number) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
+  barRef?: (el: HTMLDivElement | null) => void
 }
 
-function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, plain, onClick, onChordClick }: BarProps) {
+function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selected, plain, startChordIndex, onClick, onChordClick, barRef }: BarProps) {
   const { bar, chords, column, closesRow, index } = placed
   const classes = ['bar']
   if (bar.spacer) classes.push('bar-spacer')
@@ -109,6 +112,8 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
 
   return (
     <div
+      ref={barRef}
+      data-measure={index}
       className={classes.join(' ')}
       style={style}
       role={interactive ? 'button' : undefined}
@@ -155,6 +160,7 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
             chord={chord}
             keyPc={keyPc}
             plain={plain}
+            isStart={startChordIndex === j}
             onSelect={onChordClick ? (selected) => onChordClick(selected, index, j) : undefined}
           />
         ) : symbol === null ? (
@@ -177,11 +183,80 @@ function Bar({ placed, prev, keyPc, active, progress, showTime, inRange, selecte
   )
 }
 
+function findScrollContainer(el: HTMLElement): HTMLElement | null {
+  let parent = el.parentElement
+  while (parent) {
+    const { overflowY } = window.getComputedStyle(parent)
+    if (overflowY === 'auto' || overflowY === 'scroll') return parent
+    parent = parent.parentElement
+  }
+  return null
+}
+
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, beatInBar, barBeats, range, selectedBar, plain, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, beatInBar, barBeats, range, selectedBar, plain, startAt, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
   const keyName = prettyKey(noteName(keyPc, keyPrefersFlats(keyPc))) + (chart.minor ? '−' : '')
+  const [startBar, startChord] = startAt ? startAt.split(':').map(Number) : [-1, -1]
+
+  const activeBarRef = useRef<HTMLDivElement | null>(null)
+  const lastUserScrollRef = useRef(0)
+
+  useEffect(() => {
+    const onUserScroll = () => {
+      lastUserScrollRef.current = Date.now()
+    }
+    window.addEventListener('wheel', onUserScroll, { passive: true })
+    window.addEventListener('touchmove', onUserScroll, { passive: true })
+    return () => {
+      window.removeEventListener('wheel', onUserScroll)
+      window.removeEventListener('touchmove', onUserScroll)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeMeasure === null) return
+    if (typeof window !== 'undefined' && window.matchMedia('print').matches) return
+    if (Date.now() - lastUserScrollRef.current < 4000) return
+
+    const barEl = activeBarRef.current
+    if (!barEl) return
+
+    const container = findScrollContainer(barEl)
+    const containerRect = container
+      ? container.getBoundingClientRect()
+      : { top: 0, bottom: window.innerHeight }
+
+    const topBar = document.querySelector('.topbar')
+    const transport = document.querySelector('.transport')
+    const topBarBottom = topBar ? topBar.getBoundingClientRect().bottom : 0
+    const transportTop = transport ? transport.getBoundingClientRect().top : window.innerHeight
+
+    const visibleTop = Math.max(containerRect.top, topBarBottom, 0)
+    const visibleBottom = Math.min(containerRect.bottom, transportTop, window.innerHeight)
+
+    const barRect = barEl.getBoundingClientRect()
+    const computed = window.getComputedStyle(barEl)
+    const marginTop = parseFloat(computed.scrollMarginTop) || 0
+    const marginBottom = parseFloat(computed.scrollMarginBottom) || 0
+
+    const fitsWithMargins = visibleBottom - visibleTop >= barRect.height + marginTop + marginBottom
+    const isFullyVisible = fitsWithMargins
+      ? barRect.top - marginTop >= visibleTop - 1 && barRect.bottom + marginBottom <= visibleBottom + 1
+      : barRect.top >= visibleTop - 1 && barRect.bottom <= visibleBottom + 1
+
+    if (isFullyVisible || (!fitsWithMargins && barRect.top >= visibleTop - 1 && barRect.top <= visibleTop + 10)) return
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const behavior: ScrollBehavior = prefersReduced ? 'auto' : 'smooth'
+
+    barEl.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior,
+    })
+  }, [activeMeasure])
 
   return (
     <article className="sheet" aria-label={`${chart.title} chord chart`}>
@@ -203,11 +278,13 @@ export function Chart(props: ChartProps) {
                 prev={row[b - 1]}
                 keyPc={keyPc}
                 active={activeMeasure === placed.index}
+                barRef={activeMeasure === placed.index ? (el) => { activeBarRef.current = el } : undefined}
                 progress={Math.min(1, beatInBar / barBeats)}
                 showTime={placed.index === 0 ? chart.time : (placed.bar.time ?? null)}
                 inRange={!!range && placed.index >= Math.min(...range) && placed.index <= Math.max(...range)}
                 selected={selectedBar === placed.index}
                 plain={plain}
+                startChordIndex={placed.index === startBar ? startChord : null}
                 onClick={onBarClick}
                 onChordClick={onChordClick}
               />

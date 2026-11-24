@@ -28,3 +28,35 @@ export function sections(chart: Chart): { name: string; from: number; to: number
     return { name: mark === 'i' ? 'Intro' : mark === 'v' ? 'Verse' : mark, from, to }
   })
 }
+
+// Find the beat on the timeline where a selected chord starts in chorus 0.
+// If not found or if chord offset cannot be determined, falls back to the bar start.
+export function startBeatFor(
+  timeline: { bars: { start: number; beats: number; measure: number }[]; slots: { chorus: number; measure: number; start: number }[]; countIn: number },
+  barIndex: number,
+  chordIndex: number,
+  chart?: Chart,
+): number {
+  const firstBar = timeline.bars.find((b) => b.measure === barIndex)
+  if (!firstBar) return timeline.countIn
+
+  if (chart && chart.bars[barIndex]) {
+    const bar = chart.bars[barIndex]
+    if (chordIndex >= 0 && chordIndex < bar.chords.length) {
+      const offset = bar.chords.slice(0, chordIndex).reduce((sum, c) => sum + c.beats, 0)
+      if (offset < firstBar.beats) {
+        return firstBar.start + offset
+      }
+    }
+    return firstBar.start
+  }
+
+  const barSlots = timeline.slots.filter(
+    (s) => s.chorus === 0 && s.measure === barIndex && s.start >= firstBar.start && s.start < firstBar.start + firstBar.beats,
+  )
+  if (chordIndex >= 0 && chordIndex < barSlots.length) {
+    return barSlots[chordIndex].start
+  }
+
+  return firstBar.start
+}

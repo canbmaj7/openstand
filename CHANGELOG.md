@@ -5,6 +5,11 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 
 ## Unreleased
 
+#### Added
+- **Start from a chord**: click a chord before pressing Play and the band starts from it (without a count-in). The chord is marked while stopped; click it again with the chord helper open to clear it. [#51]
+- **Chart follows the music**: while playing, the chart scrolls so the playing bar stays in view, and leaves you alone for a few seconds after you scroll yourself. [#50]
+- **Chord helper view**: choose Both, Keyboard or Guitar in the chord helper; the choice is remembered. [#53]
+
 ## 0.2.0 — 2026-11-24
 
 ### 2026-11-24
