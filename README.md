@@ -114,6 +114,10 @@ tests/          Unit tests
 
 The engine (`src/engine`, `src/music`, `src/styles`, `src/formats`) does not touch the DOM, so it can be split into its own package for other projects.
 
+### Use the engine in your own project
+
+The accompaniment engine, chart parsers, and styles are packaged as [`@openstand/engine`](packages/engine/README.md) with zero dependencies and no DOM requirements. Pass a chord chart or an `irealb://` link to `backingTrack()` to generate a multi-track Standard MIDI File and timeline in Node or any JS runtime.
+
 ## Styles
 
 A style is **data, not code**. Each one lives in `src/styles/library/` and describes three parts. The engine handles transposition, voice leading and fitting patterns to the chords.
