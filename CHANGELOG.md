@@ -6,10 +6,12 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- **Time signature per bar**: in the editor, select a bar and change its time signature, for just that bar or from there on. [#23]
 - **Download MIDI**: the Share menu saves the backing track as a MIDI file at the current tempo, with bass, piano and drums on separate tracks. [#1]
 - **ChordPro export**: download the chart as a ChordPro chord grid for songbook apps. [#4]
 - **Chart files**: save a chart as `.openstand.json` and open it again from Import; broken files show an error instead of failing. [#5]
 - **Guitar comping**: pick a guitar as the comping sound and the band comps like a guitarist, with playable guitar voicings and, in the swing styles, four to the bar. Pianists can mute the piano and comp themselves. [#52]
+- **Style Lab keeps your style**: Style Lab opens from the tune's current style, a saved custom style stays selected after closing, each tune remembers its style (also in the library), and closing with unsaved changes asks to Save & close, Discard or Keep editing. Thanks @zerotraceme. [#49, #63]
 - **Choose the sounds**: in the mixer, pick the bass (acoustic, electric, fretless, synth), the comping instrument (pianos, guitars, organs, vibraphone) and the drum kit (standard, room, power, jazz, brush). "Style" keeps the style's own sound; the choice is remembered. [#29]
 - **Start from a chord**: click a chord before pressing Play and the band starts from it (without a count-in). The chord is marked while stopped; click it again with the chord helper open to clear it. [#51]
 - **Chart follows the music**: while playing, the chart scrolls so the playing bar stays in view, and leaves you alone for a few seconds after you scroll yourself. [#50]
