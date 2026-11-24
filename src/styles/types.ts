@@ -35,7 +35,7 @@ export type CompHit = [at: Position, dur: number, vel?: number]
 
 export interface CompPart {
   program: number
-  voicing: 'rootless' | 'close'
+  voicing: 'rootless' | 'close' | 'guitar'
   velocity: [min: number, max: number]
   rhythms: ByChordLength<CompHit[]>
   anticipation?: number // probability of hitting the chord an eighth early
