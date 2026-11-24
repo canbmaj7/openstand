@@ -5,6 +5,15 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 
 ## Unreleased
 
+### 2026-11-24
+
+#### Added
+- **Reggae style** (one drop): kick and rim together on beat 3, a bass riff that leaves beat one empty, and off-beat guitar skank. iReal Pro tunes marked "Reggae" now use it instead of Pop Rock. Thanks @jay23606. [#7, #39]
+
+#### Changed
+- Clicking the chord that is already open in the chord helper closes it again; clicking another chord switches to it. Thanks @zerotraceme. [#45, #46]
+- <kbd>Space</kbd> plays and stops again after you click a button with the mouse, instead of pressing that button again. Buttons reached with the keyboard keep their normal Space action. Thanks @zerotraceme. [#47, #48]
+
 ### 2026-11-11
 
 #### Added
