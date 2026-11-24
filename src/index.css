@@ -1901,6 +1901,18 @@ input.fader::-moz-range-thumb {
   gap: 8px 14px;
 }
 
+.lab-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.lab-close {
+  flex: none;
+}
+
 .lab-tabs,
 .lab-options {
   align-items: center;
@@ -1918,6 +1930,12 @@ input.fader::-moz-range-thumb {
   margin: 0 6px 6px 0;
   font-size: 15px;
   font-weight: 600;
+}
+
+.lab-unsaved {
+  margin-bottom: 7px;
+  font: 500 11px/1 var(--mono);
+  color: var(--muted);
 }
 
 .lab-swing {
@@ -2059,18 +2077,17 @@ input.fader::-moz-range-thumb {
     gap: 8px 10px;
   }
 
-  .lab-title {
-    display: none;
+  .lab-actions {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .lab-close {
-    position: absolute;
-    top: 8px;
-    right: 10px;
+    order: -1;
   }
 
-  .lab-head {
-    padding-right: 36px;
+  .lab-title {
+    display: none;
   }
 
   .lab {
