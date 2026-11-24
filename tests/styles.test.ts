@@ -37,6 +37,7 @@ describe('styles', () => {
     expect(mapStyle('Slow Blues')).toBe('shuffle')
     expect(mapStyle('Rock Pop')).toBe('pop-rock')
     expect(mapStyle('Ballad')).toBe('ballad')
+    expect(mapStyle('Reggae')).toBe('reggae')
   })
 
   test('a waltz counts in "1 . . | 1 2 3" and keeps its bars three beats long', () => {
