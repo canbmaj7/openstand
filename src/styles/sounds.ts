@@ -1,4 +1,4 @@
-import type { StyleDefinition } from './types'
+import type { ByChordLength, CompHit, StyleDefinition } from './types'
 
 export type SoundChoice = { bass: number | null; comp: number | null; drums: number | null }
 export type SoundPart = keyof SoundChoice
@@ -52,12 +52,42 @@ export const SOUNDS_KEY = 'openstand:sounds'
 
 export const DEFAULT_SOUNDS: SoundChoice = { bass: null, comp: null, drums: null }
 
+const isGuitarProgram = (program: number) => program >= 24 && program <= 31
+
+// Four-to-the-bar ("Freddie Green") quarter-note strums with a light accent on beats 2 and 4
+function freddieGreenRhythms([v1, v2]: [number, number]): ByChordLength<CompHit[]> {
+  return {
+    '4': [[[0, 0.45, v1], [1, 0.45, v2], [2, 0.45, v1], [3, 0.45, v2]]],
+    '3': [[[0, 0.45, v1], [1, 0.45, v2], [2, 0.45, v2]]],
+    '2': [[[0, 0.45, v1], [1, 0.45, v2]]],
+    '1': [[[0, 0.45, v1]]],
+  }
+}
+
+function compWithSound(style: StyleDefinition, program: number | null): StyleDefinition['comp'] {
+  if (program === null) return style.comp
+  if (!isGuitarProgram(program) || isGuitarProgram(style.comp.program)) {
+    return { ...style.comp, program }
+  }
+  if (style.family === 'jazz') {
+    return {
+      ...style.comp,
+      program,
+      voicing: 'guitar',
+      pedal: false,
+      anticipation: 0,
+      rhythms: freddieGreenRhythms(style.comp.velocity),
+    }
+  }
+  return { ...style.comp, program, voicing: 'guitar', pedal: false }
+}
+
 /** Returns a new style with any non-null sound choices applied without mutating the input. */
 export function withSounds(style: StyleDefinition, sounds: SoundChoice): StyleDefinition {
   return {
     ...style,
     bass: sounds.bass === null ? style.bass : { ...style.bass, program: sounds.bass },
-    comp: sounds.comp === null ? style.comp : { ...style.comp, program: sounds.comp },
+    comp: compWithSound(style, sounds.comp),
     drums: sounds.drums === null ? style.drums : { ...style.drums, kit: sounds.drums },
   }
 }
