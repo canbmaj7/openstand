@@ -1,13 +1,16 @@
 import { useEffect, useRef } from 'react'
 import type { Part } from '../engine/arrange'
+import { SOUND_OPTIONS, type SoundChoice } from '../styles/sounds'
 import { Popover } from './Popover'
 
 interface MixerProps {
   labels: Record<Part, string>
   volumes: Record<Part, number>
   muted: Record<Part, boolean>
+  sounds: SoundChoice
   onVolume: (part: Part, volume: number) => void
   onMute: (part: Part) => void
+  onSound: (part: Part, program: number | null) => void
   master: number
   masterMuted: boolean
   onMaster: (volume: number) => void
@@ -19,12 +22,20 @@ interface MixerProps {
 
 const PARTS: Part[] = ['bass', 'comp', 'drums']
 
+const SOUND_LABELS: Record<Part, string> = {
+  bass: 'Bass sound',
+  comp: 'Comping sound',
+  drums: 'Drum kit',
+}
+
 export function Mixer({
   labels,
   volumes,
   muted,
+  sounds,
   onVolume,
   onMute,
+  onSound,
   master,
   masterMuted,
   onMaster,
@@ -37,7 +48,7 @@ export function Mixer({
     <Popover
       id="mixer"
       className="band"
-      active={PARTS.some((p) => muted[p]) || masterMuted || sync !== 0}
+      active={PARTS.some((p) => muted[p] || sounds[p] !== null) || masterMuted || sync !== 0}
       label={
         <>
           <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -54,6 +65,19 @@ export function Mixer({
             {PARTS.map((part) => (
               <div key={part} className={`strip${muted[part] ? ' strip-muted' : ''}`}>
                 <span className="label">{labels[part]}</span>
+                <select
+                  className="select strip-sound"
+                  aria-label={SOUND_LABELS[part]}
+                  value={sounds[part] === null ? '' : String(sounds[part])}
+                  onChange={(e) => onSound(part, e.target.value === '' ? null : Number(e.target.value))}
+                >
+                  <option value="">Style</option>
+                  {SOUND_OPTIONS[part].map((opt) => (
+                    <option key={opt.program} value={opt.program}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
                 <input
                   className="fader"
                   type="range"
