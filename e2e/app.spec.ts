@@ -35,6 +35,25 @@ test('a tune plays and the bar counter moves', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('Space toggles playback after a pointer click but keeps keyboard button activation', async ({ page }) => {
+  const plainChords = page.getByRole('button', { name: 'Plain chords' })
+
+  await plainChords.focus()
+  await plainChords.press('Space')
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+  await plainChords.press('Space')
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'false')
+
+  await plainChords.click()
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
+  await plainChords.press('Space')
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
+  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Space')
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+})
+
 test('changing the key re-spells the chords', async ({ page }) => {
   const before = await chords(page).first().getAttribute('aria-label')
   const key = control(page, 'Key')

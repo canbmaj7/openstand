@@ -19,6 +19,16 @@ function actions() {
   return { toggle: vi.fn(), tempo: vi.fn(), transpose: vi.fn(), clearLoop: vi.fn() }
 }
 
+function controlTarget(kind: 'button' | 'input') {
+  const target = {
+    closest: (selector: string) => {
+      if (selector === 'button, [role="button"]') return kind === 'button' ? target : null
+      return target
+    },
+  }
+  return target as unknown as HTMLElement
+}
+
 describe('practice keyboard shortcuts', () => {
   test.each([
     ['Space', 'toggle', undefined],
@@ -59,6 +69,32 @@ describe('practice keyboard shortcuts', () => {
       }
     },
   )
+
+  test('Space toggles playback after a button receives pointer focus', () => {
+    const handlers = actions()
+    const button = controlTarget('button')
+    const event = keyEvent('Space', { target: button })
+    handlePracticeShortcut(event, false, handlers, button)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(handlers.toggle).toHaveBeenCalledOnce()
+  })
+
+  test('Space keeps its native action on a keyboard-focused button', () => {
+    const handlers = actions()
+    const event = keyEvent('Space', { target: controlTarget('button') })
+    handlePracticeShortcut(event, false, handlers)
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(handlers.toggle).not.toHaveBeenCalled()
+  })
+
+  test('Space keeps its native action in an input even after a pointer click', () => {
+    const handlers = actions()
+    const input = controlTarget('input')
+    const event = keyEvent('Space', { target: input })
+    handlePracticeShortcut(event, false, handlers, input)
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(handlers.toggle).not.toHaveBeenCalled()
+  })
 
   test.each(['altKey', 'ctrlKey', 'metaKey', 'isComposing', 'defaultPrevented'] as const)(
     '%s leaves handled or composing keys alone', (flag) => {
