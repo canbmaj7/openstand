@@ -36,7 +36,7 @@ No install, no account, no subscription. Just open the page and play.
 OpenStand is an **early but usable** practice tool (see the [changelog](CHANGELOG.md) for what changed and when). What works today:
 
 - **Import from iReal Pro.** Paste an `irealb://` link or a whole playlist (or choose an iReal Pro HTML export) and the tunes land in your library. Sections, repeats, first and second endings, D.C./D.S. al Coda/Fine, time signatures and N.C. bars are all read and played in the right order. Tested against public playlists of almost 2,000 tunes.
-- **Write your own charts.** Type chords the way you would say them (`Dm7 G7`, `Cmaj7`, `Bø`, `F#dim7`) and press Enter for the next bar. Add sections, repeats, endings, segno and coda, D.C./D.S. jumps, time signature, key, style and tempo. Edit any tune in the library the same way.
+- **Write your own charts.** Type chords the way you would say them (`Dm7 G7`, `Cmaj7`, `Bø`, `F#dim7`) and press Enter for the next bar. Add sections, repeats, endings, segno and coda, D.C./D.S. jumps, time signature (for the whole tune or a single bar), key, style and tempo. Edit any tune in the library the same way.
 - **Export to iReal Pro.** Any chart, imported or written here, can be copied as an `irealb://` link that opens in iReal Pro. All ~2,000 test tunes come back unchanged after going out and in again.
 - **A tune library in your browser.** It starts with fifteen example tunes in 4/4, 3/4, 6/8, 12/8 and 5/4. Search by title or composer, filter by playlist. Everything is stored locally (IndexedDB); there is no server and no account.
 - **Share a tune as a link.** The whole chart is compressed into the URL, so whoever opens it sees and hears the same tune.
