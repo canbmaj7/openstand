@@ -1,7 +1,7 @@
 import { chordTones, closeVoicingTones, rootlessVoicings, type Chord } from '../music/chords'
 import { guitarShapes } from '../music/fretboard'
 import type { CompHit, CompPart } from '../styles/types'
-import { chance, humanize, place, rand, toTicks, type NoteEvent } from './events'
+import { chance, humanize, pick, place, rand, toTicks, type NoteEvent } from './events'
 import { patternFor } from './meter'
 import type { Slot } from './timeline'
 
@@ -107,9 +107,10 @@ function chooseVoicing(chord: Chord, kind: CompPart['voicing'], prev: number[]):
 export function generateComp(slots: Slot[], part: CompPart, swing: number, countIn: number, compound: CompPart = part): NoteEvent[] {
   const events: NoteEvent[] = []
   let prev: number[] = []
+  let activeTwoBar: CompHit[] | null = null
 
   slots.forEach((slot) => {
-    const { rhythms, anticipation = 0 } = slot.compound ? compound : part
+    const { rhythms, twoBar, anticipation = 0 } = slot.compound ? compound : part
     const feel = slot.compound ? 0.5 : swing
     const voicing = chooseVoicing(slot.chord, part.voicing, prev)
     prev = voicing
@@ -123,11 +124,24 @@ export function generateComp(slots: Slot[], part: CompPart, swing: number, count
       return
     }
 
-    const timed = (rhythm: CompHit[][] | undefined) => rhythm?.map((hits) => hits.map(([at, dur, vel]) => ({ at, dur, vel })))
-    const byLength = Object.fromEntries(Object.entries(rhythms).map(([length, options]) => [length, timed(options)]))
-    const hits: CompHit[] = patternFor(byLength, slot.beats, !!slot.compound, { at: 0, dur: 0.6, vel: undefined }).map(
-      ({ at, dur, vel }): CompHit => [at, dur, vel],
-    )
+    let hits: CompHit[]
+    if (twoBar?.length && !slot.compound && slot.beats === 4) {
+      // Two-bar comping figures (0..8 beats): split across even/odd 4/4 bars on the timeline
+      const barIndex = Math.max(0, Math.round((slot.start - countIn) / 4))
+      const half = barIndex % 2
+      if (half === 0 || !activeTwoBar) activeTwoBar = pick(twoBar)
+      const offset = half * 4
+      hits = activeTwoBar
+        .filter(([at]) => at >= offset && at < offset + 4)
+        .map(([at, dur, vel]): CompHit => [at - offset, dur, vel])
+    } else {
+      activeTwoBar = null
+      const timed = (rhythm: CompHit[][] | undefined) => rhythm?.map((hits) => hits.map(([at, dur, vel]) => ({ at, dur, vel })))
+      const byLength = Object.fromEntries(Object.entries(rhythms).map(([length, options]) => [length, timed(options)]))
+      hits = patternFor(byLength, slot.beats, !!slot.compound, { at: 0, dur: 0.6, vel: undefined }).map(
+        ({ at, dur, vel }): CompHit => [at, dur, vel],
+      )
+    }
     if (!hits.length) return
 
     // Sometimes anticipate the chord by an eighth

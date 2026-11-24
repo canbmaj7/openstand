@@ -38,6 +38,7 @@ export interface CompPart {
   voicing: 'rootless' | 'close' | 'guitar'
   velocity: [min: number, max: number]
   rhythms: ByChordLength<CompHit[]>
+  twoBar?: CompHit[][] // optional 2-bar figures (positions 0..8) used on full 4/4 bars
   anticipation?: number // probability of hitting the chord an eighth early
   pedal?: boolean // sustain pedal held through each chord (legato piano)
 }
