@@ -12,18 +12,21 @@ export interface Click {
   level: 'bar' | 'beat' | 'sub'
 }
 
+export type CountInMode = 'auto' | 'off' | 1 | 2
+
 // The count-in follows the tune's meter, the way a band leader counts off:
 // 4/4 "1 . 2 . | 1 2 3 4", 3/4 "1 . . | 1 2 3", 2/4 "1 2 | 1 2",
 // 6/8 "1 . 2 . | 1 2 3 4 5 6" (eighths, stronger on the pulses), 12/8 and 9/8 one bar of
 // eighths counted on the pulses ("1 & a 2 & a 3 & a 4 & a"), 5/4 (3+2) and 6/4 (3+3) one bar.
-export function countInClicks(chart: Chart): Click[] {
+export function countInClicks(chart: Chart, mode: CountInMode = 'auto'): Click[] {
+  if (mode === 'off') return []
   const beats = beatsPerBar(chart.time)
   const click = (at: number, count: number, level: Click['level']): Click => ({ at, count, level })
+  const barCount = (autoBars: number) => (mode === 'auto' ? autoBars : mode)
   const groups = groupsFor(chart.time, chart.groups ?? chart.bars[0]?.groups)
   if (groups) {
     const starts = groupStarts(groups)
-    const count = beats <= 4 ? 2 : 1
-    return Array.from({ length: count }, (_, b) =>
+    return Array.from({ length: barCount(beats <= 4 ? 2 : 1) }, (_, b) =>
       starts.map((at, i) => click(b * beats + at, i + 1, i === 0 ? 'bar' : 'beat')),
     ).flat()
   }
@@ -32,32 +35,33 @@ export function countInClicks(chart: Chart): Click[] {
       Array.from({ length: Math.round(beats * 2) }, (_, i) =>
         click(start + i / 2, counted(i), i === 0 ? 'bar' : i % 3 === 0 ? 'beat' : 'sub'),
       )
-    if (beats === 2 * PULSE) return [click(0, 1, 'bar'), click(PULSE, 2, 'beat'), ...eighths(beats, (i) => i + 1)]
-    return eighths(0, (i) => Math.floor(i / 3) + 1)
+    if (beats === 2 * PULSE) {
+      if (mode === 1) return eighths(0, (i) => i + 1)
+      return [click(0, 1, 'bar'), click(PULSE, 2, 'beat'), ...eighths(beats, (i) => i + 1)]
+    }
+    return Array.from({ length: barCount(1) }, (_, b) => eighths(b * beats, (i) => Math.floor(i / 3) + 1)).flat()
   }
   const bars = (list: number[][]) =>
     list.flatMap((counts, b) => counts.map((at, i) => click(b * beats + at, i + 1, at === 0 ? 'bar' : 'beat')))
-  if (beats === 4)
-    return bars([
-      [0, 2],
-      [0, 1, 2, 3],
-    ])
-  if (beats === 3) return bars([[0], [0, 1, 2]])
-  if (beats === 2)
-    return bars([
-      [0, 1],
-      [0, 1],
-    ])
+  if (beats === 4) return bars(mode === 1 ? [[0, 1, 2, 3]] : [[0, 2], [0, 1, 2, 3]])
+  if (beats === 3) return bars(mode === 1 ? [[0, 1, 2]] : [[0], [0, 1, 2]])
+  if (beats === 2) return bars(mode === 1 ? [[0, 1]] : [[0, 1], [0, 1]])
   if (Number.isInteger(beats) && beats > 4) {
     // Stronger where the bar divides: 5/4 as 3+2, 6/4 as 3+3
-    return Array.from({ length: beats }, (_, i) => click(i, i + 1, i === 0 ? 'bar' : i === 3 ? 'beat' : 'sub'))
+    return Array.from({ length: barCount(1) }, (_, b) =>
+      Array.from({ length: beats }, (_, i) => click(b * beats + i, i + 1, i === 0 ? 'bar' : i === 3 ? 'beat' : 'sub')),
+    ).flat()
   }
-  return [0, 1, 2, 3].map((at) => click(at, at + 1, at === 0 ? 'bar' : 'beat'))
+  return Array.from({ length: barCount(1) }, (_, b) =>
+    [0, 1, 2, 3].map((at) => click(b * beats + at, at + 1, at === 0 ? 'bar' : 'beat')),
+  ).flat()
 }
 
 // Count-in length in beats: two bars of short meters, one bar of long ones
-export function countInBeats(chart: Chart): number {
+export function countInBeats(chart: Chart, mode: CountInMode = 'auto'): number {
+  if (mode === 'off') return 0
   const beats = beatsPerBar(chart.time)
+  if (mode === 1 || mode === 2) return beats * mode
   const groups = groupsFor(chart.time, chart.groups ?? chart.bars[0]?.groups)
   if (groups) return beats <= 4 ? 2 * beats : beats
   if (isCompound(chart.time)) return beats === 2 * PULSE ? 2 * beats : beats
@@ -104,6 +108,7 @@ export interface PracticeOptions {
   loop?: [from: number, to: number] | null // written bar indices, inclusive
   keyStep?: number // semitones added to the key on each chorus (5 = round the cycle of fourths)
   subs?: SubMode // whether to play optional substitution chords ('off' by default)
+  countIn?: CountInMode // count-in bars: 'auto' (default), 'off', 1, or 2
 }
 
 function shouldSubRandom(chorus: number, measure: number, chordIndex: number): boolean {
@@ -183,7 +188,8 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
   const order = practiceOrder(chart, practice.loop)
   const slots: Slot[] = []
   const bars: Bar[] = []
-  const countIn = countInBeats(chart)
+  const countInMode: CountInMode = practice.countIn ?? 'auto'
+  const countIn = countInBeats(chart, countInMode)
   let beat = countIn
 
   let carried: { measure: number; chordIndex: number; chord: BarChord } | null = null
@@ -264,7 +270,7 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
     beat += beats
   }
 
-  return { slots, bars, totalBeats: beat, countIn, clicks: countInClicks(chart) }
+  return { slots, bars, totalBeats: beat, countIn, clicks: countInClicks(chart, countInMode) }
 }
 
 export function slotAtBeat(timeline: Timeline, beat: number): Slot | undefined {

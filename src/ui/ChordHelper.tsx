@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { closeVoicingTones, keyPrefersFlats, noteName, spellRoot, type Chord } from '../music/chords'
-import { guitarShapes, type FretShape } from '../music/fretboard'
+import { guitarShapes, ukuleleShapes, type FretShape } from '../music/fretboard'
 import { scaleNoteNames, scalesForChord } from '../music/scales'
 import { Popover } from './Popover'
 import './chordHelper.css'
 
-export type HelperView = 'both' | 'keyboard' | 'guitar'
+export type HelperView = 'both' | 'keyboard' | 'guitar' | 'ukulele'
 
 const HELPER_VIEW_KEY = 'openstand:helper-view'
 
 function isHelperView(value: unknown): value is HelperView {
-  return value === 'both' || value === 'keyboard' || value === 'guitar'
+  return value === 'both' || value === 'keyboard' || value === 'guitar' || value === 'ukulele'
 }
 
 function loadHelperView(): HelperView {
@@ -102,8 +102,22 @@ function PianoKeyboard({
   )
 }
 
-function GuitarDiagram({ label, shape, position }: { label: string; shape: FretShape; position: number }) {
-  const bassString = shape.frets.findIndex((f) => f !== null)
+function FretDiagram({
+  instrument,
+  label,
+  shape,
+  position,
+}: {
+  instrument: 'guitar' | 'ukulele'
+  label: string
+  shape: FretShape
+  position: number
+}) {
+  const strings = shape.frets.length
+  const step = 14
+  const left = 26 + ((6 - strings) * step) / 2
+  const right = left + (strings - 1) * step
+  const bassString = instrument === 'guitar' ? shape.frets.findIndex((f) => f !== null) : -1
   const fretsLabel = shape.frets.map((f) => f ?? 'x').join(' ')
 
   return (
@@ -111,19 +125,19 @@ function GuitarDiagram({ label, shape, position }: { label: string; shape: FretS
       className="chords-guitar"
       viewBox="0 0 116 108"
       role="img"
-      aria-label={`${label} on guitar, position ${position}: ${fretsLabel}`}
+      aria-label={`${label} on ${instrument}, position ${position}: ${fretsLabel}`}
     >
       {shape.baseFret > 1 && (
-        <text x={20} y={33} textAnchor="end" className="guitar-fret-num">
+        <text x={left - 6} y={33} textAnchor="end" className="guitar-fret-num">
           {shape.baseFret}fr
         </text>
       )}
       {[1, 2, 3, 4].map((row) => (
-        <line key={row} x1={26} y1={18 + row * 20} x2={96} y2={18 + row * 20} className="guitar-grid" />
+        <line key={row} x1={left} y1={18 + row * 20} x2={right} y2={18 + row * 20} className="guitar-grid" />
       ))}
-      <line x1={26} y1={18} x2={96} y2={18} className={shape.baseFret === 1 ? 'guitar-nut' : 'guitar-top'} />
+      <line x1={left} y1={18} x2={right} y2={18} className={shape.baseFret === 1 ? 'guitar-nut' : 'guitar-top'} />
       {shape.frets.map((fret, s) => {
-        const x = 26 + s * 14
+        const x = left + s * step
         const row = fret !== null && fret > 0 ? fret - shape.baseFret : -1
         return (
           <g key={s}>
@@ -168,7 +182,8 @@ export function ChordHelper({ chord, keyPc, following, onFollowChange, open, onO
   const chordKeys = new Set(tones.map((t) => chord.root + t))
   const scaleKeys = new Set(activeScale.intervals.map((i) => chord.root + i))
   const scaleNames = scaleNoteNames(chord.root, activeScale, preferFlats)
-  const shapes = guitarShapes(chord)
+  const instrument = view === 'ukulele' ? 'ukulele' : 'guitar'
+  const shapes = instrument === 'ukulele' ? ukuleleShapes(chord) : guitarShapes(chord)
 
   return (
     <Popover
@@ -229,16 +244,24 @@ export function ChordHelper({ chord, keyPc, following, onFollowChange, open, onO
             >
               Guitar
             </button>
+            <button
+              type="button"
+              className="chords-view-btn"
+              aria-pressed={view === 'ukulele'}
+              onClick={() => handleViewChange('ukulele')}
+            >
+              Ukulele
+            </button>
           </div>
 
           {(view === 'both' || view === 'keyboard') && (
             <PianoKeyboard label={label} toneNames={toneNames} chordKeys={chordKeys} scaleKeys={scaleKeys} />
           )}
 
-          {(view === 'both' || view === 'guitar') && (
+          {(view === 'both' || view === 'guitar' || view === 'ukulele') && (
             <div className="chords-guitars">
-              <GuitarDiagram label={label} shape={shapes[0]} position={1} />
-              <GuitarDiagram label={label} shape={shapes[1]} position={2} />
+              <FretDiagram instrument={instrument} label={label} shape={shapes[0]} position={1} />
+              <FretDiagram instrument={instrument} label={label} shape={shapes[1]} position={2} />
             </div>
           )}
 
