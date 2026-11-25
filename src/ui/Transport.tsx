@@ -31,6 +31,8 @@ interface TransportProps {
   choruses: number
   maxChoruses: number
   onChoruses: (n: number) => void
+  hasTuneSettings?: boolean
+  onResetTune?: () => void
   children?: ReactNode
 }
 
@@ -167,6 +169,21 @@ export function Transport(props: TransportProps) {
           </button>
         </div>
       </div>
+
+      {props.hasTuneSettings && props.onResetTune && (
+        <button
+          type="button"
+          className="chip control-reset"
+          aria-label="Reset to the tune's own tempo, key and repeats"
+          title="Reset to the tune's own tempo, key and repeats"
+          onClick={props.onResetTune}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4.8 11.2a4.5 4.5 0 1 0-1.3-4.2" />
+            <path d="M2.5 4.2v3h3" />
+          </svg>
+        </button>
+      )}
       </div>
 
       <div className="transport-band">{props.children}</div>
