@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'vitest'
+import { generateBass } from '../src/engine/bass'
+import { PPQ } from '../src/engine/events'
+import { buildTimeline } from '../src/engine/timeline'
 import { arrange } from '../src/engine/arrange'
 import { chartFromMeasures } from '../src/music/chart'
 import { getStyle, STYLES } from '../src/styles'
@@ -188,5 +191,53 @@ describe('bass and chord variations', () => {
     expect(odd.bassB?.slice(0, 2)).toEqual(['R', null])
     expect(odd.bassB).toHaveLength(16)
     expect(odd.compB?.slice(0, 2)).toEqual([true, false])
+  })
+})
+
+describe('style lab written bass (#154)', () => {
+  const twoChords = chartFromMeasures({ title: 'Two', style: 'bossa-nova', key: 0, bpm: 120 }, [
+    ['C^7'],
+    ['D-7', 'G7'],
+    ['C^7'],
+    ['D-7', 'G7'],
+  ])
+
+  // Bossa Nova opened in the lab, Line B removed, only Root on beat 1
+  function rootOnlyLab() {
+    const lab = labFromStyle(getStyle('bossa-nova'))
+    const steps = lab.bass.steps.map(() => null as (typeof lab.bass.steps)[number])
+    steps[0] = 'R'
+    return { ...lab, bass: { walking: false, steps }, bassB: null }
+  }
+
+  test('an edited written bass drops the base style hidden shorter patterns', () => {
+    const style = styleFromLab(rootOnlyLab())
+    expect(style.bass.mode).toBe('pattern')
+    if (style.bass.mode !== 'pattern') return
+    expect(Object.keys(style.bass.patterns)).toEqual(['4'])
+    expect(style.bass.patterns['4']).toEqual([[{ at: 0, dur: 2, tone: 'R' }]])
+  })
+
+  test('two-chord bars play only the chord roots, never hidden lead-ins', () => {
+    const style = styleFromLab(rootOnlyLab())
+    if (style.bass.mode !== 'pattern') throw new Error('pattern bass expected')
+    // Pattern choice is random, so arrange a few times
+    for (let run = 0; run < 20; run++) {
+      const timeline = buildTimeline(twoChords, 0, 2)
+      const notes = generateBass(timeline.slots, style.bass, style.swing)
+      for (const slot of timeline.slots.filter((s) => s.beats === 2)) {
+        // Notes are humanised by a few ticks
+        const inSlot = notes.filter((n) => n.tick >= slot.start * PPQ - 30 && n.tick < (slot.start + slot.beats) * PPQ - 30)
+        expect(inSlot).toHaveLength(1)
+        expect(inSlot[0].note % 12).toBe(slot.chord.bass % 12)
+      }
+    }
+  })
+
+  test('an unedited written bass keeps every pattern of the base style', () => {
+    const bossa = getStyle('bossa-nova')
+    const back = styleFromLab(labFromStyle(bossa))
+    if (back.bass.mode !== 'pattern' || bossa.bass.mode !== 'pattern') throw new Error('pattern bass expected')
+    expect(Object.keys(back.bass.patterns).sort()).toEqual(Object.keys(bossa.bass.patterns).sort())
   })
 })

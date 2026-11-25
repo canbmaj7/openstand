@@ -184,6 +184,15 @@ function lengths(onsets: number[], end: number, max: number): number[] {
 
 const round = (n: number) => Math.round(n * 1000) / 1000
 
+// Whether the lab's written bass is still exactly what the base style opened with
+function bassUnedited(lab: LabStyle, base: StyleDefinition): boolean {
+  if (lab.beats !== labBeats(base)) return false
+  const opened = labFromStyle(base)
+  return JSON.stringify([lab.bass, lab.bassB]) === JSON.stringify([opened.bass, opened.bassB])
+}
+
+const labBeats = (style: StyleDefinition): 3 | 4 => ((style.drums.grooves.middle[0]?.beats ?? 4) === 3 ? 3 : 4)
+
 export function styleFromLab(lab: LabStyle): StyleDefinition {
   const base = { ...getStyle(lab.base) }
   // The lab edits a single groove across all choruses, so drop chorus-specific overrides from the base style.
@@ -232,7 +241,9 @@ export function styleFromLab(lab: LabStyle): StyleDefinition {
           program: base.bass.program,
           range: base.bass.range,
           patterns: {
-            ...(base.bass.mode === 'pattern' ? base.bass.patterns : {}),
+            // Shorter-chord patterns of the base style stay only while the written bass is unedited;
+            // once edited, the visible pattern is the whole story and the engine fits it to shorter chords (#154)
+            ...(base.bass.mode === 'pattern' && bassUnedited(lab, base) ? base.bass.patterns : {}),
             [key]: bassPatterns,
           },
         }
