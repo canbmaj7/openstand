@@ -1122,6 +1122,17 @@ export default function App() {
                   <button
                     className="share-option"
                     onClick={() => {
+                      close()
+                      // Let the menu close before the print dialog takes a snapshot of the page
+                      window.setTimeout(() => window.print(), 50)
+                    }}
+                  >
+                    <span className="share-name">Print or save as PDF</span>
+                    <span className="share-desc">The chart on a clean page, in the key you see.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
                       downloadChartFile(baseChart)
                       close()
                     }}
