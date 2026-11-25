@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Reverb fader in the mixer, also used for the WAV export (#78).
 - Undo/redo and copy, cut and paste of bars in the chart editor (#72).
 - Download the backing track as audio (WAV) from the Share menu, rendered with the current key, tempo and mixer levels (#70).
 - Ukulele chord diagrams in the chord helper, and a count-in setting (auto, off, one or two bars) (#74).

@@ -7,6 +7,7 @@ export type WorkerRequest =
       soundBank: ArrayBuffer
       volumes: Record<number, number>
       masterGain: number
+      reverb?: number
     }
   | { type: 'abort' }
 
@@ -31,6 +32,7 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
   void renderWavCore(new Uint8Array(data.midi), data.soundBank, {
     volumes: data.volumes,
     masterGain: data.masterGain,
+    reverb: data.reverb,
     signal: controller.signal,
     onProgress: (ratio) => {
       const msg: WorkerResponse = { type: 'progress', ratio }

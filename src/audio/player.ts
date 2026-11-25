@@ -1,6 +1,7 @@
 import { MIDIControllers } from 'spessasynth_core'
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib'
 import processorUrl from 'spessasynth_lib/dist/spessasynth_processor.min.js?url'
+import { applyReverb, DEFAULT_REVERB } from './reverb'
 
 export const SOUNDFONT_URL = '/soundfonts/openstand.sf3'
 const UNLOCK_EVENTS = ['pointerdown', 'touchend', 'keydown'] as const
@@ -38,6 +39,7 @@ export class Player {
   private synth: WorkletSynthesizer | null = null
   private seq: Sequencer | null = null
   private volumes = new Map<number, number>()
+  private reverb = DEFAULT_REVERB
   // Loads go one at a time, so a warm-up load can't replace the song the user asked for
   private loading: Promise<void> = Promise.resolve()
   private playRequested = false
@@ -164,6 +166,7 @@ export class Player {
     }
     this.removeUnlock()
     this.applyVolumes()
+    this.applyReverb()
     if (fromSeconds > 0) seq.currentTime = fromSeconds
     seq.play()
   }
@@ -253,6 +256,15 @@ export class Player {
     midiChannel.lockController(MIDIControllers.mainVolume, false)
     this.synth.controllerChange(channel, MIDIControllers.mainVolume, Math.round(volume))
     midiChannel.lockController(MIDIControllers.mainVolume, true)
+  }
+
+  setReverb(reverb: number): void {
+    this.reverb = reverb
+    this.applyReverb()
+  }
+
+  private applyReverb(): void {
+    if (this.synth) applyReverb(this.synth, this.reverb)
   }
 
   private requireSeq(): Sequencer {
