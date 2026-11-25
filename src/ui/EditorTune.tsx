@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { Chart, TimeSignature } from '../music/chart'
 import { keyPrefersFlats, noteName } from '../music/chords'
 import { setGroups, setTime } from '../music/edit'
+import { transposeChart } from '../music/transposeChart'
 import { STYLES } from '../styles'
 import { GroupingField } from './GroupingField'
 
@@ -34,12 +36,14 @@ export function EditorTune({
   onCancel,
   onDelete,
 }: EditorTuneProps) {
+  const [moveChords, setMoveChords] = useState(true)
+  const changeKey = (key: number) => onChange(moveChords ? transposeChart(chart, key) : { ...chart, key })
   return (
     <div className="editor-row editor-tune">
       <label className="field">
         <span className="label">Key</span>
         <span className="field-pair">
-          <select className="select" value={chart.key} onChange={(e) => onChange({ ...chart, key: Number(e.target.value) })}>
+          <select className="select" aria-label="Key" value={chart.key} onChange={(e) => changeKey(Number(e.target.value))}>
             {Array.from({ length: 12 }, (_, pc) => (
               <option key={pc} value={pc}>
                 {noteName(pc, keyPrefersFlats(pc))}
@@ -56,6 +60,10 @@ export function EditorTune({
             <option value="minor">minor</option>
           </select>
         </span>
+      </label>
+      <label className="check editor-move-chords" title="Changing the key moves every chord to the new key">
+        <input type="checkbox" checked={moveChords} onChange={(e) => setMoveChords(e.target.checked)} />
+        Move chords
       </label>
       <label className="field">
         <span className="label">Time</span>

@@ -13,6 +13,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 - MIDI, WAV and MP3 exports now speed up like playback when Practice > Speed up is on (#126).
 
 #### Added
+- Editor: changing the key moves every chord to the new key (Move chords, on by default) (#151).
 - Practice: change key every 1–4 choruses, like Speed up (#149).
 - Practice: Swing sets the feel (straight to heavy) for the tune, live and in exports (#147).
 - Practice: Hide chords (gradually or all) to learn a tune by heart; the chart comes back when you stop (#145).
