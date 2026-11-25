@@ -35,6 +35,9 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   if (/tango/.test(s)) return 'tango'
   if (/bossa|chacarera/.test(s)) return 'bossa-nova'
   if (/cha.?cha|chachacha/.test(s)) return 'cha-cha'
+  if (/bachata/.test(s)) return 'bachata'
+  if (/merengue/.test(s)) return 'merengue'
+  if (/cumbia|vallenato/.test(s)) return 'cumbia'
   if (/afro|mambo|cha|salsa|montuno|rumba|\bson\b|latin/.test(s)) return 'afro-cuban'
   // Country ballads keep the slower sustain-pedal pop-rock feel and Western Swing stays a swing; 3/4 country and country waltzes use country's 3/4 boom-chick patterns.
   if (/country|bluegrass|folk|western|two.?step|train/.test(s) && !/ballad|swing/.test(s)) return 'country'
