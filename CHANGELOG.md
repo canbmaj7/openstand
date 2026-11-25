@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Back up the whole library (tunes, setlists and your styles) to one file and restore it on another device (#86).
 - Hear a chord, or a chord and its scale, from the chord helper (#87).
 - Country style: train-beat drums, root–five bass with walk-ups and boom-chick steel-string guitar; iReal Pro Country, Bluegrass and Folk tunes open in it. New example: Country Two-Step (#88).
 - Sort the tune list by title, composer, style or key (#79).

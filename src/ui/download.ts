@@ -4,11 +4,15 @@ import { masterGainFor, SOUNDFONT_URL } from '../audio/player'
 import { renderWav } from '../audio/renderWav'
 import { arrange, CHANNELS, type Part } from '../engine/arrange'
 import type { PracticeOptions } from '../engine/timeline'
+import { makeBackup } from '../formats/backup'
 import { chartToFile } from '../formats/chartFile'
 import { chartToChordPro } from '../formats/chordpro'
 import { chartToMusicXml } from '../formats/musicxml'
 import type { Chart } from '../music/chart'
 import { keyPrefersFlats, noteName } from '../music/chords'
+import type { Setlist } from '../music/setlist'
+import type { Tune } from '../music/songs'
+import type { LabStyle } from '../styles/lab'
 import type { StyleDefinition } from '../styles/types'
 
 export interface WavMixerState {
@@ -109,4 +113,9 @@ export function downloadMusicXml(chart: Chart, transpose: number): void {
 export function downloadChartFile(chart: Chart): void {
   const filename = `${sanitizeFilename(chart.title)}.openstand.json`
   downloadBlob(chartToFile(chart), filename, 'application/json;charset=utf-8')
+}
+
+export function downloadBackup(tunes: readonly Tune[], setlists: readonly Setlist[], styles: readonly LabStyle[]): void {
+  const date = new Date().toISOString().slice(0, 10)
+  downloadBlob(makeBackup(tunes, setlists, styles), `openstand-backup-${date}.json`, 'application/json;charset=utf-8')
 }

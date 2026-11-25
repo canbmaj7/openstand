@@ -1574,6 +1574,21 @@ input.fader::-moz-range-thumb {
   color: var(--danger);
 }
 
+.dialog-backup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.dialog-backup-text {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
 /* ---------- Narrow screens ---------- */
 
 /* Key, Mode, Reads in, Tempo and the band buttons need about 1430px; below that, save room */

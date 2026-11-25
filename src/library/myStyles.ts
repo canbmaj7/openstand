@@ -33,3 +33,21 @@ export function saveMyStyle(styles: LabStyle[], lab: LabStyle): LabStyle[] {
 export function removeMyStyle(styles: LabStyle[], id: string): LabStyle[] {
   return store(styles.filter((s) => myStyleId(s) !== id))
 }
+
+export function mergeMyStyles(incoming: readonly LabStyle[]): { styles: LabStyle[]; added: number; skipped: number } {
+  let current = loadMyStyles()
+  const ids = new Set(current.map(myStyleId))
+  let added = 0
+  let skipped = 0
+  for (const lab of incoming) {
+    const id = myStyleId(lab)
+    if (ids.has(id)) {
+      skipped++
+    } else {
+      current = saveMyStyle(current, lab)
+      ids.add(id)
+      added++
+    }
+  }
+  return { styles: current, added, skipped }
+}

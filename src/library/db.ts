@@ -1,10 +1,12 @@
 // The tune library, stored in the browser (IndexedDB). Nothing leaves the device.
 
 import Dexie, { type EntityTable } from 'dexie'
+import { mergeSetlists, type ParsedBackup, type RestoreSummary } from '../formats/backup'
 import { mapStyle } from '../formats/ireal'
 import type { Chart } from '../music/chart'
 import type { Setlist } from '../music/setlist'
 import type { Tune } from '../music/songs'
+import { mergeMyStyles } from './myStyles'
 
 const db = new Dexie('openstand') as Dexie & {
   tunes: EntityTable<Tune, 'id'>
@@ -107,5 +109,73 @@ export async function removeSetlist(id: string, onError?: (message: string) => v
   } catch {
     onError?.(STORAGE_ERROR)
     return false
+  }
+}
+
+export async function restoreBackup(backup: ParsedBackup, onError?: (message: string) => void): Promise<RestoreSummary> {
+  // Compute SHA-256 chart ids before opening the Dexie transaction so async crypto never stalls IDB.
+  const computed = await Promise.all(backup.tunes.map(async (bt) => ({ bt, newId: await chartId(bt.chart) })))
+
+  try {
+    const { tunesAdded, tunesSkipped, setlistsAdded, setlistsSkipped } = await db.transaction(
+      'rw',
+      db.tunes,
+      db.setlists,
+      async () => {
+        const existingTunes = await db.tunes.toArray()
+        const existingById = new Map(existingTunes.map((t) => [t.id, t]))
+        const existingIds = new Set(existingById.keys())
+        const idMap = new Map<string, string>()
+        const tunesToAdd: Tune[] = []
+        let added = 0
+        let skipped = 0
+
+        for (const { bt, newId } of computed) {
+          const existingSameId = bt.id ? existingById.get(bt.id) : undefined
+          if (bt.id && existingSameId && JSON.stringify(existingSameId.chart) === JSON.stringify(bt.chart)) {
+            idMap.set(bt.id, bt.id)
+            skipped++
+            continue
+          }
+          if (bt.id) idMap.set(bt.id, newId)
+          if (existingIds.has(newId)) {
+            skipped++
+            continue
+          }
+          existingIds.add(newId)
+          tunesToAdd.push({
+            id: newId,
+            chart: bt.chart,
+            source: bt.source,
+            ...(bt.playlist !== undefined ? { playlist: bt.playlist } : {}),
+            addedAt: bt.addedAt,
+          })
+          added++
+        }
+
+        const existingSetlists = await db.setlists.toArray()
+        const setlistMerge = mergeSetlists(existingSetlists, backup.setlists, idMap)
+
+        if (tunesToAdd.length) await db.tunes.bulkPut(tunesToAdd)
+        if (setlistMerge.toAdd.length) await db.setlists.bulkPut(setlistMerge.toAdd)
+
+        return {
+          tunesAdded: added,
+          tunesSkipped: skipped,
+          setlistsAdded: setlistMerge.added,
+          setlistsSkipped: setlistMerge.skipped,
+        }
+      },
+    )
+
+    const styleMerge = mergeMyStyles(backup.styles)
+    return {
+      tunes: { added: tunesAdded, skipped: tunesSkipped, invalid: backup.invalidTunes },
+      setlists: { added: setlistsAdded, skipped: setlistsSkipped },
+      styles: { added: styleMerge.added, skipped: styleMerge.skipped },
+    }
+  } catch {
+    onError?.(STORAGE_ERROR)
+    throw new Error(STORAGE_ERROR)
   }
 }
