@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadSetlists, removeSetlist, saveSetlist } from '../library/db'
-import { addTune, createSetlist, move, nextTuneId, removeAt, type Setlist } from '../music/setlist'
+import { addTune, createSetlist, move, nextShuffledTuneId, nextTuneId, removeAt, type Setlist } from '../music/setlist'
 import type { Tune } from '../music/songs'
 
 const PLAY_THROUGH_KEY = 'openstand:play-through'
+const SHUFFLE_KEY = 'openstand:setlist-shuffle'
 const PLAY_THROUGH_DELAY_MS = 1000
 
-function loadPlayThrough(): boolean {
+function loadFlag(key: string): boolean {
   try {
-    return localStorage.getItem(PLAY_THROUGH_KEY) === 'true'
+    return localStorage.getItem(key) === 'true'
   } catch {
     return false
+  }
+}
+
+function saveFlag(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, String(value))
+  } catch {
+    // Storage may be disabled in private browsing
   }
 }
 
@@ -38,7 +47,9 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
   }, [])
   const [openSetlistId, setOpenSetlistId] = useState<string | null>(null)
   const [activeSetlistId, setActiveSetlistId] = useState<string | null>(null)
-  const [playThrough, setPlayThrough] = useState<boolean>(loadPlayThrough)
+  const [playThrough, setPlayThrough] = useState<boolean>(() => loadFlag(PLAY_THROUGH_KEY))
+  const [shuffle, setShuffle] = useState<boolean>(() => loadFlag(SHUFFLE_KEY))
+  const playedRef = useRef<Set<string>>(new Set())
 
   const timerRef = useRef(0)
   const clearTimer = useCallback(() => {
@@ -102,6 +113,7 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     (id: string) => {
       if (activeSetlistId === id) {
         clearTimer()
+        playedRef.current = new Set()
         setActiveSetlistId(null)
       }
       if (openSetlistId === id) setOpenSetlistId(null)
@@ -135,6 +147,7 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
   const selectTune = useCallback(
     (setlistId: string, tune: Tune) => {
       clearTimer()
+      playedRef.current = new Set([tune.id])
       setActiveSetlistId(setlistId)
       showTune(tune)
     },
@@ -143,6 +156,7 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
 
   const clearActive = useCallback(() => {
     clearTimer()
+    playedRef.current = new Set()
     setActiveSetlistId(null)
   }, [clearTimer])
 
@@ -150,14 +164,18 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     setPlayThrough((prev) => {
       const next = !prev
       if (!next) clearTimer()
-      try {
-        localStorage.setItem(PLAY_THROUGH_KEY, String(next))
-      } catch {
-        // Storage may be disabled in private browsing
-      }
+      saveFlag(PLAY_THROUGH_KEY, next)
       return next
     })
   }, [clearTimer])
+
+  const toggleShuffle = useCallback(() => {
+    setShuffle((prev) => {
+      const next = !prev
+      saveFlag(SHUFFLE_KEY, next)
+      return next
+    })
+  }, [])
 
   const tuneMap = useMemo(() => new Map(tunes.map((t) => [t.id, t])), [tunes])
 
@@ -171,19 +189,34 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     return { setlistId: active.id, name: active.name, index, total: validIds.length }
   }, [activeSetlistId, setlists, songId, tuneMap])
 
-  const latestRef = useRef({ playThrough, activeSetlistId, setlists, tuneMap, songId, showTune, startNext })
+  const latestRef = useRef({ playThrough, shuffle, activeSetlistId, setlists, tuneMap, songId, showTune, startNext })
   useEffect(() => {
-    latestRef.current = { playThrough, activeSetlistId, setlists, tuneMap, songId, showTune, startNext }
+    latestRef.current = { playThrough, shuffle, activeSetlistId, setlists, tuneMap, songId, showTune, startNext }
   })
 
   const onTrackEnded = useCallback((): boolean => {
-    const { playThrough: pt, activeSetlistId: activeId, setlists: lists, tuneMap: map, songId: currentId, showTune: open, startNext: playNext } =
-      latestRef.current
+    const {
+      playThrough: pt,
+      shuffle: sh,
+      activeSetlistId: activeId,
+      setlists: lists,
+      tuneMap: map,
+      songId: currentId,
+      showTune: open,
+      startNext: playNext,
+    } = latestRef.current
     if (!pt || !activeId) return false
     const active = lists.find((s) => s.id === activeId)
     if (!active) return false
     const validIds = active.tuneIds.filter((id) => map.has(id))
-    const nextId = nextTuneId({ ...active, tuneIds: validIds }, currentId)
+    let nextId: string | null
+    if (sh) {
+      const result = nextShuffledTuneId(validIds, currentId, playedRef.current)
+      playedRef.current = result.played
+      nextId = result.nextId
+    } else {
+      nextId = nextTuneId({ ...active, tuneIds: validIds }, currentId)
+    }
     if (!nextId) return false
     const nextTune = map.get(nextId)
     if (!nextTune) return false
@@ -204,6 +237,8 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     activePosition,
     playThrough,
     togglePlayThrough,
+    shuffle,
+    toggleShuffle,
     create,
     rename,
     remove,

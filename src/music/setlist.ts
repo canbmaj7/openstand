@@ -48,3 +48,34 @@ export function nextTuneId(setlist: Setlist, currentId: string): string | null {
   if (index === -1 || index + 1 >= setlist.tuneIds.length) return null
   return setlist.tuneIds[index + 1]
 }
+
+/** Pick the next unplayed tune id (excluding currentId), starting a new round once all have played. */
+export function nextShuffledTuneId(
+  tuneIds: string[],
+  currentId: string,
+  played: ReadonlySet<string>,
+  random = Math.random,
+): { nextId: string | null; played: Set<string> } {
+  const uniqueIds = [...new Set(tuneIds)]
+  const pool = uniqueIds.filter((id) => id !== currentId)
+  if (pool.length === 0) return { nextId: null, played: new Set() }
+
+  const uniqueSet = new Set(uniqueIds)
+  const nextPlayed = new Set([...played].filter((id) => uniqueSet.has(id)))
+  if (uniqueSet.has(currentId)) nextPlayed.add(currentId)
+
+  const pick = (items: string[]) => {
+    const idx = Math.min(items.length - 1, Math.max(0, Math.floor(random() * items.length)))
+    return items[idx]
+  }
+
+  const unplayed = pool.filter((id) => !nextPlayed.has(id))
+  if (unplayed.length > 0) {
+    const nextId = pick(unplayed)
+    nextPlayed.add(nextId)
+    return { nextId, played: nextPlayed }
+  }
+
+  const nextId = pick(pool)
+  return { nextId, played: new Set([nextId]) }
+}

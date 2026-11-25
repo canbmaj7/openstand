@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { chartFromMeasures } from '../src/music/chart'
 import type { Tune } from '../src/music/songs'
-import { parseTuneSort, sortTunes } from '../src/music/sortTunes'
+import { parseTuneSort, sortTunes, tuneMatchesQuery } from '../src/music/sortTunes'
 
 function makeTune(
   id: string,
@@ -114,5 +114,24 @@ describe('sortTunes', () => {
       'd-min',
       'b-maj',
     ])
+  })
+})
+
+describe('tuneMatchesQuery', () => {
+  test('matches title, composer, and resolved style name case- and accent-insensitively', () => {
+    const bossaTune = makeTune('afro-68', 'Afro 6/8 Minor', {
+      composer: 'Antônio Carlos',
+      style: 'bossa-nova',
+      sourceStyle: 'Bossa Nova',
+    })
+    const overrideTune = makeTune('overridden', 'Blue Sketch', { style: 'medium-swing' })
+    const resolveStyle = (t: Tune) => (t.id === 'overridden' ? 'Aksak' : styleOf(t))
+
+    expect(tuneMatchesQuery(bossaTune, '', resolveStyle)).toBe(true)
+    expect(tuneMatchesQuery(bossaTune, 'afro', resolveStyle)).toBe(true)
+    expect(tuneMatchesQuery(bossaTune, 'antonio', resolveStyle)).toBe(true)
+    expect(tuneMatchesQuery(bossaTune, 'bossa', resolveStyle)).toBe(true)
+    expect(tuneMatchesQuery(overrideTune, 'aksak', resolveStyle)).toBe(true)
+    expect(tuneMatchesQuery(bossaTune, 'reggae', resolveStyle)).toBe(false)
   })
 })

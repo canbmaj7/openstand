@@ -128,3 +128,38 @@ test('play-through persists and advances to the next tune when the first finishe
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 10_000 })
   await page.getByRole('button', { name: 'Stop' }).click()
 })
+
+test('shuffle chip requires play-through, persists across reload, and updates readout', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Setlists' }).click()
+  await page.getByRole('button', { name: 'New setlist' }).click()
+  await page.getByLabel('Setlist name').fill('Shuffle Set')
+  await page.getByRole('button', { name: 'Create' }).click()
+
+  await page.getByRole('tab', { name: 'Tunes' }).click()
+  await page.getByText('Rhythm Changes (A section)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Add to setlist' }).click()
+  await page.getByRole('button', { name: /Shuffle Set/ }).click()
+
+  await page.getByRole('tab', { name: 'Setlists' }).click()
+  await page.getByRole('button', { name: /Shuffle Set/ }).click()
+
+  const playThrough = page.getByRole('button', { name: 'Play through' })
+  const shuffle = page.getByRole('button', { name: 'Shuffle' })
+  await expect(shuffle).toBeDisabled()
+  await expect(shuffle).toHaveAttribute('aria-pressed', 'false')
+
+  await playThrough.click()
+  await expect(shuffle).toBeEnabled()
+  await shuffle.click()
+  await expect(shuffle).toHaveAttribute('aria-pressed', 'true')
+
+  await page.locator('.setlist-row').nth(0).locator('.setlist-tune').click()
+  await expect(page.locator('.readout')).toContainText('Shuffle Set · 1/1 · shuffle')
+
+  await page.reload()
+  await expect(page.locator('[aria-label$="chord chart"]').first()).toBeVisible()
+  await page.getByRole('tab', { name: 'Setlists' }).click()
+  await page.getByRole('button', { name: /Shuffle Set/ }).click()
+  await expect(page.getByRole('button', { name: 'Play through' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Shuffle' })).toHaveAttribute('aria-pressed', 'true')
+})

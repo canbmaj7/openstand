@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { keyPrefersFlats, noteName } from '../music/chords'
 import type { Tune } from '../music/songs'
-import { parseTuneSort, sortTunes, type TuneSort } from '../music/sortTunes'
+import { parseTuneSort, sortTunes, tuneMatchesQuery, type TuneSort } from '../music/sortTunes'
 import { getStyle } from '../styles'
 import { Setlists, type SetlistsProps } from './Setlists'
 
@@ -40,12 +40,6 @@ function saveTuneSort(sort: TuneSort): void {
   }
 }
 
-const fold = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-
 export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelect, onImport, onNew, disabled, onRemovePlaylist, setlists }: LibraryProps) {
   const [tab, setTab] = useState<'tunes' | 'setlists'>('tunes')
   const [query, setQuery] = useState('')
@@ -62,10 +56,9 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
   )
 
   const matches = useMemo(() => {
-    const q = fold(query.trim())
     const filtered = tunes
       .filter((t) => activePlaylist === ALL || t.playlist === activePlaylist)
-      .filter((t) => !q || fold(`${t.chart.title} ${t.chart.composer ?? ''}`).includes(q))
+      .filter((t) => tuneMatchesQuery(t, query, styleNameOf))
     return sortTunes(filtered, sort, styleNameOf)
   }, [tunes, query, activePlaylist, sort, styleNameOf])
 
@@ -121,7 +114,7 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
       <input
         className="library-search"
         type="search"
-        placeholder="Search title or composer"
+        placeholder="Search title, composer or style"
         aria-label="Search tunes"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
