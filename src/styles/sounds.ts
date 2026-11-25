@@ -64,31 +64,49 @@ function freddieGreenRhythms([v1, v2]: [number, number]): ByChordLength<CompHit[
   }
 }
 
-function compWithSound(style: StyleDefinition, program: number | null): StyleDefinition['comp'] {
-  if (program === null) return style.comp
-  if (!isGuitarProgram(program) || isGuitarProgram(style.comp.program)) {
-    return { ...style.comp, program }
+function compWithSound(
+  comp: StyleDefinition['comp'],
+  family: StyleDefinition['family'],
+  program: number | null,
+): StyleDefinition['comp'] {
+  if (program === null) return comp
+  if (!isGuitarProgram(program) || isGuitarProgram(comp.program)) {
+    return { ...comp, program }
   }
-  if (style.family === 'jazz') {
+  if (family === 'jazz') {
     return {
-      ...style.comp,
+      ...comp,
       program,
       voicing: 'guitar',
       pedal: false,
       anticipation: 0,
-      rhythms: freddieGreenRhythms(style.comp.velocity),
+      rhythms: freddieGreenRhythms(comp.velocity),
     }
   }
-  return { ...style.comp, program, voicing: 'guitar', pedal: false }
+  return { ...comp, program, voicing: 'guitar', pedal: false }
 }
 
 /** Returns a new style with any non-null sound choices applied without mutating the input. */
 export function withSounds(style: StyleDefinition, sounds: SoundChoice): StyleDefinition {
+  const firstChorus = style.firstChorus
+    ? {
+        ...(style.firstChorus.bass && {
+          bass: sounds.bass === null ? style.firstChorus.bass : { ...style.firstChorus.bass, program: sounds.bass },
+        }),
+        ...(style.firstChorus.comp && {
+          comp: compWithSound(style.firstChorus.comp, style.family, sounds.comp),
+        }),
+        ...(style.firstChorus.drums && {
+          drums: sounds.drums === null ? style.firstChorus.drums : { ...style.firstChorus.drums, kit: sounds.drums },
+        }),
+      }
+    : undefined
   return {
     ...style,
     bass: sounds.bass === null ? style.bass : { ...style.bass, program: sounds.bass },
-    comp: compWithSound(style, sounds.comp),
+    comp: compWithSound(style.comp, style.family, sounds.comp),
     drums: sounds.drums === null ? style.drums : { ...style.drums, kit: sounds.drums },
+    ...(firstChorus ? { firstChorus } : {}),
   }
 }
 

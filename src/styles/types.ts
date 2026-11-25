@@ -72,4 +72,5 @@ export interface StyleDefinition {
   bass: BassPart
   comp: CompPart
   drums: DrumPart
+  firstChorus?: { bass?: BassPart; drums?: DrumPart; comp?: CompPart }
 }

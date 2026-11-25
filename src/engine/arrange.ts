@@ -31,10 +31,12 @@ export function arrange(
   bpm: number = BASE_BPM,
 ): Arrangement {
   const timeline = buildTimeline(chart, transpose, choruses, practice)
-  const { swing } = style
+  const { swing, firstChorus } = style
   // The same band in 6/8, for bars in a compound meter
   const compound = timeline.bars.some((b) => b.compound) ? compoundStyle(style) : style
-  const comp = generateComp(timeline.slots, style.comp, swing, timeline.countIn, compound.comp, style.family)
+  const comp = generateComp(timeline.slots, style.comp, swing, timeline.countIn, compound.comp, style.family, firstChorus?.comp)
+  const compUsesPedal = (slot: (typeof timeline.slots)[number]) =>
+    slot.chorus === 0 && firstChorus?.comp ? !!firstChorus.comp.pedal : !!style.comp.pedal
   const midi = writeMidi(bpm, [
     {
       name: 'Bass',
@@ -42,7 +44,7 @@ export function arrange(
       program: style.bass.program,
       pan: 60,
       reverb: PART_REVERB.bass,
-      events: generateBass(timeline.slots, style.bass, swing, compound.bass, style.family),
+      events: generateBass(timeline.slots, style.bass, swing, compound.bass, style.family, firstChorus?.bass),
     },
     {
       name: 'Comp',
@@ -51,7 +53,10 @@ export function arrange(
       pan: 74,
       reverb: PART_REVERB.comp,
       events: comp,
-      pedal: style.comp.pedal ? pedalChanges(comp, timeline.slots) : undefined,
+      pedal:
+        style.comp.pedal || firstChorus?.comp?.pedal
+          ? pedalChanges(comp, timeline.slots.filter(compUsesPedal))
+          : undefined,
     },
     {
       name: 'Drums',
@@ -59,7 +64,7 @@ export function arrange(
       program: style.drums.kit,
       pan: 64,
       reverb: PART_REVERB.drums,
-      events: generateDrums(timeline.bars, style.drums, swing, timeline.clicks, compound.drums, style.family),
+      events: generateDrums(timeline.bars, style.drums, swing, timeline.clicks, compound.drums, style.family, firstChorus?.drums),
     },
   ])
   return { midi, timeline }

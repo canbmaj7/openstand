@@ -38,6 +38,7 @@ export function generateDrums(
   clicks: Click[],
   compound: DrumPart = part,
   family: StyleFamily = 'pop',
+  firstChorus?: DrumPart,
 ): NoteEvent[] {
   const startsCompound = bars[0]?.compound ?? false
   // The count-in is played on the cross-stick in every style (a closed hi-hat is too quiet to count by)
@@ -50,9 +51,11 @@ export function generateDrums(
   let groove: Groove | null = null
   let grooveBar = 0
   let wasCompound = startsCompound
+  let wasFirstChorus = !!firstChorus && bars[0]?.chorus === 0 && bars[0]?.measure >= 0
 
   for (const bar of bars) {
-    const drums = bar.compound ? compound : part
+    const isFirstChorus = !!firstChorus && bar.chorus === 0 && bar.measure >= 0
+    const drums = bar.compound ? compound : isFirstChorus ? firstChorus : part
     const feel = bar.compound ? 0.5 : swing
     if (bar.measure === -1) {
       events.push(...render(drums.ending, bar.start, feel))
@@ -65,11 +68,12 @@ export function generateDrums(
       events.push(...render(hits, bar.start, 0.5, 0, bar.beats))
       continue
     }
-    // A change of meter starts a fresh groove
-    if (!!bar.compound !== wasCompound) {
+    // A change of meter or chorus feel starts a fresh groove
+    if (!!bar.compound !== wasCompound || isFirstChorus !== wasFirstChorus) {
       groove = null
       grooveBar = 0
       wasCompound = !!bar.compound
+      wasFirstChorus = isFirstChorus
     }
 
     let current: Groove
