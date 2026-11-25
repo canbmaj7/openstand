@@ -9,7 +9,14 @@ import { durations, MUSIC_PREFIX, swapBlocks } from './ireal'
 interface WriteCell {
   symbol: string | null
   alt?: string
+  small?: boolean
 }
+
+const toWriteCell = (c: BarChord): WriteCell => ({
+  symbol: c.symbol,
+  ...(c.alt !== undefined ? { alt: c.alt } : {}),
+  ...(c.small ? { small: true } : {}),
+})
 
 const sameBeats = (a: BarChord[], b: BarChord[]) =>
   a.length === b.length &&
@@ -26,17 +33,17 @@ function cellsFor(chords: BarChord[], width: number, time: TimeSignature): (Writ
     for (const c of chords) {
       const pos = Math.round((at / barBeats) * n)
       if (pos >= n || cells[pos] !== undefined) ok = false
-      else cells[pos] = c.alt !== undefined ? { symbol: c.symbol, alt: c.alt } : { symbol: c.symbol }
+      else cells[pos] = toWriteCell(c)
       at += c.beats
     }
     const back = durations(
-      cells.map((cell) => (cell ? { chord: cell.symbol, alt: cell.alt } : {})),
+      cells.map((cell) => (cell ? { chord: cell.symbol, alt: cell.alt, ...(cell.small ? { small: true } : {}) } : {})),
       time,
     )
     if (ok && sameBeats(back, chords)) return cells
   }
   // Fall back to an even spread; lengths may round
-  return chords.map((c) => (c.alt !== undefined ? { symbol: c.symbol, alt: c.alt } : { symbol: c.symbol }))
+  return chords.map(toWriteCell)
 }
 
 const toIrealChord = (symbol: string) => symbol
@@ -48,14 +55,22 @@ const cellText = (cell: WriteCell | undefined) => {
   return cell.alt ? `${main}(${toIrealChord(cell.alt)})` : main
 }
 
-// Chords in a row are separated by commas, which take no cell
-function writeCells(cells: (WriteCell | undefined)[]): string {
+// Chords in a row are separated by commas, which take no cell; size switches (s/l) track across bars
+function writeCells(cells: (WriteCell | undefined)[], isSmall: boolean): { text: string; isSmall: boolean } {
   let out = ''
+  let small = isSmall
   cells.forEach((c, i) => {
+    if (c && c.symbol !== null) {
+      const wantSmall = Boolean(c.small)
+      if (wantSmall !== small) {
+        out += wantSmall ? 's' : 'l'
+        small = wantSmall
+      }
+    }
     out += cellText(c)
     if (c && c.symbol !== null && i + 1 < cells.length && cells[i + 1] !== undefined) out += ','
   })
-  return out
+  return { text: out, isSmall: small }
 }
 
 const timeToken = ([a, b]: TimeSignature) => (a === 12 && b === 8 ? 'T12' : `T${a}${b}`)
@@ -73,6 +88,8 @@ export function chartToMusic(chart: Chart): string {
   let time = chart.time
   let prevChords: BarChord[] = []
   let held: string | null = null
+  let heldSmall = false
+  let isSmall = false
   let prevClose = 'start'
 
   bars.forEach((bar, i) => {
@@ -101,10 +118,17 @@ export function chartToMusic(chart: Chart): string {
         !prev || prev.repeatEnd || prev.barline || prev.directive || prev.end || bar.coda || bar.segno || bar.ending || bar.repeatStart
       if (bar.spacer || held === null || arrivedFrom) body = ' '.repeat(width)
       else if (prevChords.length === 1) body = 'x' + ' '.repeat(width - 1)
-      else body = writeCells([{ symbol: held }, ...Array.from({ length: width - 1 }, () => undefined)])
+      else {
+        const heldCell: WriteCell = heldSmall ? { symbol: held, small: true } : { symbol: held }
+        const written = writeCells([heldCell, ...Array.from({ length: width - 1 }, () => undefined)], isSmall)
+        body = written.text
+        isSmall = written.isSmall
+      }
     } else {
       const cells = cellsFor(bar.chords, Math.max(1, bar.cells), time)
-      body = writeCells(cells)
+      const written = writeCells(cells, isSmall)
+      body = written.text
+      isSmall = written.isSmall
     }
 
     // Text goes after the first cell so it belongs to this bar
@@ -112,7 +136,7 @@ export function chartToMusic(chart: Chart): string {
       .filter((t): t is string => Boolean(t))
       .map((t) => `<${t.replace(/[<>]/g, '')}>`)
       .join('')
-    const firstCell = /^(x|n|[A-G][^ ,]*,?| )/.exec(body)?.[0] ?? ''
+    const firstCell = /^(x|n|[sl]?[A-G][^ ,]*,?| )/.exec(body)?.[0] ?? ''
     out += firstCell + texts + body.slice(firstCell.length)
     if (bar.end) out += 'U'
 
@@ -122,7 +146,9 @@ export function chartToMusic(chart: Chart): string {
 
     if (bar.chords.length) {
       prevChords = bar.chords
-      held = bar.chords.at(-1)?.symbol ?? null
+      const last = bar.chords.at(-1)
+      held = last?.symbol ?? null
+      heldSmall = Boolean(last?.small)
     }
   })
   if (prevClose === '') out += 'Z'

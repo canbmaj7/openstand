@@ -107,6 +107,13 @@ export function parseBarInput(text: string, time: TimeSignature): BarInput {
   }
 }
 
+/** Keeps `small: true` on edited chords whose symbol at the same index matches the previous bar. */
+export function preserveSmall(next: BarChord[], previous: readonly BarChord[]): BarChord[] {
+  return next.map((c, i) =>
+    c.symbol !== null && previous[i]?.small && previous[i]?.symbol === c.symbol ? { ...c, small: true } : c,
+  )
+}
+
 // The text shown for a bar; lengths are written only when they differ from an even split
 export function barToInput(chords: BarChord[], time: TimeSignature): string {
   const even = evenSplit(chords.length, time)

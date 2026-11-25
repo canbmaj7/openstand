@@ -36,7 +36,7 @@ interface PlacedBar {
   index: number
   bar: ChartBar
   column: number
-  chords: { chord: Chord | null; altChord: Chord | null; symbol: string | null; beats: number }[]
+  chords: { chord: Chord | null; altChord: Chord | null; symbol: string | null; beats: number; small?: boolean }[]
   closesRow: boolean
 }
 
@@ -55,12 +55,13 @@ function rows(chart: ChartData, transpose: number): PlacedBar[][] {
       row = []
       column = 0
     }
-    const chords = bar.chords.map(({ symbol, alt, beats }) => {
+    const chords = bar.chords.map(({ symbol, alt, beats, small }) => {
       const parsed = symbol ? parseChord(symbol) : null
       const parsedAlt = alt ? parseChord(alt) : null
       return {
         symbol,
         beats,
+        small,
         chord: parsed ? transposeChord(parsed, transpose) : null,
         altChord: parsedAlt ? transposeChord(parsedAlt, transpose) : null,
       }
@@ -212,12 +213,13 @@ function Bar({
       )}
       {showTime && <TimeSig time={showTime} groups={showGroups} />}
       {active && <span className="bar-highlight" style={{ transform: `scaleX(${progress})` }} />}
-      {chords.map(({ chord, altChord, symbol }, j) => (
+      {chords.map(({ chord, altChord, symbol, small }, j) => (
         <BarChord
           key={j}
           chord={chord}
           altChord={altChord}
           symbol={symbol}
+          small={small}
           subActive={Boolean(active && activeSub && activeChordIdx === j && altChord)}
           keyPc={keyPc}
           minor={minor}

@@ -105,6 +105,7 @@ export function normalizeChord(symbol: string): string {
 interface Cell {
   chord?: string | null // undefined = blank cell, null = N.C.
   alt?: string
+  small?: boolean
 }
 
 interface PendingBar {
@@ -121,6 +122,7 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
   let firstTime: TimeSignature | null = null
   let barTime = time
   let lastChord: string | null = null
+  let small = false
   let cellCount = 0 // cells used so far, for row layout
   let copyNextFrom: number | null = null
 
@@ -242,7 +244,7 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
       current.cells.push({ chord: null })
       s = s.slice(1)
     } else if (s[0] === 'p') {
-      current.cells.push({ chord: lastChord })
+      current.cells.push(small ? { chord: lastChord, small: true } : { chord: lastChord })
       s = s.slice(1)
     } else if (s[0] === ' ') {
       current.cells.push({})
@@ -255,10 +257,16 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
       } else {
         lastChord = symbol
       }
-      current.cells.push({ chord: normalizeChord(symbol) })
+      current.cells.push(small ? { chord: normalizeChord(symbol), small: true } : { chord: normalizeChord(symbol) })
       s = s.slice(m[0].length)
+    } else if (s[0] === 's') {
+      small = true
+      s = s.slice(1)
+    } else if (s[0] === 'l') {
+      small = false
+      s = s.slice(1)
     } else {
-      // Y (vertical space), s/l (chord size), commas and anything unknown carry no music
+      // Y (vertical space), commas and anything unknown carry no music
       s = s.slice(1)
     }
   }
@@ -303,7 +311,10 @@ export function durations(cells: Cell[], time: TimeSignature): BarChord[] {
   return positions.map((p, i) => {
     const symbol = cells[p].chord ?? null
     const alt = cells[p].alt
-    return alt !== undefined ? { symbol, alt, beats: beats[i] } : { symbol, beats: beats[i] }
+    const chord: BarChord = { symbol, beats: beats[i] }
+    if (alt !== undefined) chord.alt = alt
+    if (symbol !== null && cells[p].small) chord.small = true
+    return chord
   })
 }
 
