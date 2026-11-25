@@ -19,6 +19,7 @@ interface LibraryProps {
 }
 
 const ALL = ''
+const BUILTIN_PLAYLISTS = new Set(['Examples', 'Exercises'])
 const LIMIT = 250 // long playlists are filtered by search rather than scrolled
 const SORT_KEY = 'openstand:tune-sort'
 
@@ -68,7 +69,7 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
     return sortTunes(filtered, sort, styleNameOf)
   }, [tunes, query, activePlaylist, sort, styleNameOf])
 
-  const canRemove = activePlaylist !== ALL && activePlaylist !== 'Examples'
+  const canRemove = activePlaylist !== ALL && !BUILTIN_PLAYLISTS.has(activePlaylist)
 
   return (
     <nav className="library" aria-label="Tunes" inert={disabled}>

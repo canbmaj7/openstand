@@ -19,7 +19,10 @@ import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } fro
 import { emptyChart } from './music/edit'
 import { CHORD_FONT_KEY, loadChordFont, type ChordFont } from './music/chordText'
 import { isInstrumentId, viewOffset, type InstrumentId } from './music/instrument'
+import { EXERCISES } from './music/exercises'
 import { EXAMPLES, type Tune } from './music/songs'
+
+const BUILTIN_TUNES: Tune[] = [...EXAMPLES, ...EXERCISES]
 import { getStyle, STYLES, type StyleDefinition } from './styles'
 import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type LabStyle } from './styles/lab'
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
@@ -151,7 +154,7 @@ export default function App() {
   const startNextRef = useRef<() => void>(() => {})
 
   const [readiness, setReadiness] = useState<Readiness>({ kind: 'loading', progress: 0 })
-  const [tunes, setTunes] = useState<Tune[]>(EXAMPLES)
+  const [tunes, setTunes] = useState<Tune[]>(BUILTIN_TUNES)
   const [myStyles, setMyStylesState] = useState<LabStyle[]>(loadMyStyles)
   const myStylesRef = useRef(myStyles)
   const {
@@ -637,7 +640,7 @@ export default function App() {
     let cancelled = false
     void (async () => {
       const saved = await loadTunes()
-      let all = [...EXAMPLES, ...saved]
+      let all = [...BUILTIN_TUNES, ...saved]
       const shared = await chartFromHash(window.location.hash)
       const sharedStyle = await labFromHash(window.location.hash)
       if (sharedStyle) openSharedStyleRef.current(sharedStyle)
@@ -699,7 +702,7 @@ export default function App() {
           const backup = parseBackup(text)
           const summary = await restoreBackup(backup, setNotice)
           const saved = await loadTunes()
-          setTunes([...EXAMPLES, ...saved])
+          setTunes([...BUILTIN_TUNES, ...saved])
           await reloadSetlists()
           setMyStyles(loadMyStyles())
           return { kind: 'backup', summary }

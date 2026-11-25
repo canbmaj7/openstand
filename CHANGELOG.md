@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Exercises: ii–V–I (major and minor), blues, turnarounds and a dominant cycle through all 12 keys, in the library (#102).
 - Gospel and Slow Blues styles; iReal Pro Gospel and Slow Blues tunes open in them (#103).
 - Bachata, Merengue and Cumbia styles; iReal Pro tunes in these styles open in them (#100).
 - Cha-Cha-Chá and Hip-Hop styles; iReal Pro Cha Cha and Hip Hop tunes open in them (#97).

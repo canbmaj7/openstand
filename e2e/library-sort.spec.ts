@@ -16,15 +16,19 @@ test('tune list can be sorted by key or style and persists across reload', async
   await sortSelect.selectOption('style')
   await expect(titles.first()).toHaveText('Aksak 9/8 Vamp')
 
-  // Switching to Key orders C major tunes first, then D major before D minor
+  // Switching to Key orders C major tunes first, then C minor, then D major before D minor
   await sortSelect.selectOption('key')
   await expect(sortSelect).toHaveValue('key')
   await expect(titles.nth(0)).toHaveText('6/8 Ballad')
   await expect(metas.nth(0)).toHaveText(/· C$/)
-  await expect(titles.nth(1)).toHaveText('Bossa Workout')
+  await expect(titles.nth(1)).toHaveText('Blues in All Keys')
   await expect(metas.nth(1)).toHaveText(/· C$/)
-  await expect(titles.nth(4)).toHaveText('Pop Waltz (3/4)')
-  await expect(metas.nth(4)).toHaveText(/· D$/)
+  await expect(titles.nth(9)).toHaveText('ii–V–i Minor (Cycle of Fourths)')
+  await expect(metas.nth(9)).toHaveText(/· C−$/)
+  await expect(titles.nth(10)).toHaveText('Pop Waltz (3/4)')
+  await expect(metas.nth(10)).toHaveText(/· D$/)
+  await expect(titles.nth(11)).toHaveText('Afro 6/8 Minor')
+  await expect(metas.nth(11)).toHaveText(/· D−$/)
 
   // Preference persists across reload
   await page.reload()
@@ -32,5 +36,6 @@ test('tune list can be sorted by key or style and persists across reload', async
   await expect(page.getByLabel('Sort tunes')).toHaveValue('key')
   await expect(titles.nth(0)).toHaveText('6/8 Ballad')
   await expect(metas.nth(0)).toHaveText(/· C$/)
-  await expect(titles.nth(1)).toHaveText('Bossa Workout')
+  await expect(titles.nth(1)).toHaveText('Blues in All Keys')
+  await expect(titles.nth(10)).toHaveText('Pop Waltz (3/4)')
 })
