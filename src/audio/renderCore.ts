@@ -6,6 +6,12 @@ import {
   SpessaSynthSequencer,
   audioToWav,
 } from 'spessasynth_core'
+import {
+  abortError,
+  type AudioFormat,
+  type RenderAudioOptions,
+  type RenderWavOptions,
+} from './constants'
 import { applyReverb, DEFAULT_REVERB } from './reverb'
 import { applyTuning } from './tuning'
 
@@ -20,25 +26,7 @@ const MP3_BLOCK_SIZE = 1152
 const MP3_KBPS = 192
 const ENCODE_YIELD_EVERY_BLOCKS = Math.floor(RENDER_SAMPLE_RATE / MP3_BLOCK_SIZE)
 
-export type AudioFormat = 'wav' | 'mp3'
-
-export interface RenderWavOptions {
-  volumes: Record<number, number>
-  masterGain: number
-  reverb?: number
-  tuningCents?: number
-  onProgress?: (ratio: number) => void
-  signal?: AbortSignal
-}
-
-export interface RenderAudioOptions extends RenderWavOptions {
-  format?: AudioFormat
-}
-
-export function abortError(signal?: AbortSignal): Error {
-  if (signal?.reason instanceof Error) return signal.reason
-  return new DOMException('Aborted', 'AbortError')
-}
+export type { AudioFormat, RenderAudioOptions, RenderWavOptions }
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw abortError(signal)
