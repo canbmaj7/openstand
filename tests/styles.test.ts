@@ -60,7 +60,7 @@ describe('styles', () => {
     expect(mapStyle('Rumba')).toBe('afro-cuban')
     expect(mapStyle('Son')).toBe('afro-cuban')
     expect(mapStyle('Funk')).toBe('funk')
-    expect(mapStyle('Soul')).toBe('funk')
+    expect(mapStyle('Soul')).toBe('soul')
     expect(mapStyle('Soul Ballad')).toBe('pop-rock')
     expect(mapStyle('Medium Shuffle')).toBe('shuffle')
     expect(mapStyle('Slow Blues')).toBe('slow-blues')

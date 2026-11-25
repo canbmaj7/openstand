@@ -21,8 +21,8 @@ const hasMidiProgram = (midi: Uint8Array, channel: number, program: number) =>
   midi.some((b, i) => b === (0xc0 | channel) && midi[i + 1] === program)
 
 describe('new styles (gypsy-jazz, bolero, tango)', () => {
-  test('all 24 styles are registered with expected comp programs and arrange cleanly', () => {
-    expect(STYLES).toHaveLength(24)
+  test('all 27 styles are registered with expected comp programs and arrange cleanly', () => {
+    expect(STYLES).toHaveLength(27)
     const expectedPrograms: Record<string, number> = {
       'gypsy-jazz': 25,
       bolero: 24,
@@ -32,6 +32,9 @@ describe('new styles (gypsy-jazz, bolero, tango)', () => {
       cumbia: 21,
       gospel: 0,
       'slow-blues': 0,
+      disco: 27,
+      'rock-12-8': 0,
+      soul: 4,
     }
     for (const [id, program] of Object.entries(expectedPrograms)) {
       const style = getStyle(id)
