@@ -66,6 +66,11 @@ describe('styles', () => {
     expect(mapStyle('Rock Pop')).toBe('pop-rock')
     expect(mapStyle('Ballad')).toBe('ballad')
     expect(mapStyle('Reggae')).toBe('reggae')
+    expect(mapStyle('Country')).toBe('country')
+    expect(mapStyle('Bluegrass')).toBe('country')
+    expect(mapStyle('Folk')).toBe('country')
+    expect(mapStyle('Country Waltz', [3, 4])).toBe('country')
+    expect(mapStyle('Country Ballad')).toBe('pop-rock')
   })
 
   test('a waltz counts in "1 . . | 1 2 3" and keeps its bars three beats long', () => {
