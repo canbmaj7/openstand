@@ -18,9 +18,10 @@ interface ChartProps {
   barBeats: number
   range?: [number, number] | null // looped bars
   selectedBar?: number | null // the bar being edited
+  selectedRange?: [number, number] | null // contiguous selected bars in the editor
   plain?: boolean
   startAt?: string | null
-  onBarClick?: (index: number) => void
+  onBarClick?: (index: number, shiftKey?: boolean) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   header?: ReactNode // replaces the title block, e.g. with inputs in the editor
 }
@@ -89,9 +90,10 @@ interface BarProps {
   showGroups?: number[]
   inRange: boolean
   selected: boolean
+  inSelection: boolean
   plain?: boolean
   startChordIndex?: number | null
-  onClick?: (index: number) => void
+  onClick?: (index: number, shiftKey?: boolean) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   barRef?: (el: HTMLDivElement | null) => void
 }
@@ -108,6 +110,7 @@ function Bar({
   showGroups,
   inRange,
   selected,
+  inSelection,
   plain,
   startChordIndex,
   onClick,
@@ -128,6 +131,7 @@ function Bar({
   if (chords.length > 2) classes.push('bar-dense')
   else if (chords.length === 2 && bar.cells <= 4) classes.push('bar-pair')
   if (inRange) classes.push('bar-in-range')
+  if (inSelection) classes.push('bar-selected-range')
   if (selected) classes.push('bar-selected')
   if (onClick && !bar.spacer) classes.push('bar-clickable')
   const interactive = onClick && !bar.spacer
@@ -162,14 +166,14 @@ function Bar({
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       aria-label={interactive ? `Bar ${index + 1}` : undefined}
-      aria-pressed={interactive ? selected : undefined}
-      onClick={interactive ? () => onClick(index) : undefined}
+      aria-pressed={interactive ? selected || inSelection : undefined}
+      onClick={interactive ? (e) => onClick(index, e.shiftKey) : undefined}
       onKeyDown={
         interactive
           ? (e) => {
               if (e.key !== 'Enter' && e.key !== ' ') return
               e.preventDefault()
-              onClick(index)
+              onClick(index, e.shiftKey)
             }
           : undefined
       }
@@ -239,7 +243,7 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, plain, startAt, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, startAt, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
   const keyName = prettyKey(noteName(keyPc, keyPrefersFlats(keyPc))) + (chart.minor ? '−' : '')
@@ -333,6 +337,7 @@ export function Chart(props: ChartProps) {
                   showGroups={showTime ? groupsAt(chart, placed.index) : undefined}
                   inRange={!!range && placed.index >= Math.min(...range) && placed.index <= Math.max(...range)}
                   selected={selectedBar === placed.index}
+                  inSelection={!!selectedRange && placed.index >= Math.min(...selectedRange) && placed.index <= Math.max(...selectedRange)}
                   plain={plain}
                   startChordIndex={placed.index === startBar ? startChord : null}
                   onClick={onBarClick}

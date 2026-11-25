@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { handlePracticeShortcut } from '../src/ui/shortcuts'
+import { handleEditorShortcut, handlePracticeShortcut, type EditorShortcuts } from '../src/ui/shortcuts'
 
 function keyEvent(code: string, patch: Partial<KeyboardEvent> = {}) {
   return {
@@ -107,4 +107,106 @@ describe('practice keyboard shortcuts', () => {
       }
     },
   )
+})
+
+function editorActions(uncommitted = false): EditorShortcuts {
+  return {
+    undo: vi.fn(),
+    redo: vi.fn(),
+    copy: vi.fn(),
+    cut: vi.fn(),
+    clear: vi.fn(),
+    extendSelection: vi.fn(),
+    hasUncommittedInput: () => uncommitted,
+  }
+}
+
+function editorKey(key: string, patch: Partial<KeyboardEvent> = {}) {
+  return {
+    key,
+    code: key,
+    target: null,
+    defaultPrevented: false,
+    isComposing: false,
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    preventDefault: vi.fn(),
+    ...patch,
+  } as unknown as KeyboardEvent
+}
+
+function inputTarget(options: { chord?: boolean; selected?: boolean; type?: string } = {}) {
+  const el = {
+    tagName: 'INPUT',
+    type: options.type ?? 'text',
+    selectionStart: 0,
+    selectionEnd: options.selected ? 2 : 0,
+    closest: (selector: string) => {
+      if (selector.includes('data-editor-chord-input')) return options.chord ? el : null
+      return el
+    },
+  }
+  return el as unknown as HTMLElement
+}
+
+describe('editor keyboard shortcuts', () => {
+  test('Ctrl+Z / Cmd+Z undo and Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y redo', () => {
+    const h = editorActions()
+    handleEditorShortcut(editorKey('z', { ctrlKey: true }), h)
+    handleEditorShortcut(editorKey('z', { metaKey: true }), h)
+    expect(h.undo).toHaveBeenCalledTimes(2)
+
+    handleEditorShortcut(editorKey('z', { ctrlKey: true, shiftKey: true }), h)
+    handleEditorShortcut(editorKey('z', { metaKey: true, shiftKey: true }), h)
+    handleEditorShortcut(editorKey('y', { ctrlKey: true }), h)
+    expect(h.redo).toHaveBeenCalledTimes(3)
+  })
+
+  test('Undo leaves native input undo alone when chord input has uncommitted text', () => {
+    const chordInput = inputTarget({ chord: true })
+    const dirty = editorActions(true)
+    const e1 = editorKey('z', { ctrlKey: true, target: chordInput })
+    expect(handleEditorShortcut(e1, dirty)).toBe(false)
+    expect(e1.preventDefault).not.toHaveBeenCalled()
+    expect(dirty.undo).not.toHaveBeenCalled()
+
+    const committed = editorActions(false)
+    const e2 = editorKey('z', { ctrlKey: true, target: chordInput })
+    expect(handleEditorShortcut(e2, committed)).toBe(true)
+    expect(e2.preventDefault).toHaveBeenCalledOnce()
+    expect(committed.undo).toHaveBeenCalledOnce()
+  })
+
+  test('Delete/Backspace and Shift+Arrows only act outside text inputs', () => {
+    const h = editorActions()
+    const input = inputTarget({ chord: true })
+    expect(handleEditorShortcut(editorKey('Backspace', { target: input }), h)).toBe(false)
+    expect(handleEditorShortcut(editorKey('ArrowRight', { shiftKey: true, target: input }), h)).toBe(false)
+    expect(h.clear).not.toHaveBeenCalled()
+    expect(h.extendSelection).not.toHaveBeenCalled()
+
+    expect(handleEditorShortcut(editorKey('Delete'), h)).toBe(true)
+    expect(handleEditorShortcut(editorKey('Backspace'), h)).toBe(true)
+    expect(h.clear).toHaveBeenCalledTimes(2)
+
+    handleEditorShortcut(editorKey('ArrowLeft', { shiftKey: true }), h)
+    handleEditorShortcut(editorKey('ArrowRight', { shiftKey: true }), h)
+    expect(h.extendSelection).toHaveBeenNthCalledWith(1, -1)
+    expect(h.extendSelection).toHaveBeenNthCalledWith(2, 1)
+  })
+
+  test('Copy and Cut respect selected text in inputs and copy/cut bars otherwise', () => {
+    const h = editorActions()
+    const selectedTextInput = inputTarget({ chord: true, selected: true })
+    expect(handleEditorShortcut(editorKey('c', { ctrlKey: true, target: selectedTextInput }), h)).toBe(false)
+    expect(handleEditorShortcut(editorKey('x', { ctrlKey: true, target: selectedTextInput }), h)).toBe(false)
+
+    const emptySelChordInput = inputTarget({ chord: true, selected: false })
+    expect(handleEditorShortcut(editorKey('c', { ctrlKey: true, target: emptySelChordInput }), h)).toBe(true)
+    expect(handleEditorShortcut(editorKey('x', { ctrlKey: true, target: emptySelChordInput }), h)).toBe(true)
+    expect(h.copy).toHaveBeenCalledOnce()
+    expect(h.cut).toHaveBeenCalledOnce()
+  })
 })

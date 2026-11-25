@@ -21,8 +21,9 @@ import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type La
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
-import { downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml } from './ui/download'
+import { downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml, downloadWav } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
+import { useEditorHistory } from './ui/useEditorHistory'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
 import { Mixer } from './ui/Mixer'
@@ -32,7 +33,7 @@ import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
 import { switchMode } from './music/mode'
 import { Transport, type ModeOption, type Readiness } from './ui/Transport'
-import { handlePracticeShortcut, type PracticeShortcuts } from './ui/shortcuts'
+import { handlePracticeShortcut, isChordInputElement, isTextInputElement, type PracticeShortcuts } from './ui/shortcuts'
 
 interface Position {
   measure: number // -1 during the count-in and the ending
@@ -51,12 +52,6 @@ interface ArrangeOptions {
   transpose: number
   choruses: number
   practice: PracticeSettings
-}
-
-// The chart being edited, and the saved tune it came from (none for a new chart)
-interface Draft {
-  chart: ChartData
-  from: Tune | null
 }
 
 const BPM_RANGE: [number, number] = [40, 300]
@@ -238,14 +233,17 @@ export default function App() {
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
   const [selectedChordAt, setSelectedChordAt] = useState<string | null>(null)
   const [chordsOpen, setChordsOpen] = useState(false)
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [editBar, setEditBar] = useState(0)
+  const editor = useEditorHistory()
+  const draft = editor.draft
+  const draftChart = editor.chart
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [wavState, setWavState] = useState<{ kind: 'idle' } | { kind: 'rendering'; progress: number } | { kind: 'failed' }>({ kind: 'idle' })
+  const wavResetTimer = useRef(0)
   const [mode, setMode] = useState<ModeOption>('original')
   const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
 
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
-  const baseChart = draft?.chart ?? tune.chart
+  const baseChart = draftChart ?? tune.chart
   const chart = useMemo(
     () => (!draft && mode !== 'original' ? switchMode(baseChart, mode) : baseChart),
     [baseChart, draft, mode],
@@ -258,7 +256,7 @@ export default function App() {
     return saved ? { ...styleFromLab(saved), id } : getStyle(id)
   }
   const resolveStyle = (id: string) => withSounds(styleFor(id, labRef.current, myStylesRef.current), soundsRef.current)
-  const style = withSounds(draft ? getStyle(draft.chart.style) : styleFor(styleId, lab, myStyles), sounds)
+  const style = withSounds(draftChart ? getStyle(draftChart.style) : styleFor(styleId, lab, myStyles), sounds)
   const keyPc = (chart.key + transpose + 12) % 12
 
   // During practice the chorus decides the key on the stand and the tempo
@@ -590,15 +588,28 @@ export default function App() {
     [showTune],
   )
 
-  // Pasting an iReal Pro link anywhere outside a text field imports it
+  // Pasting an iReal Pro link outside a text field imports it; in the editor, pasting bars takes priority
+  const pasteEditorRef = useRef({ editing: false, canPaste: false, isCopiedText: (text: string): boolean => text === '', paste: () => {} })
+  useEffect(() => {
+    pasteEditorRef.current = { editing, canPaste: editor.canPaste, isCopiedText: editor.isCopiedText, paste: editor.pasteAtSelection }
+  })
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
-      const target = e.target as HTMLElement
-      if (target.closest('input, textarea')) return
+      const target = e.target as HTMLElement | null
       const text = e.clipboardData?.getData('text') ?? ''
-      if (!/irealb(ook)?:\/\//.test(text)) return
+      if (/irealb(ook)?:\/\//.test(text)) {
+        if (target?.closest('input, textarea')) return
+        e.preventDefault()
+        void importText(text)
+        return
+      }
+      const current = pasteEditorRef.current
+      if (!current.editing || !current.canPaste) return
+      if (isTextInputElement(target) && !isChordInputElement(target)) return
+      // In a chord field, text copied from elsewhere is typed in as usual
+      if (isChordInputElement(target) && !current.isCopiedText(text)) return
       e.preventDefault()
-      void importText(text)
+      current.paste()
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
@@ -612,6 +623,25 @@ export default function App() {
       set('failed')
     }
     setTimeout(() => set('idle'), 2200)
+  }
+
+  const exportWav = async (close: () => void) => {
+    if (wavState.kind === 'rendering') return
+    window.clearTimeout(wavResetTimer.current)
+    setWavState({ kind: 'rendering', progress: 0 })
+    const { loop, keyStep, subs, countIn } = practice
+    try {
+      await downloadWav(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm, {
+        mixer: { volumes, muted, master, masterMuted },
+        soundBank: playerRef.current?.soundBank,
+        onProgress: (ratio) => setWavState({ kind: 'rendering', progress: ratio }),
+      })
+      setWavState({ kind: 'idle' })
+      close()
+    } catch {
+      setWavState({ kind: 'failed' })
+      wavResetTimer.current = window.setTimeout(() => setWavState({ kind: 'idle' }), 3000)
+    }
   }
 
   // ---- Style lab ----
@@ -721,16 +751,15 @@ export default function App() {
       setSelectedChordAt(null)
       setChordsOpen(false)
       setLibraryOpen(false)
-      setDraft({ chart: from ? from.chart : emptyChart(), from })
-      setEditBar(0)
+      editor.open(from ? from.chart : emptyChart(), from)
     }
     if (labRef.current) requestCloseLab(start)
     else start()
   }
 
   const saveDraft = async () => {
-    if (!draft) return
-    const chart = { ...draft.chart, title: draft.chart.title.trim() || 'Untitled' }
+    if (!draft || !draftChart) return
+    const chart = { ...draftChart, title: draftChart.title.trim() || 'Untitled' }
     let saved: Tune
     if (draft.from && draft.from.source !== 'example') {
       saved = { ...draft.from, chart }
@@ -739,7 +768,7 @@ export default function App() {
       ;[saved] = await addTunes([chart], 'own', 'My tunes', setNotice)
     }
     setTunes((all) => [...all.filter((t) => t.id !== saved.id), saved])
-    setDraft(null)
+    editor.close()
     showTune(saved)
   }
 
@@ -747,7 +776,7 @@ export default function App() {
     if (!draft?.from) return
     await removeTune(draft.from.id)
     setTunes((all) => all.filter((t) => t.id !== draft.from?.id))
-    setDraft(null)
+    editor.close()
     showTune(EXAMPLES[0])
   }
 
@@ -834,6 +863,20 @@ export default function App() {
                   >
                     <span className="share-name">Download MIDI</span>
                     <span className="share-desc">Bass, piano and drums on separate tracks, at the current tempo.</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    disabled={wavState.kind === 'rendering'}
+                    onClick={() => void exportWav(close)}
+                  >
+                    <span className="share-name">
+                      {wavState.kind === 'rendering'
+                        ? `Rendering… ${Math.round(wavState.progress * 100)}%`
+                        : wavState.kind === 'failed'
+                          ? 'Export failed'
+                          : 'Download audio (WAV)'}
+                    </span>
+                    <span className="share-desc">The backing track at the current key, tempo and mixer levels.</span>
                   </button>
                   <button
                     className="share-option"
@@ -931,10 +974,11 @@ export default function App() {
             beatInBar={position?.beatInBar ?? 0}
             barBeats={position?.barBeats ?? 4}
             range={picking && picking !== 'first' ? [picking.from, picking.from] : draft ? null : practice.loop}
-            selectedBar={draft ? editBar : null}
+            selectedBar={draft ? editor.editBar : null}
+            selectedRange={draft ? editor.selectionRange : null}
             plain={chordFont === 'Plain'}
             startAt={!playing ? selectedChordAt : null}
-            onBarClick={draft ? setEditBar : picking ? pickBar : undefined}
+            onBarClick={draft ? editor.selectBar : picking ? pickBar : undefined}
             onChordClick={
               !draft && !picking
                 ? (c, barIndex, chordIndex) => {
@@ -952,21 +996,32 @@ export default function App() {
                   }
                 : undefined
             }
-            header={draft ? <EditorHeader chart={draft.chart} onChange={(c) => setDraft({ ...draft, chart: c })} /> : undefined}
+            header={draftChart ? <EditorHeader chart={draftChart} onChange={editor.commit} /> : undefined}
           />
         </main>
       </div>
 
-      {draft ? (
+      {draft && draftChart ? (
         <Editor
-          chart={draft.chart}
-          onChange={(c) => setDraft({ ...draft, chart: c })}
-          selected={editBar}
-          onSelect={setEditBar}
+          chart={draftChart}
+          onChange={editor.commit}
+          selected={editor.editBar}
+          selectionRange={editor.selectionRange}
+          focusInputOnSelect={editor.focusInputOnSelect}
+          focusTick={editor.focusTick}
+          onSelect={(i) => editor.selectBar(i, false)}
+          canUndo={editor.canUndo}
+          canRedo={editor.canRedo}
+          canPaste={editor.canPaste}
+          onUndo={editor.undo}
+          onRedo={editor.redo}
+          onCopyBars={editor.copySelected}
+          onPasteBars={editor.pasteAtSelection}
+          onRegisterUncommitted={editor.registerUncommittedCheck}
           saveLabel={draft.from && draft.from.source !== 'example' ? 'Save' : 'Save to My tunes'}
           canDelete={!!draft.from && draft.from.source !== 'example'}
           onSave={() => void saveDraft()}
-          onCancel={() => setDraft(null)}
+          onCancel={editor.close}
           onDelete={() => void deleteDraftTune()}
         />
       ) : (
