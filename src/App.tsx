@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Player } from './audio/player'
+import { loadReverb, REVERB_KEY } from './audio/reverb'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, slotAtBeat, type Timeline } from './engine/timeline'
@@ -224,6 +225,7 @@ export default function App() {
     }
   })
   const [masterMuted, setMasterMuted] = useState(false)
+  const [reverb, setReverb] = useState(loadReverb)
   const [latencyOffset, setLatencyOffset] = useState(() => {
     try {
       const saved = Number(localStorage.getItem(LATENCY_KEY))
@@ -325,6 +327,15 @@ export default function App() {
     }
     playerRef.current?.setMasterVolume(masterMuted ? 0 : master)
   }, [master, masterMuted, readiness.kind])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REVERB_KEY, String(reverb))
+    } catch {
+      // Storage may be disabled in private browsing
+    }
+    if (readiness.kind === 'ready') playerRef.current?.setReverb(reverb)
+  }, [reverb, readiness.kind])
 
   useEffect(() => {
     try {
@@ -669,7 +680,7 @@ export default function App() {
     const { loop, keyStep, subs, countIn } = practice
     try {
       await downloadWav(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm, {
-        mixer: { volumes, muted, master, masterMuted },
+        mixer: { volumes, muted, master, masterMuted, reverb },
         soundBank: playerRef.current?.soundBank,
         onProgress: (ratio) => setWavState({ kind: 'rendering', progress: ratio }),
       })
@@ -1209,6 +1220,8 @@ export default function App() {
           masterMuted={masterMuted}
           onMaster={setMaster}
           onMasterMute={() => setMasterMuted((m) => !m)}
+          reverb={reverb}
+          onReverb={setReverb}
           sync={latencyOffset}
           onSync={setLatencyOffset}
           level={outputLevel}

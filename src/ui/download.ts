@@ -16,6 +16,7 @@ export interface WavMixerState {
   muted: Record<Part, boolean>
   master: number
   masterMuted: boolean
+  reverb?: number
 }
 
 export interface DownloadWavOptions {
@@ -84,7 +85,13 @@ export async function downloadWav(
   const masterGain = masterGainFor(mixer.masterMuted ? 0 : mixer.master)
   const soundBank = options.soundBank ?? (await fetchSoundBank(signal))
   const { midi } = arrange(chart, style, transpose, choruses, practice, bpm)
-  const wav = await renderWav(midi, soundBank, { volumes: channelVolumes, masterGain, onProgress, signal })
+  const wav = await renderWav(midi, soundBank, {
+    volumes: channelVolumes,
+    masterGain,
+    reverb: mixer.reverb,
+    onProgress,
+    signal,
+  })
   const filename = backingTrackFilename(chart, transpose, bpm, 'wav')
   downloadBlob(new Uint8Array(wav), filename, 'audio/wav')
 }

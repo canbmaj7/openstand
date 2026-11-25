@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { DEFAULT_REVERB } from '../audio/reverb'
 import type { Part } from '../engine/arrange'
 import { SOUND_OPTIONS, type SoundChoice } from '../styles/sounds'
 import { Popover } from './Popover'
@@ -15,6 +16,8 @@ interface MixerProps {
   masterMuted: boolean
   onMaster: (volume: number) => void
   onMasterMute: () => void
+  reverb: number
+  onReverb: (reverb: number) => void
   sync: number
   onSync: (ms: number) => void
   level: () => { peak: number; rms: number } // output level in dBFS
@@ -40,6 +43,8 @@ export function Mixer({
   masterMuted,
   onMaster,
   onMasterMute,
+  reverb,
+  onReverb,
   sync,
   onSync,
   level,
@@ -48,7 +53,7 @@ export function Mixer({
     <Popover
       id="mixer"
       className="band"
-      active={PARTS.some((p) => muted[p] || sounds[p] !== null) || masterMuted || sync !== 0}
+      active={PARTS.some((p) => muted[p] || sounds[p] !== null) || masterMuted || sync !== 0 || reverb !== DEFAULT_REVERB}
       label={
         <>
           <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -113,6 +118,25 @@ export function Mixer({
                 Mute
               </button>
             </div>
+          </div>
+          <div className="mixer-sync">
+            <div className="mixer-sync-head">
+              <label className="label" htmlFor="mixer-reverb">
+                Reverb
+              </label>
+              <output className="strip-value" htmlFor="mixer-reverb">
+                {reverb}
+              </output>
+            </div>
+            <input
+              id="mixer-reverb"
+              type="range"
+              min={0}
+              max={127}
+              value={reverb}
+              aria-label="Reverb"
+              onChange={(e) => onReverb(Number(e.target.value))}
+            />
           </div>
           <div className="mixer-sync">
             <div className="mixer-sync-head">
