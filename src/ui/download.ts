@@ -2,6 +2,7 @@
 
 import { masterGainFor, SOUNDFONT_URL } from '../audio/player'
 import { renderAudio, type AudioFormat } from '../audio/renderWav'
+import { centsForA4, DEFAULT_A4 } from '../audio/tuning'
 import { arrange, CHANNELS, type Part, type RampOptions } from '../engine/arrange'
 import type { PracticeOptions } from '../engine/timeline'
 import { makeBackup } from '../formats/backup'
@@ -21,6 +22,7 @@ export interface WavMixerState {
   master: number
   masterMuted: boolean
   reverb?: number
+  tuning?: number
 }
 
 export interface DownloadWavOptions {
@@ -111,6 +113,7 @@ export async function downloadAudio(
     volumes: channelVolumes,
     masterGain,
     reverb: mixer.reverb,
+    tuningCents: centsForA4(mixer.tuning ?? DEFAULT_A4),
     onProgress,
     signal,
   })

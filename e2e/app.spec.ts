@@ -89,7 +89,7 @@ test('clicking the selected chord again closes the chord helper', async ({ page 
 })
 
 test('a tune can be found in the library', async ({ page }) => {
-  const search = page.getByPlaceholder('Search title, composer or style')
+  const search = page.getByPlaceholder('Title, composer or style')
   await search.fill('bossa')
   await expect(page.getByText('Afro 6/8 Minor', { exact: true })).toBeVisible()
   await page.getByText('Bossa Workout', { exact: true }).click()

@@ -18,7 +18,7 @@ function renderInWorker(
   soundBank: ArrayBuffer,
   options: RenderAudioOptions,
 ): Promise<Uint8Array> {
-  const { format = 'wav', volumes, masterGain, reverb, onProgress, signal } = options
+  const { format = 'wav', volumes, masterGain, reverb, tuningCents, onProgress, signal } = options
   if (signal?.aborted) return Promise.reject(abortError(signal))
 
   const worker = new Worker(new URL('./renderWorker.ts', import.meta.url), { type: 'module' })
@@ -76,6 +76,7 @@ function renderInWorker(
       volumes,
       masterGain,
       reverb,
+      tuningCents,
     }
     // Transfer the MIDI copy; keep soundBank cloned so the caller's buffer stays reusable
     worker.postMessage(request, [midiBuffer])

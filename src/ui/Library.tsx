@@ -114,7 +114,7 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
       <input
         className="library-search"
         type="search"
-        placeholder="Search title, composer or style"
+        placeholder="Title, composer or style"
         aria-label="Search tunes"
         value={query}
         onChange={(e) => setQuery(e.target.value)}

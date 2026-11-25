@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { DEFAULT_REVERB } from '../audio/reverb'
+import { A4_RANGE, clampA4, DEFAULT_A4 } from '../audio/tuning'
 import type { Part } from '../engine/arrange'
 import { SOUND_OPTIONS, type SoundChoice, type SoundPart } from '../styles/sounds'
 import { Popover } from './Popover'
@@ -18,6 +19,8 @@ interface MixerProps {
   onMasterMute: () => void
   reverb: number
   onReverb: (reverb: number) => void
+  tuning: number
+  onTuning: (hz: number) => void
   sync: number
   onSync: (ms: number) => void
   level: () => { peak: number; rms: number } // output level in dBFS
@@ -48,6 +51,8 @@ export function Mixer({
   onMasterMute,
   reverb,
   onReverb,
+  tuning,
+  onTuning,
   sync,
   onSync,
   level,
@@ -56,7 +61,13 @@ export function Mixer({
     <Popover
       id="mixer"
       className="band"
-      active={SOUND_PARTS.some((p) => muted[p] || sounds[p] !== null) || masterMuted || sync !== 0 || reverb !== DEFAULT_REVERB}
+      active={
+        SOUND_PARTS.some((p) => muted[p] || sounds[p] !== null) ||
+        masterMuted ||
+        sync !== 0 ||
+        reverb !== DEFAULT_REVERB ||
+        tuning !== DEFAULT_A4
+      }
       label={
         <>
           <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -144,6 +155,48 @@ export function Mixer({
               aria-label="Reverb"
               onChange={(e) => onReverb(Number(e.target.value))}
             />
+          </div>
+          <div className="mixer-sync">
+            <div className="mixer-sync-head">
+              <span className="label" id="mixer-tuning-label">
+                Tuning
+              </span>
+              <div className="stepper mixer-tuning" role="group" aria-labelledby="mixer-tuning-label">
+                {tuning !== DEFAULT_A4 && (
+                  <button
+                    type="button"
+                    className="mixer-tuning-reset"
+                    aria-label="Reset tuning to 440 Hz"
+                    onClick={() => onTuning(DEFAULT_A4)}
+                  >
+                    440
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label="Lower tuning"
+                  disabled={tuning <= A4_RANGE[0]}
+                  onClick={() => onTuning(clampA4(tuning - 1))}
+                >
+                  −
+                </button>
+                <output
+                  className="stepper-value mixer-tuning-value"
+                  onDoubleClick={() => onTuning(DEFAULT_A4)}
+                  title={tuning !== DEFAULT_A4 ? 'Double-click to reset to 440 Hz' : undefined}
+                >
+                  A4 = {tuning} Hz
+                </output>
+                <button
+                  type="button"
+                  aria-label="Raise tuning"
+                  disabled={tuning >= A4_RANGE[1]}
+                  onClick={() => onTuning(clampA4(tuning + 1))}
+                >
+                  +
+                </button>
+              </div>
+            </div>
           </div>
           <div className="mixer-sync">
             <div className="mixer-sync-head">

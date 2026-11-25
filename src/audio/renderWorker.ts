@@ -9,6 +9,7 @@ export type WorkerRequest =
       volumes: Record<number, number>
       masterGain: number
       reverb?: number
+      tuningCents?: number
     }
   | { type: 'abort' }
 
@@ -35,6 +36,7 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
     volumes: data.volumes,
     masterGain: data.masterGain,
     reverb: data.reverb,
+    tuningCents: data.tuningCents,
     signal: controller.signal,
     onProgress: (ratio) => {
       const msg: WorkerResponse = { type: 'progress', ratio }
