@@ -5,7 +5,8 @@ import { generateBass } from './bass'
 import { CLICK_CHANNEL, generateClicks } from './click'
 import { generateComp, pedalChanges } from './comp'
 import { DRUM_CHANNEL, generateDrums } from './drums'
-import { writeMidi, type TrackSpec } from './midiWriter'
+import { toTicks } from './events'
+import { writeMidi, type TempoChange, type TrackSpec } from './midiWriter'
 import { buildTimeline, type PracticeOptions, type Timeline } from './timeline'
 
 // Channel layout, shared with the mixer
@@ -17,9 +18,33 @@ export type Part = keyof typeof CHANNELS
 
 // Playback rate is set relative to this tempo, so tempo changes don't regenerate the MIDI
 export const BASE_BPM = 120
+const BPM_RANGE: [number, number] = [40, 300]
+
+export interface RampOptions {
+  bpm: number
+  every: number
+}
 
 export interface ArrangeOptions {
   click?: boolean // add the metronome track (channel 3); off by default so plain MIDI exports keep three parts
+  ramp?: RampOptions
+}
+
+function buildTempoChanges(timeline: Timeline, baseBpm: number, ramp?: RampOptions): TempoChange[] | undefined {
+  if (!ramp || !(ramp.bpm > 0) || !(baseBpm > 0)) return undefined
+  const every = Math.max(1, Math.floor(ramp.every || 1))
+  const changes: TempoChange[] = []
+  let prevBpm = baseBpm
+  for (const bar of timeline.bars) {
+    if (!bar.isFirst || bar.measure < 0) continue
+    const raw = baseBpm + ramp.bpm * Math.floor(bar.chorus / every)
+    const nextBpm = Math.max(BPM_RANGE[0], Math.min(BPM_RANGE[1], raw))
+    if (nextBpm !== prevBpm) {
+      changes.push({ tick: toTicks(bar.start), bpm: nextBpm })
+      prevBpm = nextBpm
+    }
+  }
+  return changes.length > 0 ? changes : undefined
 }
 
 export interface Arrangement {
@@ -84,6 +109,6 @@ export function arrange(
       events: generateClicks(timeline),
     })
   }
-  const midi = writeMidi(bpm, tracks)
+  const midi = writeMidi(bpm, tracks, buildTempoChanges(timeline, bpm, options.ramp))
   return { midi, timeline }
 }

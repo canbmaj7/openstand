@@ -76,11 +76,26 @@ function gsDrumSysEx(channel: number): number[] {
   return [0xf0, ...varLen(data.length), ...data]
 }
 
-export function writeMidi(bpm: number, tracks: TrackSpec[]): Uint8Array {
+export interface TempoChange {
+  tick: number
+  bpm: number
+}
+
+function tempoEvent(tick: number, bpm: number): RawEvent {
   const mpqn = Math.round(60_000_000 / bpm)
+  return { tick, order: 0, bytes: [0xff, 0x51, 3, (mpqn >> 16) & 0xff, (mpqn >> 8) & 0xff, mpqn & 0xff] }
+}
+
+export function writeMidi(bpm: number, tracks: TrackSpec[], tempoChanges?: TempoChange[]): Uint8Array {
+  const extraTempos = (tempoChanges ?? [])
+    .map((c) => ({ tick: Math.round(c.tick), bpm: c.bpm }))
+    .filter((c) => c.tick > 0 && Number.isFinite(c.bpm) && c.bpm > 0)
+    .sort((a, b) => a.tick - b.tick)
+    .map((c) => tempoEvent(c.tick, c.bpm))
   const tempoTrack = encodeTrack([
-    { tick: 0, order: 0, bytes: [0xff, 0x51, 3, (mpqn >> 16) & 0xff, (mpqn >> 8) & 0xff, mpqn & 0xff] },
+    tempoEvent(0, bpm),
     { tick: 0, order: 0, bytes: [0xff, 0x58, 4, 4, 2, 24, 8] }, // 4/4
+    ...extraTempos,
   ])
 
   const noteTracks = tracks.map((t) => {

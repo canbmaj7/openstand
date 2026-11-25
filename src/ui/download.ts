@@ -2,7 +2,7 @@
 
 import { masterGainFor, SOUNDFONT_URL } from '../audio/player'
 import { renderAudio, type AudioFormat } from '../audio/renderWav'
-import { arrange, CHANNELS, type Part } from '../engine/arrange'
+import { arrange, CHANNELS, type Part, type RampOptions } from '../engine/arrange'
 import type { PracticeOptions } from '../engine/timeline'
 import { makeBackup } from '../formats/backup'
 import { chartToFile } from '../formats/chartFile'
@@ -26,6 +26,7 @@ export interface WavMixerState {
 export interface DownloadWavOptions {
   mixer: WavMixerState
   soundBank?: ArrayBuffer | null
+  ramp?: RampOptions
   onProgress?: (ratio: number) => void
   signal?: AbortSignal
 }
@@ -65,6 +66,7 @@ async function fetchSoundBank(signal?: AbortSignal): Promise<ArrayBuffer> {
 
 export interface DownloadMidiOptions {
   click?: boolean
+  ramp?: RampOptions
 }
 
 export function downloadMidi(
@@ -77,7 +79,10 @@ export function downloadMidi(
   options: DownloadMidiOptions = {},
 ): void {
   const filename = backingTrackFilename(chart, transpose, bpm, 'mid')
-  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, { click: Boolean(options.click) })
+  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, {
+    click: Boolean(options.click),
+    ramp: options.ramp,
+  })
   downloadBlob(new Uint8Array(midi), filename, 'audio/midi')
 }
 
@@ -97,7 +102,10 @@ export async function downloadAudio(
   }
   const masterGain = masterGainFor(mixer.masterMuted ? 0 : mixer.master)
   const soundBank = options.soundBank ?? (await fetchSoundBank(signal))
-  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, { click: !mixer.muted.click })
+  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, {
+    click: !mixer.muted.click,
+    ramp: options.ramp,
+  })
   const audio = await renderAudio(midi, soundBank, {
     format,
     volumes: channelVolumes,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AudioFormat } from '../audio/renderWav'
+import type { RampOptions } from '../engine/arrange'
 import type { PracticeOptions } from '../engine/timeline'
 import type { Chart } from '../music/chart'
 import type { StyleDefinition } from '../styles/types'
@@ -19,6 +20,7 @@ export interface AudioExportRequest {
   bpm: number
   mixer: WavMixerState
   soundBank?: ArrayBuffer | null
+  ramp?: RampOptions
 }
 
 export const AUDIO_EXPORT_OPTIONS: readonly { format: AudioFormat; label: string; desc: string }[] = [
@@ -52,6 +54,7 @@ export function useAudioExport() {
         format,
         mixer: request.mixer,
         soundBank: request.soundBank,
+        ramp: request.ramp,
         onProgress: (ratio) => setAudioState({ kind: 'rendering', format, progress: ratio }),
       })
       setAudioState({ kind: 'idle' })

@@ -285,6 +285,7 @@ export default function App() {
   const viewTranspose = shownTranspose + viewOffset(instrument)
   const shownKeyPc = (chart.key + viewTranspose + 12) % 12
   const liveBpm = chorusBpm(bpm, practice.ramp, practice.rampEvery, playing ? chorus : 0)
+  const exportRamp = practice.ramp > 0 ? { bpm: practice.ramp, every: practice.rampEvery } : undefined
   const shownChord = selectedChord
     ? transposeChord(selectedChord, viewTranspose)
     : (playing && position?.slotChord ? transposeChord(position.slotChord, viewOffset(instrument)) : null) ??
@@ -1017,6 +1018,7 @@ export default function App() {
                     onClick={() => {
                       downloadMidi(chart, resolveStyle(styleId), transpose, choruses, practiceOptions(practice), bpm, {
                         click: !muted.click,
+                        ramp: exportRamp,
                       })
                       close()
                     }}
@@ -1041,6 +1043,7 @@ export default function App() {
                             bpm,
                             mixer: { volumes, muted, master, masterMuted, reverb },
                             soundBank: playerRef.current?.soundBank,
+                            ramp: exportRamp,
                           },
                           close,
                         )
