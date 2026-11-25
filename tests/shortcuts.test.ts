@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { handleEditorShortcut, handlePracticeShortcut, type EditorShortcuts } from '../src/ui/shortcuts'
+import { handleEditorShortcut, handlePracticeShortcut, PRACTICE_SHORTCUTS, type EditorShortcuts } from '../src/ui/shortcuts'
 
 function keyEvent(code: string, patch: Partial<KeyboardEvent> = {}) {
   return {
@@ -16,7 +16,7 @@ function keyEvent(code: string, patch: Partial<KeyboardEvent> = {}) {
 }
 
 function actions() {
-  return { toggle: vi.fn(), tempo: vi.fn(), transpose: vi.fn(), clearLoop: vi.fn(), scale: vi.fn() }
+  return { toggle: vi.fn(), tempo: vi.fn(), tapTempo: vi.fn(), transpose: vi.fn(), clearLoop: vi.fn(), scale: vi.fn() }
 }
 
 function controlTarget(kind: 'button' | 'input') {
@@ -37,6 +37,7 @@ describe('practice keyboard shortcuts', () => {
     ['ArrowRight', 'transpose', 1],
     ['ArrowLeft', 'transpose', -1],
     ['KeyL', 'clearLoop', undefined],
+    ['KeyT', 'tapTempo', undefined],
   ] as const)('%s invokes only its practice action', (code, action, delta) => {
     const handlers = actions()
     const event = keyEvent(code)
@@ -84,7 +85,7 @@ describe('practice keyboard shortcuts', () => {
     for (const handler of Object.values(handlers)) expect(handler).not.toHaveBeenCalled()
   })
 
-  test.each(['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL'])(
+  test.each(['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL', 'KeyT'])(
     '%s is ignored while editing or focusing a control', (code) => {
       for (const editing of [false, true]) {
         const handlers = actions()
@@ -124,9 +125,26 @@ describe('practice keyboard shortcuts', () => {
     expect(handlers.toggle).not.toHaveBeenCalled()
   })
 
+  test('KeyT handles Shift+T and ignores OS key repeat', () => {
+    const handlers = actions()
+    const shiftTap = keyEvent('KeyT', { key: 'T', shiftKey: true })
+    handlePracticeShortcut(shiftTap, false, handlers)
+    expect(shiftTap.preventDefault).toHaveBeenCalledOnce()
+    expect(handlers.tapTempo).toHaveBeenCalledOnce()
+
+    const repeated = keyEvent('KeyT', { key: 't', repeat: true })
+    handlePracticeShortcut(repeated, false, handlers)
+    expect(repeated.preventDefault).toHaveBeenCalledOnce()
+    expect(handlers.tapTempo).toHaveBeenCalledOnce()
+  })
+
+  test('PRACTICE_SHORTCUTS lists T for tap tempo', () => {
+    expect(PRACTICE_SHORTCUTS).toContainEqual({ keys: 'T', description: 'Tap tempo', scope: 'practice' })
+  })
+
   test.each(['altKey', 'ctrlKey', 'metaKey', 'isComposing', 'defaultPrevented'] as const)(
     '%s leaves handled or composing keys alone', (flag) => {
-      for (const code of ['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL']) {
+      for (const code of ['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL', 'KeyT']) {
         const handlers = actions()
         const event = keyEvent(code, { [flag]: true })
         handlePracticeShortcut(event, false, handlers)

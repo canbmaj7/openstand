@@ -949,7 +949,7 @@ button:disabled {
   gap: 8px;
 }
 
-.stepper button,
+.stepper button:not(.stepper-value),
 .icon-button {
   display: grid;
   place-items: center;
@@ -962,7 +962,7 @@ button:disabled {
   line-height: 1;
 }
 
-.stepper button:hover:not(:disabled) {
+.stepper button:not(.stepper-value):hover:not(:disabled) {
   border-color: var(--ink-2);
 }
 
@@ -975,6 +975,20 @@ button:disabled {
   font: 500 14px/1 var(--mono);
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+button.stepper-value {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  min-height: 28px;
+}
+
+/* The tempo number is the tap-tempo button: show it is pressable */
+button.stepper-value:hover {
+  background: var(--control);
+  cursor: pointer;
 }
 
 input[type='range'] {

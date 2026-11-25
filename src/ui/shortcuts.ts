@@ -1,6 +1,7 @@
 export interface PracticeShortcuts {
   toggle: () => void
   tempo: (delta: number) => void
+  tapTempo: () => void
   transpose: (delta: number) => void
   clearLoop: () => void
   scale: (delta: -1 | 1) => void
@@ -21,6 +22,15 @@ export interface ShortcutInfo {
   description: string
   scope: 'practice' | 'editor'
 }
+
+export const PRACTICE_SHORTCUTS: ShortcutInfo[] = [
+  { keys: 'Space', description: 'Play / stop', scope: 'practice' },
+  { keys: 'Up / Down', description: 'Tempo ±5 BPM', scope: 'practice' },
+  { keys: 'T', description: 'Tap tempo', scope: 'practice' },
+  { keys: 'Right / Left', description: 'Transpose ±1 semitone', scope: 'practice' },
+  { keys: 'L', description: 'Clear loop', scope: 'practice' },
+  { keys: '- / +', description: 'Chart size', scope: 'practice' },
+]
 
 export const EDITOR_SHORTCUTS: ShortcutInfo[] = [
   { keys: 'Ctrl/Cmd+Z', description: 'Undo', scope: 'editor' },
@@ -104,6 +114,10 @@ export function handlePracticeShortcut(
     case 'KeyL':
       event.preventDefault()
       actions.clearLoop()
+      return
+    case 'KeyT':
+      event.preventDefault()
+      if (!event.repeat) actions.tapTempo()
       return
   }
 
