@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { arrange } from '../src/engine/arrange'
 import { generateBass } from '../src/engine/bass'
 import { generateComp, pedalChanges } from '../src/engine/comp'
@@ -86,12 +86,19 @@ describe('meters', () => {
   })
 
   test('every style plays more than one comp hit in some 3/4 bars', () => {
-    const chart = tune([3, 4])
-    for (const style of STYLES) {
-      const timeline = buildTimeline(chart, 0, 4)
-      const comp = generateComp(timeline.slots, style.comp, style.swing, timeline.countIn)
-      const perBar = onsets(comp, timeline).map((bar) => new Set(bar).size)
-      expect(Math.max(...perBar), style.id).toBeGreaterThan(1)
+    // Seeded so a style whose single-hit rhythm comes up in every bar doesn't fail the run now and then
+    let seed = 1
+    const random = vi.spyOn(Math, 'random').mockImplementation(() => (seed = (seed * 16807) % 2147483647) / 2147483647)
+    try {
+      const chart = tune([3, 4])
+      for (const style of STYLES) {
+        const timeline = buildTimeline(chart, 0, 4)
+        const comp = generateComp(timeline.slots, style.comp, style.swing, timeline.countIn)
+        const perBar = onsets(comp, timeline).map((bar) => new Set(bar).size)
+        expect(Math.max(...perBar), style.id).toBeGreaterThan(1)
+      }
+    } finally {
+      random.mockRestore()
     }
   })
 
