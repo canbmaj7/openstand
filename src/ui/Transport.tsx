@@ -35,6 +35,7 @@ interface TransportProps {
   onChoruses: (n: number) => void
   hasTuneSettings?: boolean
   onResetTune?: () => void
+  onExitFullscreen?: () => void
   children?: ReactNode
 }
 
@@ -207,6 +208,21 @@ export function Transport(props: TransportProps) {
       </div>
 
       <div className="transport-band">{props.children}</div>
+
+      {props.onExitFullscreen && (
+        <button
+          type="button"
+          className="transport-exit-fullscreen"
+          aria-label="Exit full screen"
+          title="Exit full screen (F / Esc)"
+          onClick={props.onExitFullscreen}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M5.5 2.5v3h-3M10.5 2.5v3h3M5.5 13.5v-3h-3M10.5 13.5v-3h3" />
+          </svg>
+          <span className="transport-exit-label">Exit</span>
+        </button>
+      )}
     </section>
   )
 }

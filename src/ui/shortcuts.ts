@@ -5,6 +5,7 @@ export interface PracticeShortcuts {
   transpose: (delta: number) => void
   clearLoop: () => void
   scale: (delta: -1 | 1) => void
+  fullscreen: () => void
 }
 
 export interface EditorShortcuts {
@@ -30,6 +31,7 @@ export const PRACTICE_SHORTCUTS: ShortcutInfo[] = [
   { keys: 'Right / Left', description: 'Transpose ±1 semitone', scope: 'practice' },
   { keys: 'L', description: 'Clear loop', scope: 'practice' },
   { keys: '- / +', description: 'Chart size', scope: 'practice' },
+  { keys: 'F', description: 'Full screen', scope: 'practice' },
 ]
 
 export const EDITOR_SHORTCUTS: ShortcutInfo[] = [
@@ -118,6 +120,10 @@ export function handlePracticeShortcut(
     case 'KeyT':
       event.preventDefault()
       if (!event.repeat) actions.tapTempo()
+      return
+    case 'KeyF':
+      event.preventDefault()
+      if (!event.repeat) actions.fullscreen()
       return
   }
 
