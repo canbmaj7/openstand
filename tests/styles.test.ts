@@ -54,7 +54,7 @@ describe('styles', () => {
     expect(mapStyle('Afro', [6, 8])).toBe('afro-cuban')
     expect(mapStyle('Latin')).toBe('afro-cuban')
     expect(mapStyle('Mambo')).toBe('afro-cuban')
-    expect(mapStyle('Cha Cha')).toBe('afro-cuban')
+    expect(mapStyle('Cha Cha')).toBe('cha-cha')
     expect(mapStyle('Salsa')).toBe('afro-cuban')
     expect(mapStyle('Montuno')).toBe('afro-cuban')
     expect(mapStyle('Rumba')).toBe('afro-cuban')

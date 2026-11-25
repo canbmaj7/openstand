@@ -61,6 +61,10 @@ export const DRUM_ROWS: DrumName[] = [
   'congaHigh',
   'congaMute',
   'congaLow',
+  'timbaleHigh',
+  'timbaleLow',
+  'guiroShort',
+  'guiroLong',
 ]
 
 // Bass tones, high to low, as rows of the bass grid

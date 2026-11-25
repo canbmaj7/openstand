@@ -21,8 +21,12 @@ export const DRUM_NOTES = {
   congaMute: 62,
   congaHigh: 63,
   congaLow: 64,
+  timbaleHigh: 65,
+  timbaleLow: 66,
   cabasa: 69,
   shaker: 70,
+  guiroShort: 73,
+  guiroLong: 74,
   claves: 75,
 } as const
 
