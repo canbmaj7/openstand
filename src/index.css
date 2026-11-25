@@ -998,6 +998,22 @@ input[type='range']::-moz-range-thumb {
   width: 96px;
 }
 
+.control-reset {
+  align-self: end;
+  margin-bottom: 2px;
+  padding: 0 7px;
+}
+
+.control-reset svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .band-toggle {
   display: inline-flex;
   align-items: center;
@@ -1608,7 +1624,7 @@ input.fader::-moz-range-thumb {
   }
 }
 
-@media (max-width: 1240px) {
+@media (max-width: 1340px) {
   :root {
     --transport-h: auto;
   }

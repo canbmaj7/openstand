@@ -13,6 +13,7 @@ import { reportError } from './errorReports'
 import { chartFromHash, labFromHash, shareUrl, styleShareUrl } from './formats/share'
 import { addTunes, loadTunes, removePlaylist, removeTune, restoreBackup, saveTune } from './library/db'
 import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/myStyles'
+import { BPM_RANGE, clampBpm, DEFAULT_CHORUSES, MAX_CHORUSES, type TuneSettings } from './library/tuneSettings'
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
 import { emptyChart } from './music/edit'
@@ -38,6 +39,7 @@ import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
 import { switchMode } from './music/mode'
 import { Transport, type ModeOption, type Readiness } from './ui/Transport'
+import { useTuneSettings } from './ui/useTuneSettings'
 import { CHART_SCALES, loadChartScale, saveChartScale, stepScale, type ChartScale } from './ui/chartScale'
 import { handlePracticeShortcut, isChordInputElement, isTextInputElement, type PracticeShortcuts } from './ui/shortcuts'
 
@@ -60,10 +62,6 @@ interface ArrangeOptions {
   practice: PracticeSettings
 }
 
-const BPM_RANGE: [number, number] = [40, 300]
-const MAX_CHORUSES = 24
-const clampBpm = (v: number) => Math.max(BPM_RANGE[0], Math.min(BPM_RANGE[1], v))
-
 // Keeps the transposition within -5..+6 so the band's register doesn't drift
 const offsetToKey = (from: number, to: number) => ((to - from + 17) % 12) - 5
 
@@ -73,18 +71,10 @@ const LAST_TUNE = 'openstand:last-tune'
 const MASTER_KEY = 'openstand:master-volume'
 const LATENCY_KEY = 'openstand:latency-offset'
 const INSTRUMENT_KEY = 'openstand:instrument'
-const TUNE_STYLES_KEY = 'openstand:tune-styles'
 const LAB_STYLE = 'lab' // style id used while the lab is open
 
-function loadTuneStyles(): Record<string, string> {
-  try {
-    const saved = JSON.parse(localStorage.getItem(TUNE_STYLES_KEY) ?? '{}') as unknown
-    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {}
-    return Object.fromEntries(Object.entries(saved).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
-  } catch {
-    return {}
-  }
-}
+const isKnownStyle = (id: string | undefined, mine: LabStyle[]): id is string =>
+  Boolean(id && (STYLES.some((style) => style.id === id) || mine.some((style) => myStyleId(style) === id)))
 
 const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
 
@@ -162,8 +152,23 @@ export default function App() {
 
   const [readiness, setReadiness] = useState<Readiness>({ kind: 'loading', progress: 0 })
   const [tunes, setTunes] = useState<Tune[]>(EXAMPLES)
-  const [songId, setSongId] = useState(EXAMPLES[0].id)
-  const [styleId, setStyleId] = useState(EXAMPLES[0].chart.style)
+  const [myStyles, setMyStylesState] = useState<LabStyle[]>(loadMyStyles)
+  const myStylesRef = useRef(myStyles)
+  const {
+    tuneSettings,
+    tuneSettingsRef,
+    styleOverrides,
+    update: updateSavedTune,
+    reset: resetSavedTune,
+    clearStyle: clearSavedStyle,
+    flush: flushSavedTunes,
+  } = useTuneSettings()
+  const initialTune = EXAMPLES[0]
+  const initialSaved = tuneSettings[initialTune.id]
+  const [songId, setSongId] = useState(initialTune.id)
+  const [styleId, setStyleId] = useState(() =>
+    isKnownStyle(initialSaved?.style, myStyles) ? initialSaved.style : initialTune.chart.style,
+  )
   const styleRef = useRef(styleId)
   const [lab, setLabState] = useState<LabStyle | null>(null)
   const labRef = useRef<LabStyle | null>(null)
@@ -175,10 +180,6 @@ export default function App() {
   const [labUndo, setLabUndo] = useState<{ lab: LabStyle; startStyleId: string } | null>(null)
   const [labCopy, setLabCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [labShare, setLabShare] = useState<'idle' | 'copied' | 'failed'>('idle')
-  const [myStyles, setMyStylesState] = useState<LabStyle[]>(loadMyStyles)
-  const myStylesRef = useRef(myStyles)
-  const [tuneStyles, setTuneStylesState] = useState<Record<string, string>>(loadTuneStyles)
-  const tuneStylesRef = useRef(tuneStyles)
   const openSharedStyleRef = useRef<(lab: LabStyle) => void>(() => {})
   const setMyStyles = (next: LabStyle[]) => {
     myStylesRef.current = next
@@ -190,19 +191,10 @@ export default function App() {
     soundsRef.current = next
     setSoundsState(next)
   }
-  const setTuneStyles = (next: Record<string, string>) => {
-    tuneStylesRef.current = next
-    setTuneStylesState(next)
-    try {
-      localStorage.setItem(TUNE_STYLES_KEY, JSON.stringify(next))
-    } catch {
-      // Storage may be disabled in private browsing
-    }
-  }
   useEffect(() => {
     styleRef.current = styleId
   }, [styleId])
-  const [transpose, setTranspose] = useState(0)
+  const [transpose, setTranspose] = useState(() => initialSaved?.transpose ?? 0)
   const [instrument, setInstrument] = useState<InstrumentId>(() => {
     try {
       const saved = localStorage.getItem(INSTRUMENT_KEY)
@@ -211,10 +203,14 @@ export default function App() {
       return 'C'
     }
   })
-  const [bpm, setBpm] = useState(EXAMPLES[0].chart.bpm)
+  const [bpm, setBpm] = useState(() => initialSaved?.bpm ?? initialTune.chart.bpm)
+  const bpmRef = useRef(bpm)
+  useEffect(() => {
+    bpmRef.current = bpm
+  }, [bpm])
   const [importOpen, setImportOpen] = useState(false)
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle')
-  const [choruses, setChoruses] = useState(3)
+  const [choruses, setChoruses] = useState(() => initialSaved?.choruses ?? DEFAULT_CHORUSES)
   const [playing, setPlaying] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
   const [volumes, setVolumes] = useState<Record<Part, number>>({ bass: 110, comp: 85, drums: 95 })
@@ -469,15 +465,23 @@ export default function App() {
     setTranspose(next.transpose)
     setChoruses(next.choruses)
     setPractice(next.practice)
-    if (patch.styleId && patch.styleId !== LAB_STYLE) {
-      const nextTuneStyles = { ...tuneStylesRef.current }
-      if (patch.styleId === tune.chart.style) delete nextTuneStyles[songId]
-      else nextTuneStyles[songId] = patch.styleId
-      setTuneStyles(nextTuneStyles)
+    const settingsPatch: Partial<TuneSettings> = {}
+    if (patch.styleId && patch.styleId !== LAB_STYLE) settingsPatch.style = patch.styleId
+    if (patch.transpose !== undefined) settingsPatch.transpose = patch.transpose
+    if (patch.choruses !== undefined) settingsPatch.choruses = patch.choruses
+    if (Object.keys(settingsPatch).length > 0) {
+      updateSavedTune(tune.id, settingsPatch, { style: tune.chart.style, bpm: tune.chart.bpm })
     }
     const player = playerRef.current
     const loopChanged = String(next.practice.loop) !== String(practice.loop)
     if (playing && player) void start(next, loopChanged ? 0 : player.position)
+  }
+
+  const changeBpm = (nextBpm: number) => {
+    const clamped = clampBpm(nextBpm)
+    bpmRef.current = clamped
+    setBpm(clamped)
+    updateSavedTune(tune.id, { bpm: clamped }, { style: tune.chart.style, bpm: tune.chart.bpm }, { debounceMs: 400 })
   }
 
   const changeMode = (nextMode: ModeOption) => {
@@ -495,7 +499,7 @@ export default function App() {
     // Going round the keys needs enough choruses to get back home
     const keysNeeded = next.keyStep ? 12 / gcd(next.keyStep, 12) : 0
     const nextChoruses = next.keyStep !== practice.keyStep && choruses < keysNeeded ? keysNeeded : choruses
-    changeArrangement({ practice: next, choruses: nextChoruses })
+    changeArrangement(nextChoruses !== choruses ? { practice: next, choruses: nextChoruses } : { practice: next })
   }
 
   const toggle = () => (playing ? stop() : void start({ styleId, transpose, choruses, practice }, 0, chart, true))
@@ -503,7 +507,7 @@ export default function App() {
     toggle: () => {
       if (readiness.kind === 'ready') toggle()
     },
-    tempo: (delta) => setBpm((current) => clampBpm(current + delta)),
+    tempo: (delta) => changeBpm(bpmRef.current + delta),
     transpose: (delta) => changeArrangement({ transpose: offsetToKey(chart.key, (keyPc + delta + 12) % 12) }),
     clearLoop: () => {
       setPicking(null)
@@ -557,6 +561,7 @@ export default function App() {
   }, [playing])
 
   const showTune = useCallback((next: Tune) => {
+    flushSavedTunes()
     auditionSeqRef.current += 1
     previewingRef.current = false
     cancelAutoPlayRef.current()
@@ -565,12 +570,14 @@ export default function App() {
     setPlaying(false)
     setPosition(null)
     setSongId(next.id)
-    const preferred = tuneStylesRef.current[next.id]
-    const known = preferred && (STYLES.some((style) => style.id === preferred) || myStylesRef.current.some((style) => myStyleId(style) === preferred))
-    setStyleId(labRef.current ? LAB_STYLE : known ? preferred : next.chart.style)
-    setTranspose(0)
+    const saved = tuneSettingsRef.current[next.id]
+    setStyleId(labRef.current ? LAB_STYLE : isKnownStyle(saved?.style, myStylesRef.current) ? saved.style : next.chart.style)
+    setTranspose(saved?.transpose ?? 0)
     setMode('original')
-    setBpm(next.chart.bpm)
+    const nextBpm = saved?.bpm ?? next.chart.bpm
+    bpmRef.current = nextBpm
+    setBpm(nextBpm)
+    if (saved?.choruses !== undefined) setChoruses(saved.choruses)
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
     setSelectedChord(null)
@@ -582,7 +589,22 @@ export default function App() {
     } catch {
       // Storage may be disabled in private browsing
     }
-  }, [])
+  }, [flushSavedTunes, tuneSettingsRef])
+
+  const resetTune = () => {
+    resetSavedTune(tune.id)
+    const nextStyleId = labRef.current ? LAB_STYLE : tune.chart.style
+    if (labRef.current) labReturnStyleRef.current = tune.chart.style
+    setStyleId(nextStyleId)
+    setTranspose(0)
+    bpmRef.current = tune.chart.bpm
+    setBpm(tune.chart.bpm)
+    setChoruses(DEFAULT_CHORUSES)
+    const player = playerRef.current
+    if (playing && player) {
+      void start({ styleId: nextStyleId, transpose: 0, choruses: DEFAULT_CHORUSES, practice }, player.position)
+    }
+  }
 
   const setlists = useSetlists({
     tunes,
@@ -1098,7 +1120,7 @@ export default function App() {
         <Library
           tunes={tunes}
           selectedId={tune.id}
-          styleOverrides={tuneStyles}
+          styleOverrides={styleOverrides}
           styleNames={Object.fromEntries([
             ...STYLES.map((item) => [item.id, item.name]),
             ...myStyles.map((item) => [myStyleId(item), item.name]),
@@ -1217,7 +1239,7 @@ export default function App() {
           onDelete={() => {
             const id = myStyleId(lab)
             setMyStyles(removeMyStyle(myStyles, id))
-            setTuneStyles(Object.fromEntries(Object.entries(tuneStylesRef.current).filter(([, style]) => style !== id)))
+            clearSavedStyle(id)
             setLabBaseline(lab)
             if (labReturnStyleRef.current === id) labReturnStyleRef.current = tune.chart.style
             if (labStartStyleId === id) setLabStartStyleId(lab.base)
@@ -1270,7 +1292,9 @@ export default function App() {
           ...myStyles.map((m) => ({ id: myStyleId(m), name: m.name })),
         ]}
         onStyle={(id) => {
-          setBpm(resolveStyle(id).tempo.default)
+          const nextBpm = resolveStyle(id).tempo.default
+          bpmRef.current = nextBpm
+          setBpm(nextBpm)
           changeArrangement({ styleId: id })
         }}
         keyPc={keyPc}
@@ -1282,10 +1306,12 @@ export default function App() {
         onInstrument={setInstrument}
         bpm={bpm}
         bpmRange={BPM_RANGE}
-        onBpm={setBpm}
+        onBpm={changeBpm}
         choruses={choruses}
         maxChoruses={MAX_CHORUSES}
         onChoruses={(n) => changeArrangement({ choruses: n })}
+        hasTuneSettings={Boolean(tuneSettings[tune.id])}
+        onResetTune={resetTune}
       >
         <Practice chart={chart} settings={practice} onChange={changePractice} onPickLoop={() => setPicking('first')} />
         <ChordHelper
