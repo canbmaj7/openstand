@@ -169,6 +169,17 @@ const RAW: Example[] = [
     measures: [['A7'], ['A7'], ['A7'], ['A7'], ['D7'], ['D7'], ['A7'], ['A7'], ['E7'], ['D7'], ['A7'], ['E7']],
   },
   {
+    id: 'country-g',
+    style: 'country',
+    title: 'Country Two-Step',
+    key: 7,
+    bpm: 132,
+    measures: [
+      ['G'], ['G'], ['C'], ['G'], ['G'], ['D7'], ['G', 'C'], ['D7'],
+      ['G'], ['G7'], ['C'], ['C'], ['G'], ['D7'], ['G', 'C'], ['G', 'D7'],
+    ],
+  },
+  {
     id: 'jazz-waltz-bb',
     style: 'jazz-waltz',
     title: 'Jazz Waltz Workout (3/4)',

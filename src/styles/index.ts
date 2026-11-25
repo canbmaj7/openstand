@@ -2,6 +2,7 @@ import { afroCuban } from './library/afro-cuban'
 import { aksak } from './library/aksak'
 import { ballad } from './library/ballad'
 import { bossaNova } from './library/bossa-nova'
+import { country } from './library/country'
 import { funk } from './library/funk'
 import { jazzWaltz } from './library/jazz-waltz'
 import { mediumSwing } from './library/medium-swing'
@@ -24,6 +25,7 @@ export const STYLES: StyleDefinition[] = [
   funk,
   shuffle,
   reggae,
+  country,
   aksak,
 ]
 
