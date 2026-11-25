@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Cha-Cha-Chá and Hip-Hop styles; iReal Pro Cha Cha and Hip Hop tunes open in them (#97).
 - Each tune remembers the tempo, key and repeats you set, like its style; Reset goes back to the tune's own (#92).
 - Gypsy Jazz, Bolero and Tango styles; iReal Pro tunes in these styles open in them (#93).
 - Back up the whole library (tunes, setlists and your styles) to one file and restore it on another device (#86).

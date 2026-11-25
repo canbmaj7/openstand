@@ -3,9 +3,11 @@ import { aksak } from './library/aksak'
 import { ballad } from './library/ballad'
 import { bolero } from './library/bolero'
 import { bossaNova } from './library/bossa-nova'
+import { chaCha } from './library/cha-cha'
 import { country } from './library/country'
 import { funk } from './library/funk'
 import { gypsyJazz } from './library/gypsy-jazz'
+import { hipHop } from './library/hip-hop'
 import { jazzWaltz } from './library/jazz-waltz'
 import { mediumSwing } from './library/medium-swing'
 import { popRock } from './library/pop-rock'
@@ -27,8 +29,10 @@ export const STYLES: StyleDefinition[] = [
   afroCuban,
   bolero,
   tango,
+  chaCha,
   popRock,
   funk,
+  hipHop,
   shuffle,
   reggae,
   country,
