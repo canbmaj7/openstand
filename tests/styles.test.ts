@@ -68,7 +68,7 @@ describe('styles', () => {
     expect(mapStyle('Ballad')).toBe('ballad')
     expect(mapStyle('Reggae')).toBe('reggae')
     expect(mapStyle('Country')).toBe('country')
-    expect(mapStyle('Bluegrass')).toBe('country')
+    expect(mapStyle('Bluegrass')).toBe('bluegrass')
     expect(mapStyle('Folk')).toBe('country')
     expect(mapStyle('Country Waltz', [3, 4])).toBe('country')
     expect(mapStyle('Country Ballad')).toBe('pop-rock')
