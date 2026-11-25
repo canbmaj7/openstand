@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Hear a chord, or a chord and its scale, from the chord helper (#87).
 - Country style: train-beat drums, root–five bass with walk-ups and boom-chick steel-string guitar; iReal Pro Country, Bluegrass and Folk tunes open in it. New example: Country Two-Step (#88).
 - Sort the tune list by title, composer, style or key (#79).
 - Make the chart bigger or smaller with A− / A+ in the top bar; the size is remembered and used for printing (#80).
