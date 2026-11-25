@@ -21,6 +21,7 @@ export interface SetlistsProps {
   onMoveTune: (setlistId: string, from: number, to: number) => void
   onRemoveTune: (setlistId: string, index: number) => void
   onTogglePlayThrough: () => void
+  onAddTune: (setlistId: string, tuneId: string) => void
 }
 
 export function Setlists(props: SetlistsProps) {
@@ -52,6 +53,7 @@ export function Setlists(props: SetlistsProps) {
         onMoveTune={props.onMoveTune}
         onRemoveTune={props.onRemoveTune}
         onTogglePlayThrough={props.onTogglePlayThrough}
+        onAddTune={props.onAddTune}
       />
     )
   }

@@ -52,6 +52,10 @@
   margin-bottom: 10px;
 }
 
+.setlist-detail-head button {
+  white-space: nowrap;
+}
+
 .setlist-title-row {
   display: flex;
   align-items: baseline;
@@ -176,4 +180,11 @@
 
 .setlist-popover-form .library-search {
   margin-bottom: 0;
+}
+
+/* Phones: the top bar has no room; tunes are added from the setlist itself (Add this tune) */
+@media (max-width: 560px) {
+  .add-to-setlist {
+    display: none;
+  }
 }

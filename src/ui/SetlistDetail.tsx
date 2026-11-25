@@ -20,6 +20,7 @@ export interface SetlistDetailProps {
   onMoveTune: (setlistId: string, from: number, to: number) => void
   onRemoveTune: (setlistId: string, index: number) => void
   onTogglePlayThrough: () => void
+  onAddTune: (setlistId: string, tuneId: string) => void
 }
 
 export function SetlistDetail(props: SetlistDetailProps) {
@@ -53,8 +54,8 @@ export function SetlistDetail(props: SetlistDetailProps) {
   return (
     <>
       <div className="setlist-detail-head">
-        <button type="button" className="library-import" onClick={props.onBack}>
-          ← Setlists
+        <button type="button" className="library-import" aria-label="Back to setlists" onClick={props.onBack}>
+          ← All
         </button>
         <span className="library-actions">
           <button
@@ -140,6 +141,14 @@ export function SetlistDetail(props: SetlistDetailProps) {
       <div className="setlist-actions">
         <button type="button" className="chip" aria-pressed={playThrough} onClick={props.onTogglePlayThrough}>
           Play through
+        </button>
+        <button
+          type="button"
+          className="chip"
+          disabled={setlist.tuneIds.includes(selectedId)}
+          onClick={() => props.onAddTune(setlist.id, selectedId)}
+        >
+          Add this tune
         </button>
         <button type="button" className="chip" disabled={items.length === 0} onClick={() => void copyIreal()}>
           {linkState === 'copied' ? 'Link copied' : linkState === 'failed' ? 'Copy failed' : 'Copy iReal Pro link'}

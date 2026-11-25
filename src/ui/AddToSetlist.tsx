@@ -19,7 +19,7 @@ export function AddToSetlist({ tuneId, tunes, setlists, onAdd, onCreateAndAdd }:
   return (
     <Popover
       id="add-to-setlist"
-      className="share"
+      className="share add-to-setlist"
       ariaLabel="Add to setlist"
       title="Add current tune to a setlist"
       label={

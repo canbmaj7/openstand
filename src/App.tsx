@@ -1010,6 +1010,7 @@ export default function App() {
             onMoveTune: setlists.moveTune,
             onRemoveTune: setlists.removeTuneAt,
             onTogglePlayThrough: setlists.togglePlayThrough,
+            onAddTune: setlists.add,
           }}
         />
 
