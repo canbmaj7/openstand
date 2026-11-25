@@ -9,6 +9,7 @@ import { chaCha } from './library/cha-cha'
 import { choro } from './library/choro'
 import { country } from './library/country'
 import { cumbia } from './library/cumbia'
+import { disco } from './library/disco'
 import { funk } from './library/funk'
 import { gospel } from './library/gospel'
 import { gypsyJazz } from './library/gypsy-jazz'
@@ -19,9 +20,11 @@ import { merengue } from './library/merengue'
 import { partidoAlto } from './library/partido-alto'
 import { popRock } from './library/pop-rock'
 import { reggae } from './library/reggae'
+import { rock128 } from './library/rock-12-8'
 import { samba } from './library/samba'
 import { shuffle } from './library/shuffle'
 import { slowBlues } from './library/slow-blues'
+import { soul } from './library/soul'
 import { swingTwoFour } from './library/swing-two-four'
 import { tango } from './library/tango'
 import { upTempoSwing } from './library/up-tempo-swing'
@@ -47,11 +50,14 @@ export const STYLES: StyleDefinition[] = [
   merengue,
   cumbia,
   popRock,
+  disco,
   funk,
+  soul,
   hipHop,
   gospel,
   shuffle,
   slowBlues,
+  rock128,
   reggae,
   country,
   aksak,
