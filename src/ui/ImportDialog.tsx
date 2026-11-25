@@ -1,17 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
+import type { RestoreSummary } from '../formats/backup'
 
-export interface ImportResult {
-  tunes: number
-  playlists: string[]
-}
+export type ImportResult =
+  | { kind: 'tunes'; tunes: number; playlists: string[] }
+  | { kind: 'backup'; summary: RestoreSummary }
 
 interface ImportDialogProps {
   open: boolean
   onClose: () => void
   onImport: (text: string, filename?: string) => Promise<ImportResult>
+  onBackup: () => void
 }
 
-export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
+const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`
+
+function formatRestoreSummary({ tunes, setlists, styles }: RestoreSummary): string {
+  const parts = [`Restored ${plural(tunes.added, 'tune')}, ${plural(setlists.added, 'setlist')}, ${plural(styles.added, 'style')}.`]
+  const alreadyHere = tunes.skipped + setlists.skipped + styles.skipped
+  if (alreadyHere > 0) {
+    parts.push(`${alreadyHere} ${alreadyHere === 1 ? 'was' : 'were'} already here.`)
+  }
+  if (tunes.invalid > 0) {
+    parts.push(`${plural(tunes.invalid, 'invalid tune')} skipped.`)
+  }
+  return parts.join(' ')
+}
+
+export function ImportDialog({ open, onClose, onImport, onBackup }: ImportDialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<{ kind: 'idle' | 'busy' | 'done' | 'error'; message?: string }>({
@@ -32,6 +47,11 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
     setStatus({ kind: 'busy' })
     try {
       const result = await onImport(input, filename)
+      if (result.kind === 'backup') {
+        setText('')
+        setStatus({ kind: 'done', message: formatRestoreSummary(result.summary) })
+        return
+      }
       if (result.tunes === 0) {
         setStatus({ kind: 'error', message: 'No iReal Pro links found. Paste a link that starts with irealb://' })
         return
@@ -59,9 +79,8 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
           Import tunes
         </h2>
         <p className="dialog-text">
-          Paste an iReal Pro link (<code>irealb://…</code>) or a whole playlist, or choose an iReal Pro HTML export or{' '}
-          <code>.openstand.json</code> chart file. Thousands of user-made playlists are shared on the iReal Pro forums.
-          Tunes are stored in this browser only.
+          Paste an iReal Pro link (<code>irealb://…</code>) or a whole playlist, or choose an iReal Pro HTML export,{' '}
+          <code>.openstand.json</code> chart file, or library backup. Tunes are stored in this browser only.
         </p>
         <textarea
           className="dialog-input"
@@ -90,6 +109,12 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
           </button>
           <button type="submit" className="button button-primary" disabled={!text.trim() || status.kind === 'busy'}>
             Import
+          </button>
+        </div>
+        <div className="dialog-backup">
+          <span className="dialog-backup-text">Save tunes, setlists and custom styles to one file.</span>
+          <button type="button" className="button" onClick={onBackup}>
+            Back up library
           </button>
         </div>
         {status.message && (

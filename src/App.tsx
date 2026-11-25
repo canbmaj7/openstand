@@ -4,12 +4,13 @@ import { loadReverb, REVERB_KEY } from './audio/reverb'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, slotAtBeat, type Timeline } from './engine/timeline'
+import { parseBackup } from './formats/backup'
 import { parseChartFile } from './formats/chartFile'
 import { parseIrealLinks } from './formats/ireal'
 import { irealLink } from './formats/irealWrite'
 import { reportError } from './errorReports'
 import { chartFromHash, labFromHash, shareUrl, styleShareUrl } from './formats/share'
-import { addTunes, loadTunes, removePlaylist, removeTune, saveTune } from './library/db'
+import { addTunes, loadTunes, removePlaylist, removeTune, restoreBackup, saveTune } from './library/db'
 import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/myStyles'
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
@@ -22,7 +23,7 @@ import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type La
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
-import { downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml, downloadWav } from './ui/download'
+import { downloadBackup, downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml, downloadWav } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
 import { useEditorHistory } from './ui/useEditorHistory'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
@@ -561,7 +562,7 @@ export default function App() {
     }
   })
 
-  const { clearActive: clearSetlist } = setlists
+  const { clearActive: clearSetlist, reload: reloadSetlists } = setlists
   const selectSong = (id: string) => {
     const next = tunes.find((t) => t.id === id)
     if (next) {
@@ -622,12 +623,32 @@ export default function App() {
   const importText = useCallback(
     async (text: string, filename?: string): Promise<ImportResult> => {
       if (filename?.toLowerCase().endsWith('.json') || text.trimStart().startsWith('{')) {
+        let isBackup = false
+        try {
+          const parsed = JSON.parse(text) as unknown
+          isBackup =
+            typeof parsed === 'object' &&
+            parsed !== null &&
+            !Array.isArray(parsed) &&
+            (parsed as Record<string, unknown>).format === 'openstand-backup'
+        } catch {
+          isBackup = false
+        }
+        if (isBackup) {
+          const backup = parseBackup(text)
+          const summary = await restoreBackup(backup, setNotice)
+          const saved = await loadTunes()
+          setTunes([...EXAMPLES, ...saved])
+          await reloadSetlists()
+          setMyStyles(loadMyStyles())
+          return { kind: 'backup', summary }
+        }
         const imported = parseChartFile(text)
         const [added] = await addTunes([imported], 'import', 'Imported tunes', setNotice)
         setTunes((all) => [...all.filter((t) => t.id !== added.id), added])
         clearSetlist()
         showTune(added)
-        return { tunes: 1, playlists: ['Imported tunes'] }
+        return { kind: 'tunes', tunes: 1, playlists: ['Imported tunes'] }
       }
       const lists = parseIrealLinks(text)
       const added: Tune[] = []
@@ -638,9 +659,13 @@ export default function App() {
         clearSetlist()
         showTune(added[0])
       }
-      return { tunes: added.length, playlists: [...new Set(lists.filter((l) => l.charts.length).map((l) => l.name))] }
+      return {
+        kind: 'tunes',
+        tunes: added.length,
+        playlists: [...new Set(lists.filter((l) => l.charts.length).map((l) => l.name))],
+      }
     },
-    [clearSetlist, showTune],
+    [clearSetlist, reloadSetlists, showTune],
   )
 
   // Pasting an iReal Pro link outside a text field imports it; in the editor, pasting bars takes priority
@@ -1260,7 +1285,12 @@ export default function App() {
       </>
       )}
 
-      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} onImport={importText} />
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={importText}
+        onBackup={() => downloadBackup(tunes, setlists.setlists, myStyles)}
+      />
     </div>
   )
 }

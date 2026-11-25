@@ -170,7 +170,7 @@ OpenStand is meant to grow as a community project, and musicians are as welcome 
 
 ## Privacy
 
-Your tunes, settings and library stay in your browser. There is no account and no server that stores them, and a shared tune travels inside the link itself.
+Your tunes, settings and library stay in your browser. There is no account and no server that stores them, and a shared tune travels inside the link itself. You can back up your whole library (tunes, setlists and custom styles) to a single file and move or restore it manually on another device.
 
 The live site counts visitors with [Vercel Web Analytics](https://vercel.com/docs/analytics/privacy-policy), so we can tell whether people find and use it. It uses no cookies and stores nothing on your device, and the counts are anonymous totals: pages viewed, country, browser and device type. Before anything is sent, the address is cut at `?` and `#`, so the tunes in share links never leave your browser. When something breaks in your browser, the live site sends an error report to [Sentry](https://sentry.io/privacy/) so it can be fixed without you having to tell us. A report holds the error message, where in the code it happened, your browser and the page address, cut at `?` and `#` like above. It holds no cookies, no user details and nothing you typed, and the code that sends it is only downloaded once an error happens.
 

@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Back up the whole library (tunes, setlists and your styles) to one file and restore it on another device (#86).
 - Sort the tune list by title, composer, style or key (#79).
 - Make the chart bigger or smaller with A− / A+ in the top bar; the size is remembered and used for printing (#80).
 - Reverb fader in the mixer, also used for the WAV export (#78).

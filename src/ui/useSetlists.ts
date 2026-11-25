@@ -50,6 +50,11 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
 
   useEffect(() => () => clearTimer(), [clearTimer])
 
+  const reload = useCallback(async () => {
+    const loaded = await loadSetlists(onError)
+    commitSetlists(loaded)
+  }, [commitSetlists, onError])
+
   useEffect(() => {
     let cancelled = false
     void loadSetlists(onError).then((loaded) => {
@@ -207,6 +212,7 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     moveTune,
     selectTune,
     clearActive,
+    reload,
     onTrackEnded,
     cancelAutoPlay: clearTimer,
   }
