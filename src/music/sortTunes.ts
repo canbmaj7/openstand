@@ -4,6 +4,19 @@ export type TuneSort = 'title' | 'composer' | 'style' | 'key'
 
 const VALID_SORTS = new Set<TuneSort>(['title', 'composer', 'style', 'key'])
 
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+/** Return true if a tune's title, composer, or resolved style name matches the search query. */
+export function tuneMatchesQuery(tune: Tune, query: string, styleNameOf: (t: Tune) => string): boolean {
+  const q = fold(query.trim())
+  if (!q) return true
+  return fold(`${tune.chart.title} ${tune.chart.composer ?? ''} ${styleNameOf(tune)}`).includes(q)
+}
+
 /** Normalize an untrusted sort value (e.g. from localStorage) to a valid TuneSort. */
 export function parseTuneSort(value: unknown): TuneSort {
   return typeof value === 'string' && VALID_SORTS.has(value as TuneSort) ? (value as TuneSort) : 'title'

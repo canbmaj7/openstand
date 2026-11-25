@@ -11,6 +11,7 @@ export interface SetlistsProps {
   openSetlistId: string | null
   activeSetlistId: string | null
   playThrough: boolean
+  shuffle: boolean
   styleOverrides: Record<string, string>
   styleNames: Record<string, string>
   onOpenSetlist: (id: string | null) => void
@@ -21,6 +22,7 @@ export interface SetlistsProps {
   onMoveTune: (setlistId: string, from: number, to: number) => void
   onRemoveTune: (setlistId: string, index: number) => void
   onTogglePlayThrough: () => void
+  onToggleShuffle: () => void
   onAddTune: (setlistId: string, tuneId: string) => void
 }
 
@@ -44,6 +46,7 @@ export function Setlists(props: SetlistsProps) {
         selectedId={props.selectedId}
         activeSetlistId={activeSetlistId}
         playThrough={props.playThrough}
+        shuffle={props.shuffle}
         styleOverrides={props.styleOverrides}
         styleNames={props.styleNames}
         onBack={() => props.onOpenSetlist(null)}
@@ -53,6 +56,7 @@ export function Setlists(props: SetlistsProps) {
         onMoveTune={props.onMoveTune}
         onRemoveTune={props.onRemoveTune}
         onTogglePlayThrough={props.onTogglePlayThrough}
+        onToggleShuffle={props.onToggleShuffle}
         onAddTune={props.onAddTune}
       />
     )

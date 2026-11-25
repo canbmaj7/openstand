@@ -89,7 +89,9 @@ test('clicking the selected chord again closes the chord helper', async ({ page 
 })
 
 test('a tune can be found in the library', async ({ page }) => {
-  await page.getByLabel('Search tunes').fill('bossa')
+  const search = page.getByPlaceholder('Search title, composer or style')
+  await search.fill('bossa')
+  await expect(page.getByText('Afro 6/8 Minor', { exact: true })).toBeVisible()
   await page.getByText('Bossa Workout', { exact: true }).click()
   await expect(page.locator('[aria-label$="chord chart"]').first()).toHaveAttribute('aria-label', /Bossa Workout/)
 })
