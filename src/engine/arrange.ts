@@ -8,6 +8,9 @@ import { writeMidi } from './midiWriter'
 import { buildTimeline, type PracticeOptions, type Timeline } from './timeline'
 
 // Channel layout, shared with the mixer
+// Reverb send (CC91) written for each part; the mixer's Reverb fader scales these
+export const PART_REVERB = { bass: 20, comp: 40, drums: 35 } as const
+
 export const CHANNELS = { bass: 0, comp: 1, drums: DRUM_CHANNEL } as const
 export type Part = keyof typeof CHANNELS
 
@@ -38,7 +41,7 @@ export function arrange(
       channel: CHANNELS.bass,
       program: style.bass.program,
       pan: 60,
-      reverb: 20,
+      reverb: PART_REVERB.bass,
       events: generateBass(timeline.slots, style.bass, swing, compound.bass, style.family),
     },
     {
@@ -46,7 +49,7 @@ export function arrange(
       channel: CHANNELS.comp,
       program: style.comp.program,
       pan: 74,
-      reverb: 40,
+      reverb: PART_REVERB.comp,
       events: comp,
       pedal: style.comp.pedal ? pedalChanges(comp, timeline.slots) : undefined,
     },
@@ -55,7 +58,7 @@ export function arrange(
       channel: CHANNELS.drums,
       program: style.drums.kit,
       pan: 64,
-      reverb: 35,
+      reverb: PART_REVERB.drums,
       events: generateDrums(timeline.bars, style.drums, swing, timeline.clicks, compound.drums, style.family),
     },
   ])
