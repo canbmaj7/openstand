@@ -9,6 +9,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 - MIDI, WAV and MP3 exports now speed up like playback when Practice > Speed up is on (#126).
 
 #### Added
+- Page turner pedals: Page Down / Page Up turn the page, and move to the next or previous tune in a setlist (#136).
 - Mixer: tune the band from A4 = 430 to 450 Hz, live and in audio exports (#134).
 - Full screen chart view for the music stand: button or F key; short charts grow to fill the screen (#130, #132).
 - Setlists: Shuffle plays the tunes in random order; library search also matches style names (#128).
