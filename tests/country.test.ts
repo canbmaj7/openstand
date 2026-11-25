@@ -89,9 +89,9 @@ describe('country style', () => {
     }
   })
 
-  test('maps iReal Pro Country, Bluegrass, Folk, Western, Two-Step and Train names to country', () => {
+  test('maps iReal Pro Country, Folk, Western, Two-Step and Train names to country and Bluegrass to bluegrass', () => {
     expect(mapStyle('Country')).toBe('country')
-    expect(mapStyle('Bluegrass')).toBe('country')
+    expect(mapStyle('Bluegrass')).toBe('bluegrass')
     expect(mapStyle('Western Swing')).toBe('medium-swing')
     expect(mapStyle('Folk')).toBe('country')
     expect(mapStyle('Western')).toBe('country')
