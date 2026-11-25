@@ -12,6 +12,7 @@ import { choro } from './library/choro'
 import { country } from './library/country'
 import { cumbia } from './library/cumbia'
 import { disco } from './library/disco'
+import { evenEighths } from './library/even-eighths'
 import { funk } from './library/funk'
 import { gospel } from './library/gospel'
 import { gypsyJazz } from './library/gypsy-jazz'
@@ -24,9 +25,11 @@ import { popRock } from './library/pop-rock'
 import { reggae } from './library/reggae'
 import { rock128 } from './library/rock-12-8'
 import { samba } from './library/samba'
+import { secondLine } from './library/second-line'
 import { shuffle } from './library/shuffle'
 import { ska } from './library/ska'
 import { slowBlues } from './library/slow-blues'
+import { smoothJazz } from './library/smooth-jazz'
 import { soul } from './library/soul'
 import { swingTwoFour } from './library/swing-two-four'
 import { tango } from './library/tango'
@@ -40,6 +43,8 @@ export const STYLES: StyleDefinition[] = [
   ballad,
   jazzWaltz,
   gypsyJazz,
+  secondLine,
+  evenEighths,
   bossaNova,
   samba,
   partidoAlto,
@@ -54,6 +59,7 @@ export const STYLES: StyleDefinition[] = [
   cumbia,
   calypso,
   popRock,
+  smoothJazz,
   disco,
   funk,
   soul,

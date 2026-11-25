@@ -59,10 +59,13 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   if (/up.?tempo/.test(s) && !inThree) return 'up-tempo-swing'
   if (/gypsy|manouche/.test(s)) return 'gypsy-jazz'
   if (/two.?four|2\/4\s*swing|swing\s*2\/4/.test(s)) return inThree ? 'jazz-waltz' : 'swing-two-four'
-  if (/swing|bop|jazz|trad|new orleans|second line/.test(s)) return inThree ? 'jazz-waltz' : 'medium-swing'
+  if (/second.?line/.test(s)) return 'second-line'
+  if (/even.?8|even.?eighth/.test(s) && !/pop|rock/.test(s)) return 'even-eighths'
+  if (/smooth/.test(s)) return 'smooth-jazz'
+  if (/swing|bop|jazz|trad|new orleans/.test(s)) return inThree ? 'jazz-waltz' : 'medium-swing'
   if (/\bska\b/.test(s)) return 'ska'
   if (/reggae/.test(s)) return 'reggae'
-  if (/pop|rock|even|country|folk|house|smooth|bluegrass|ballad/.test(s)) return 'pop-rock'
+  if (/pop|rock|even|country|folk|house|bluegrass|ballad/.test(s)) return 'pop-rock'
   return inThree ? 'jazz-waltz' : 'medium-swing'
 }
 
