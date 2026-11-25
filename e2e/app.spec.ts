@@ -94,7 +94,7 @@ test('a tune can be found in the library', async ({ page }) => {
   await expect(page.locator('[aria-label$="chord chart"]').first()).toHaveAttribute('aria-label', /Bossa Workout/)
 })
 
-test('a tune link opens the same chart in another browser', async ({ page, browser }) => {
+test('a tune link opens the same chart in another browser', async ({ page, browser, baseURL }) => {
   const title = await page.locator('[aria-label$="chord chart"]').first().getAttribute('aria-label')
   await page.getByRole('button', { name: 'Share' }).click()
   await page.getByRole('button', { name: /Copy OpenStand link/ }).click()
@@ -104,7 +104,7 @@ test('a tune link opens the same chart in another browser', async ({ page, brows
 
   const other = await browser.newContext({ serviceWorkers: 'block' })
   const fresh = await other.newPage()
-  await fresh.goto(link.replace(/^https?:\/\/[^/]+/, 'http://localhost:4173'))
+  await fresh.goto(link.replace(/^https?:\/\/[^/]+/, baseURL!))
   await expect(fresh.locator('[aria-label$="chord chart"]').first()).toHaveAttribute('aria-label', title!)
   await other.close()
 })
@@ -215,7 +215,7 @@ test('deleting a custom style restores the tune original style', async ({ page }
   await expect(page.getByRole('button', { name: /Jazz Blues Medium Swing · F/ })).toBeVisible()
 })
 
-test('a style link opens in the style lab of another browser', async ({ page, browser }) => {
+test('a style link opens in the style lab of another browser', async ({ page, browser, baseURL }) => {
   await labButton(page).click()
   const lab = page.getByRole('region', { name: 'Style lab' })
   await lab.getByLabel('Start from').selectOption('samba')
@@ -227,7 +227,7 @@ test('a style link opens in the style lab of another browser', async ({ page, br
 
   const other = await browser.newContext({ serviceWorkers: 'block' })
   const fresh = await other.newPage()
-  await fresh.goto(link.replace(/^https?:\/\/[^/]+/, 'http://localhost:4173'))
+  await fresh.goto(link.replace(/^https?:\/\/[^/]+/, baseURL!))
   const freshLab = fresh.getByRole('region', { name: 'Style lab' })
   await expect(freshLab).toBeVisible()
   await expect(freshLab.getByLabel('Name')).toHaveValue('Samba for the band')

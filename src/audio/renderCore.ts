@@ -6,6 +6,7 @@ import {
   SpessaSynthSequencer,
   audioToWav,
 } from 'spessasynth_core'
+import { applyReverb, DEFAULT_REVERB } from './reverb'
 
 export const RENDER_SAMPLE_RATE = 44100
 const BLOCK_SIZE = 128
@@ -18,6 +19,7 @@ const LIMITER_CEILING = 10 ** (-1 / 20)
 export interface RenderWavOptions {
   volumes: Record<number, number>
   masterGain: number
+  reverb?: number
   onProgress?: (ratio: number) => void
   signal?: AbortSignal
 }
@@ -44,7 +46,7 @@ export async function renderWavCore(
   soundBank: ArrayBuffer,
   options: RenderWavOptions,
 ): Promise<Uint8Array> {
-  const { volumes, masterGain, onProgress, signal } = options
+  const { volumes, masterGain, reverb = DEFAULT_REVERB, onProgress, signal } = options
   throwIfAborted(signal)
 
   onProgress?.(0)
@@ -75,6 +77,7 @@ export async function renderWavCore(
       synth.controllerChange(channel, MIDIControllers.mainVolume, Math.max(0, Math.min(127, Math.round(volume))))
       midiChannel.lockController(MIDIControllers.mainVolume, true)
     }
+    applyReverb(synth, reverb)
 
     const left = new Float32Array(totalSamples)
     const right = new Float32Array(totalSamples)
