@@ -35,6 +35,7 @@ test('mixer has a reverb fader that defaults to 64, updates live, persists acros
 
   await page.evaluate(() => localStorage.setItem('openstand:reverb', 'not-a-number'))
   await page.reload()
+  await expect(page.getByRole('img', { name: /chord chart$/ }).or(page.locator('[aria-label$="chord chart"]')).first()).toBeVisible()
   await page.getByRole('button', { name: /Mixer/ }).click()
   await expect(page.getByRole('slider', { name: 'Reverb' })).toHaveValue('64')
 
