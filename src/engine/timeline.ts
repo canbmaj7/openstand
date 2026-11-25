@@ -14,6 +14,20 @@ export interface Click {
 
 export type CountInMode = 'auto' | 'off' | 1 | 2
 
+/** Beat offsets within a bar (simple beats, compound dotted-quarter pulses, or aksak group starts). */
+export function barBeatOffsets(beats: number, meter: { compound?: boolean; groups?: readonly number[] } = {}): number[] {
+  if (meter.groups?.length) {
+    const starts = groupStarts(meter.groups)
+    const unit = meter.groups.reduce((a, b) => a + b, 0) * 0.5
+    if (beats <= unit + 1e-9) return starts
+    const out: number[] = []
+    for (let base = 0; base < beats - 1e-9; base += unit) out.push(...starts.map((o) => base + o).filter((at) => at < beats - 1e-9))
+    return out
+  }
+  if (meter.compound) return Array.from({ length: Math.max(1, Math.round(beats / PULSE)) }, (_, i) => i * PULSE)
+  return Array.from({ length: Math.max(1, Math.floor(beats + 1e-9)) }, (_, i) => i)
+}
+
 // The count-in follows the tune's meter, the way a band leader counts off:
 // 4/4 "1 . 2 . | 1 2 3 4", 3/4 "1 . . | 1 2 3", 2/4 "1 2 | 1 2",
 // 6/8 "1 . 2 . | 1 2 3 4 5 6" (eighths, stronger on the pulses), 12/8 and 9/8 one bar of
@@ -25,7 +39,7 @@ export function countInClicks(chart: Chart, mode: CountInMode = 'auto'): Click[]
   const barCount = (autoBars: number) => (mode === 'auto' ? autoBars : mode)
   const groups = groupsFor(chart.time, chart.groups ?? chart.bars[0]?.groups)
   if (groups) {
-    const starts = groupStarts(groups)
+    const starts = barBeatOffsets(beats, { groups })
     return Array.from({ length: barCount(beats <= 4 ? 2 : 1) }, (_, b) =>
       starts.map((at, i) => click(b * beats + at, i + 1, i === 0 ? 'bar' : 'beat')),
     ).flat()
@@ -37,24 +51,20 @@ export function countInClicks(chart: Chart, mode: CountInMode = 'auto'): Click[]
       )
     if (beats === 2 * PULSE) {
       if (mode === 1) return eighths(0, (i) => i + 1)
-      return [click(0, 1, 'bar'), click(PULSE, 2, 'beat'), ...eighths(beats, (i) => i + 1)]
+      return [...barBeatOffsets(beats, { compound: true }).map((at, i) => click(at, i + 1, i === 0 ? 'bar' : 'beat')), ...eighths(beats, (i) => i + 1)]
     }
     return Array.from({ length: barCount(1) }, (_, b) => eighths(b * beats, (i) => Math.floor(i / 3) + 1)).flat()
   }
-  const bars = (list: number[][]) =>
-    list.flatMap((counts, b) => counts.map((at, i) => click(b * beats + at, i + 1, at === 0 ? 'bar' : 'beat')))
-  if (beats === 4) return bars(mode === 1 ? [[0, 1, 2, 3]] : [[0, 2], [0, 1, 2, 3]])
-  if (beats === 3) return bars(mode === 1 ? [[0, 1, 2]] : [[0], [0, 1, 2]])
-  if (beats === 2) return bars(mode === 1 ? [[0, 1]] : [[0, 1], [0, 1]])
+  const bars = (list: number[][]) => list.flatMap((counts, b) => counts.map((at, i) => click(b * beats + at, i + 1, at === 0 ? 'bar' : 'beat')))
+  const full = barBeatOffsets(beats)
+  if (beats === 4) return bars(mode === 1 ? [full] : [[0, 2], full])
+  if (beats === 3) return bars(mode === 1 ? [full] : [[0], full])
+  if (beats === 2) return bars(mode === 1 ? [full] : [full, full])
   if (Number.isInteger(beats) && beats > 4) {
     // Stronger where the bar divides: 5/4 as 3+2, 6/4 as 3+3
-    return Array.from({ length: barCount(1) }, (_, b) =>
-      Array.from({ length: beats }, (_, i) => click(b * beats + i, i + 1, i === 0 ? 'bar' : i === 3 ? 'beat' : 'sub')),
-    ).flat()
+    return Array.from({ length: barCount(1) }, (_, b) => full.map((i) => click(b * beats + i, i + 1, i === 0 ? 'bar' : i === 3 ? 'beat' : 'sub'))).flat()
   }
-  return Array.from({ length: barCount(1) }, (_, b) =>
-    [0, 1, 2, 3].map((at) => click(b * beats + at, at + 1, at === 0 ? 'bar' : 'beat')),
-  ).flat()
+  return Array.from({ length: barCount(1) }, (_, b) => [0, 1, 2, 3].map((at) => click(b * beats + at, at + 1, at === 0 ? 'bar' : 'beat'))).flat()
 }
 
 // Count-in length in beats: two bars of short meters, one bar of long ones

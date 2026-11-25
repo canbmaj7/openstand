@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Metronome: a Click part in the mixer plays a click on every beat (accented downbeat, follows compound and odd-meter groupings); off by default (#110).
 - Disco, Rock 12/8 and Soul styles; iReal Pro tunes in these styles open in them (#107).
 - Partido Alto, Baião and Choro styles; iReal Pro tunes in these styles open in them (#106).
 - Exercises: ii–V–I (major and minor), blues, turnarounds and a dominant cycle through all 12 keys, in the library (#102).

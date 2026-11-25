@@ -8,6 +8,7 @@ export interface TrackSpec {
   program: number
   pan?: number
   reverb?: number
+  drums?: boolean // turns a non-9 channel into a percussion part via Roland GS SysEx
   events: NoteEvent[]
   pedal?: { tick: number; value: number }[] // sustain pedal (CC 64)
 }
@@ -66,6 +67,15 @@ function noteEvents(spec: TrackSpec): RawEvent[] {
   return out
 }
 
+// Roland GS "Use for Rhythm Part" SysEx (assigns Drum Map 1 to a non-channel-10 MIDI channel)
+function gsDrumSysEx(channel: number): number[] {
+  const part = channel === 9 ? 0x10 : 0x10 + channel + (channel < 9 ? 1 : 0)
+  const body = [0x40, part, 0x15, 0x01]
+  const checksum = (128 - (body.reduce((a, b) => a + b, 0) & 0x7f)) & 0x7f
+  const data = [0x41, 0x10, 0x42, 0x12, ...body, checksum, 0xf7]
+  return [0xf0, ...varLen(data.length), ...data]
+}
+
 export function writeMidi(bpm: number, tracks: TrackSpec[]): Uint8Array {
   const mpqn = Math.round(60_000_000 / bpm)
   const tempoTrack = encodeTrack([
@@ -77,6 +87,7 @@ export function writeMidi(bpm: number, tracks: TrackSpec[]): Uint8Array {
     const name = text(t.name)
     const setup: RawEvent[] = [
       { tick: 0, order: 0, bytes: [0xff, 0x03, name.length, ...name] },
+      ...(t.drums && t.channel !== 9 ? [{ tick: 0, order: 0, bytes: gsDrumSysEx(t.channel) }] : []),
       { tick: 0, order: 0, bytes: [0xc0 | t.channel, t.program] },
       { tick: 0, order: 0, bytes: [0xb0 | t.channel, 10, t.pan ?? 64] },
       { tick: 0, order: 0, bytes: [0xb0 | t.channel, 91, t.reverb ?? 30] },

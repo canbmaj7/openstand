@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { DEFAULT_REVERB } from '../audio/reverb'
 import type { Part } from '../engine/arrange'
-import { SOUND_OPTIONS, type SoundChoice } from '../styles/sounds'
+import { SOUND_OPTIONS, type SoundChoice, type SoundPart } from '../styles/sounds'
 import { Popover } from './Popover'
 
 interface MixerProps {
@@ -11,7 +11,7 @@ interface MixerProps {
   sounds: SoundChoice
   onVolume: (part: Part, volume: number) => void
   onMute: (part: Part) => void
-  onSound: (part: Part, program: number | null) => void
+  onSound: (part: SoundPart, program: number | null) => void
   master: number
   masterMuted: boolean
   onMaster: (volume: number) => void
@@ -23,13 +23,16 @@ interface MixerProps {
   level: () => { peak: number; rms: number } // output level in dBFS
 }
 
-const PARTS: Part[] = ['bass', 'comp', 'drums']
+const PARTS: Part[] = ['bass', 'comp', 'drums', 'click']
+const SOUND_PARTS: SoundPart[] = ['bass', 'comp', 'drums']
 
-const SOUND_LABELS: Record<Part, string> = {
+const SOUND_LABELS: Record<SoundPart, string> = {
   bass: 'Bass sound',
   comp: 'Comping sound',
   drums: 'Drum kit',
 }
+
+const isSoundPart = (part: Part): part is SoundPart => part !== 'click'
 
 export function Mixer({
   labels,
@@ -53,7 +56,7 @@ export function Mixer({
     <Popover
       id="mixer"
       className="band"
-      active={PARTS.some((p) => muted[p] || sounds[p] !== null) || masterMuted || sync !== 0 || reverb !== DEFAULT_REVERB}
+      active={SOUND_PARTS.some((p) => muted[p] || sounds[p] !== null) || masterMuted || sync !== 0 || reverb !== DEFAULT_REVERB}
       label={
         <>
           <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -70,19 +73,23 @@ export function Mixer({
             {PARTS.map((part) => (
               <div key={part} className={`strip${muted[part] ? ' strip-muted' : ''}`}>
                 <span className="label">{labels[part]}</span>
-                <select
-                  className="select strip-sound"
-                  aria-label={SOUND_LABELS[part]}
-                  value={sounds[part] === null ? '' : String(sounds[part])}
-                  onChange={(e) => onSound(part, e.target.value === '' ? null : Number(e.target.value))}
-                >
-                  <option value="">Style</option>
-                  {SOUND_OPTIONS[part].map((opt) => (
-                    <option key={opt.program} value={opt.program}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                {isSoundPart(part) ? (
+                  <select
+                    className="select strip-sound"
+                    aria-label={SOUND_LABELS[part]}
+                    value={sounds[part] === null ? '' : String(sounds[part])}
+                    onChange={(e) => onSound(part, e.target.value === '' ? null : Number(e.target.value))}
+                  >
+                    <option value="">Style</option>
+                    {SOUND_OPTIONS[part].map((opt) => (
+                      <option key={opt.program} value={opt.program}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="strip-sound strip-sound-spacer" aria-hidden="true" />
+                )}
                 <input
                   className="fader"
                   type="range"
