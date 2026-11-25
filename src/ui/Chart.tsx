@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { ROW_CELLS, type Chart as ChartData, type ChartBar, type TimeSignature } from '../music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from '../music/chords'
 import type { ChordNames } from '../music/degrees'
@@ -23,6 +23,8 @@ interface ChartProps {
   plain?: boolean
   chordNames?: ChordNames
   scale?: number
+  fitScale?: number
+  sheetRef?: Ref<HTMLElement>
   startAt?: string | null
   onBarClick?: (index: number, shiftKey?: boolean) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
@@ -252,7 +254,7 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, chordNames = 'letters', scale = 100, startAt, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, chordNames = 'letters', scale = 100, fitScale, sheetRef, startAt, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const minor = Boolean(chart.minor)
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
@@ -319,9 +321,15 @@ export function Chart(props: ChartProps) {
 
   return (
     <article
+      ref={sheetRef}
       className="sheet"
       data-chord-names={chordNames === 'letters' ? undefined : chordNames}
-      style={{ '--chart-scale': String(scale / 100) } as CSSProperties}
+      style={
+        {
+          '--chart-scale': String(scale / 100),
+          ...(fitScale !== undefined ? { '--fit-scale': String(fitScale) } : {}),
+        } as CSSProperties
+      }
       aria-label={`${chart.title} chord chart`}
     >
       {header ?? (
