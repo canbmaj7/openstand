@@ -16,6 +16,8 @@ export const DRUM_NOTES = {
   rideBell: 53,
   tambourine: 54,
   cowbell: 56,
+  bongoHigh: 60,
+  bongoLow: 61,
   congaMute: 62,
   congaHigh: 63,
   congaLow: 64,

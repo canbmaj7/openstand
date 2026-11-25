@@ -32,6 +32,8 @@ const DRUM_LABELS: Record<DrumName, string> = {
   rideBell: 'Ride bell',
   tambourine: 'Tambourine',
   cowbell: 'Cowbell',
+  bongoHigh: 'Bongo high',
+  bongoLow: 'Bongo low',
   congaMute: 'Conga slap',
   congaHigh: 'Conga high',
   congaLow: 'Conga low',
