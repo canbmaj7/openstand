@@ -41,6 +41,17 @@ test('downloads ChordPro grid with title and start_of_grid', async ({ page }) =>
   expect(text).toContain('{start_of_grid')
 })
 
+test('downloads MusicXML with score-partwise', async ({ page }) => {
+  await page.getByRole('button', { name: 'Share' }).click()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /Download MusicXML/ }).click(),
+  ])
+  expect(download.suggestedFilename()).toMatch(/\.musicxml$/)
+  const text = await downloadText(download)
+  expect(text).toContain('<score-partwise')
+})
+
 test('saves .openstand.json and re-opens it via Import dialog', async ({ page }) => {
   await page.getByRole('button', { name: 'Share' }).click()
   const [download] = await Promise.all([

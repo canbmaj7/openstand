@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 interface PopoverProps {
   id: string
   label: ReactNode
+  ariaLabel?: string
   title?: string
   active?: boolean // shows a dot on the button when a setting is on
   className?: string
@@ -12,7 +13,7 @@ interface PopoverProps {
 }
 
 // A button with a panel that pops up above it; closes on outside click or Escape
-export function Popover({ id, label, title, active, className, open: controlledOpen, onOpenChange, children }: PopoverProps) {
+export function Popover({ id, label, ariaLabel, title, active, className, open: controlledOpen, onOpenChange, children }: PopoverProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
   const setOpen = (next: boolean) => {
@@ -42,6 +43,7 @@ export function Popover({ id, label, title, active, className, open: controlledO
         className={active ? 'band-toggle band-toggle-active' : 'band-toggle'}
         aria-expanded={open}
         aria-controls={id}
+        aria-label={ariaLabel}
         title={title}
         onClick={() => setOpen(!open)}
       >

@@ -1,0 +1,190 @@
+.library-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--control);
+}
+
+.library-tab {
+  height: 28px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.library-tab:hover {
+  color: var(--ink);
+}
+
+.library-tab[aria-selected='true'] {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.setlist-inline-form {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.setlist-inline-form .library-search {
+  margin-bottom: 0;
+}
+
+.setlist-inline-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.setlist-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.setlist-detail-head button {
+  white-space: nowrap;
+}
+
+.setlist-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+
+.setlist-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.setlist-progress {
+  flex: none;
+  font: 500 12px/1 var(--mono);
+  color: var(--muted);
+}
+
+.setlist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.setlist-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  background: var(--paper);
+  font-size: 13px;
+}
+
+.setlist-confirm span {
+  margin-right: auto;
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.setlist-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 6px;
+}
+
+.setlist-row-active {
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line), inset 3px 0 0 0 var(--ink);
+}
+
+.setlist-tune {
+  flex: 1;
+  min-width: 0;
+}
+
+.setlist-row-active .setlist-tune {
+  background: none;
+  box-shadow: none;
+}
+
+.setlist-num {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.setlist-row-actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.setlist-move {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.setlist-move:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--control);
+  color: var(--ink);
+}
+
+.setlist-move:disabled {
+  opacity: 0.3;
+}
+
+.readout-setlist {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-weight: 500;
+}
+
+.setlist-popover-form {
+  display: grid;
+  gap: 8px;
+  padding: 6px 4px;
+}
+
+.setlist-popover-form .library-search {
+  margin-bottom: 0;
+}
+
+/* Phones: the top bar has no room; tunes are added from the setlist itself (Add this tune) */
+@media (max-width: 560px) {
+  .add-to-setlist {
+    display: none;
+  }
+}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { keyPrefersFlats, noteName } from '../music/chords'
 import type { Tune } from '../music/songs'
 import { getStyle } from '../styles'
+import { Setlists, type SetlistsProps } from './Setlists'
 
 interface LibraryProps {
   tunes: Tune[]
@@ -13,6 +14,7 @@ interface LibraryProps {
   onNew: () => void
   disabled?: boolean // while a chart is being edited
   onRemovePlaylist: (playlist: string) => void
+  setlists: Omit<SetlistsProps, 'tunes' | 'selectedId' | 'styleOverrides' | 'styleNames'>
 }
 
 const ALL = ''
@@ -24,7 +26,8 @@ const fold = (s: string) =>
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
 
-export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelect, onImport, onNew, disabled, onRemovePlaylist }: LibraryProps) {
+export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelect, onImport, onNew, disabled, onRemovePlaylist, setlists }: LibraryProps) {
+  const [tab, setTab] = useState<'tunes' | 'setlists'>('tunes')
   const [query, setQuery] = useState('')
   const [playlist, setPlaylist] = useState(ALL)
   const [confirming, setConfirming] = useState(false)
@@ -44,7 +47,38 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
 
   return (
     <nav className="library" aria-label="Tunes" inert={disabled}>
-      <div className="library-head">
+      <div className="library-tabs" role="tablist" aria-label="Library">
+        <button
+          type="button"
+          role="tab"
+          className="library-tab"
+          aria-selected={tab === 'tunes'}
+          onClick={() => setTab('tunes')}
+        >
+          Tunes
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className="library-tab"
+          aria-selected={tab === 'setlists'}
+          onClick={() => setTab('setlists')}
+        >
+          Setlists
+        </button>
+      </div>
+
+      {tab === 'setlists' ? (
+        <Setlists
+          {...setlists}
+          tunes={tunes}
+          selectedId={selectedId}
+          styleOverrides={styleOverrides}
+          styleNames={styleNames}
+        />
+      ) : (
+        <>
+          <div className="library-head">
         <h2 className="label">
           Tunes <span className="library-count">{matches.length}</span>
         </h2>
@@ -128,6 +162,8 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
         <p className="library-more">{matches.length - LIMIT} more. Search to narrow the list.</p>
       )}
       {matches.length === 0 && <p className="library-more">No tunes match.</p>}
+        </>
+      )}
     </nav>
   )
 }
