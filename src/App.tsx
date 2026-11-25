@@ -21,7 +21,7 @@ import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type La
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
 import { ChordHelper } from './ui/ChordHelper'
-import { downloadChartFile, downloadChordPro, downloadMidi, downloadWav } from './ui/download'
+import { downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml, downloadWav } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
 import { useEditorHistory } from './ui/useEditorHistory'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
@@ -935,6 +935,16 @@ export default function App() {
                   >
                     <span className="share-name">Download ChordPro</span>
                     <span className="share-desc">A chord grid for songbook apps (OnSong, SongbookPro).</span>
+                  </button>
+                  <button
+                    className="share-option"
+                    onClick={() => {
+                      downloadMusicXml(chart, transpose)
+                      close()
+                    }}
+                  >
+                    <span className="share-name">Download MusicXML</span>
+                    <span className="share-desc">Opens in MuseScore, Finale, Dorico and Sibelius.</span>
                   </button>
                   <button
                     className="share-option"
