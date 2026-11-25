@@ -44,6 +44,8 @@ const DRUM_LABELS: Record<DrumName, string> = {
   guiroShort: 'Guiro short',
   guiroLong: 'Guiro long',
   claves: 'Claves',
+  triangleMute: 'Triangle mute',
+  triangleOpen: 'Triangle open',
 }
 
 const BASS_LABELS: Record<BassTone, string> = {

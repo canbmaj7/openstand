@@ -28,6 +28,8 @@ export const DRUM_NOTES = {
   guiroShort: 73,
   guiroLong: 74,
   claves: 75,
+  triangleMute: 80,
+  triangleOpen: 81,
 } as const
 
 export type DrumName = keyof typeof DRUM_NOTES

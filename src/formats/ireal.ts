@@ -29,7 +29,10 @@ export function pitchClass(name: string): number | null {
 export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   const s = name.toLowerCase()
   const inThree = beatsPerBar(time) === 3
-  if (/samba|partido|baião|baiao|afox|frevo/.test(s)) return 'samba'
+  if (/partido/.test(s)) return 'partido-alto'
+  if (/baião|baiao/.test(s)) return 'baiao'
+  if (/choro/.test(s)) return 'choro'
+  if (/samba|afox|frevo/.test(s)) return 'samba'
   // Bolero and tango keep their straight-eighth Latin/chamber styles even in 3/4 (like bossa and country) rather than switching to swung jazz-waltz.
   if (/bolero/.test(s)) return 'bolero'
   if (/tango/.test(s)) return 'tango'
