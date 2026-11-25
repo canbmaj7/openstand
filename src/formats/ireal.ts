@@ -30,7 +30,10 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   const s = name.toLowerCase()
   const inThree = beatsPerBar(time) === 3
   if (/samba|partido|baião|baiao|afox|frevo/.test(s)) return 'samba'
-  if (/bossa|bolero|tango|chacarera/.test(s)) return 'bossa-nova'
+  // Bolero and tango keep their straight-eighth Latin/chamber styles even in 3/4 (like bossa and country) rather than switching to swung jazz-waltz.
+  if (/bolero/.test(s)) return 'bolero'
+  if (/tango/.test(s)) return 'tango'
+  if (/bossa|chacarera/.test(s)) return 'bossa-nova'
   if (/afro|mambo|cha|salsa|montuno|rumba|\bson\b|latin/.test(s)) return 'afro-cuban'
   // Country ballads keep the slower sustain-pedal pop-rock feel and Western Swing stays a swing; 3/4 country and country waltzes use country's 3/4 boom-chick patterns.
   if (/country|bluegrass|folk|western|two.?step|train/.test(s) && !/ballad|swing/.test(s)) return 'country'
@@ -39,7 +42,8 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   if (/shuffle|blues|boogie|rock'?n'?roll/.test(s) && !/swing/.test(s)) return 'shuffle'
   if (/ballad/.test(s) && !/pop|rock|rnb|soul|country|folk/.test(s)) return inThree ? 'jazz-waltz' : 'ballad'
   if (/up.?tempo/.test(s) && !inThree) return 'up-tempo-swing'
-  if (/swing|bop|jazz|gypsy|trad|new orleans|second line/.test(s)) return inThree ? 'jazz-waltz' : 'medium-swing'
+  if (/gypsy|manouche/.test(s)) return 'gypsy-jazz'
+  if (/swing|bop|jazz|trad|new orleans|second line/.test(s)) return inThree ? 'jazz-waltz' : 'medium-swing'
   if (/reggae/.test(s)) return 'reggae'
   if (/pop|rock|even|country|folk|house|smooth|bluegrass|ballad/.test(s)) return 'pop-rock'
   return inThree ? 'jazz-waltz' : 'medium-swing'

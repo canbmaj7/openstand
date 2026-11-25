@@ -56,6 +56,8 @@ export const DRUM_ROWS: DrumName[] = [
   'cabasa',
   'cowbell',
   'claves',
+  'bongoHigh',
+  'bongoLow',
   'congaHigh',
   'congaMute',
   'congaLow',
