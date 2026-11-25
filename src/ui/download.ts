@@ -1,7 +1,7 @@
-// Browser file download helpers for MIDI, WAV, ChordPro, MusicXML, and .openstand.json exports.
+// Browser file download helpers for MIDI, WAV, MP3, ChordPro, MusicXML, and .openstand.json exports.
 
 import { masterGainFor, SOUNDFONT_URL } from '../audio/player'
-import { renderWav } from '../audio/renderWav'
+import { renderAudio, type AudioFormat } from '../audio/renderWav'
 import { arrange, CHANNELS, type Part } from '../engine/arrange'
 import type { PracticeOptions } from '../engine/timeline'
 import { makeBackup } from '../formats/backup'
@@ -28,6 +28,10 @@ export interface DownloadWavOptions {
   soundBank?: ArrayBuffer | null
   onProgress?: (ratio: number) => void
   signal?: AbortSignal
+}
+
+export interface DownloadAudioOptions extends DownloadWavOptions {
+  format?: AudioFormat
 }
 
 export function sanitizeFilename(name: string): string {
@@ -77,6 +81,36 @@ export function downloadMidi(
   downloadBlob(new Uint8Array(midi), filename, 'audio/midi')
 }
 
+export async function downloadAudio(
+  chart: Chart,
+  style: StyleDefinition,
+  transpose: number,
+  choruses: number,
+  practice: PracticeOptions,
+  bpm: number,
+  options: DownloadAudioOptions,
+): Promise<void> {
+  const { format = 'wav', mixer, onProgress, signal } = options
+  const channelVolumes: Record<number, number> = {}
+  for (const part of Object.keys(CHANNELS) as Part[]) {
+    channelVolumes[CHANNELS[part]] = mixer.muted[part] ? 0 : mixer.volumes[part]
+  }
+  const masterGain = masterGainFor(mixer.masterMuted ? 0 : mixer.master)
+  const soundBank = options.soundBank ?? (await fetchSoundBank(signal))
+  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, { click: !mixer.muted.click })
+  const audio = await renderAudio(midi, soundBank, {
+    format,
+    volumes: channelVolumes,
+    masterGain,
+    reverb: mixer.reverb,
+    onProgress,
+    signal,
+  })
+  const filename = backingTrackFilename(chart, transpose, bpm, format)
+  const mimeType = format === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+  downloadBlob(new Uint8Array(audio), filename, mimeType)
+}
+
 export async function downloadWav(
   chart: Chart,
   style: StyleDefinition,
@@ -86,23 +120,7 @@ export async function downloadWav(
   bpm: number,
   options: DownloadWavOptions,
 ): Promise<void> {
-  const { mixer, onProgress, signal } = options
-  const channelVolumes: Record<number, number> = {}
-  for (const part of Object.keys(CHANNELS) as Part[]) {
-    channelVolumes[CHANNELS[part]] = mixer.muted[part] ? 0 : mixer.volumes[part]
-  }
-  const masterGain = masterGainFor(mixer.masterMuted ? 0 : mixer.master)
-  const soundBank = options.soundBank ?? (await fetchSoundBank(signal))
-  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, { click: !mixer.muted.click })
-  const wav = await renderWav(midi, soundBank, {
-    volumes: channelVolumes,
-    masterGain,
-    reverb: mixer.reverb,
-    onProgress,
-    signal,
-  })
-  const filename = backingTrackFilename(chart, transpose, bpm, 'wav')
-  downloadBlob(new Uint8Array(wav), filename, 'audio/wav')
+  return downloadAudio(chart, style, transpose, choruses, practice, bpm, { ...options, format: 'wav' })
 }
 
 export function downloadChordPro(chart: Chart, transpose: number): void {

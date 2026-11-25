@@ -32,7 +32,8 @@ import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/s
 import { Chart } from './ui/Chart'
 import { ChordDisplay } from './ui/ChordDisplay'
 import { ChordHelper } from './ui/ChordHelper'
-import { downloadBackup, downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml, downloadWav } from './ui/download'
+import { downloadBackup, downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml } from './ui/download'
+import { AUDIO_EXPORT_OPTIONS, audioExportLabel, useAudioExport } from './ui/useAudioExport'
 import { Editor, EditorHeader } from './ui/Editor'
 import { useEditorHistory } from './ui/useEditorHistory'
 import { ImportDialog, type ImportResult } from './ui/ImportDialog'
@@ -255,8 +256,7 @@ export default function App() {
   const draft = editor.draft
   const draftChart = editor.chart
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
-  const [wavState, setWavState] = useState<{ kind: 'idle' } | { kind: 'rendering'; progress: number } | { kind: 'failed' }>({ kind: 'idle' })
-  const wavResetTimer = useRef(0)
+  const { audioState, exportAudio } = useAudioExport()
   const [mode, setMode] = useState<ModeOption>('original')
   const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
   const [chordNames, setChordNames] = useState<ChordNames>(loadChordNames)
@@ -792,25 +792,6 @@ export default function App() {
     setTimeout(() => set('idle'), 2200)
   }
 
-  const exportWav = async (close: () => void) => {
-    if (wavState.kind === 'rendering') return
-    window.clearTimeout(wavResetTimer.current)
-    setWavState({ kind: 'rendering', progress: 0 })
-    const { loop, keyStep, subs, countIn } = practice
-    try {
-      await downloadWav(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm, {
-        mixer: { volumes, muted, master, masterMuted, reverb },
-        soundBank: playerRef.current?.soundBank,
-        onProgress: (ratio) => setWavState({ kind: 'rendering', progress: ratio }),
-      })
-      setWavState({ kind: 'idle' })
-      close()
-    } catch {
-      setWavState({ kind: 'failed' })
-      wavResetTimer.current = window.setTimeout(() => setWavState({ kind: 'idle' }), 3000)
-    }
-  }
-
   // ---- Style lab ----
 
   const labTimer = useRef(0)
@@ -1044,20 +1025,33 @@ export default function App() {
                     <span className="share-name">Download MIDI</span>
                     <span className="share-desc">Bass, piano and drums on separate tracks, at the current tempo.</span>
                   </button>
-                  <button
-                    className="share-option"
-                    disabled={wavState.kind === 'rendering'}
-                    onClick={() => void exportWav(close)}
-                  >
-                    <span className="share-name">
-                      {wavState.kind === 'rendering'
-                        ? `Rendering… ${Math.round(wavState.progress * 100)}%`
-                        : wavState.kind === 'failed'
-                          ? 'Export failed'
-                          : 'Download audio (WAV)'}
-                    </span>
-                    <span className="share-desc">The backing track at the current key, tempo and mixer levels.</span>
-                  </button>
+                  {AUDIO_EXPORT_OPTIONS.map(({ format, label, desc }) => (
+                    <button
+                      key={format}
+                      className="share-option"
+                      disabled={audioState.kind === 'rendering'}
+                      onClick={() => {
+                        const { loop, keyStep, subs, countIn } = practice
+                        void exportAudio(
+                          format,
+                          {
+                            chart,
+                            style: resolveStyle(styleId),
+                            transpose,
+                            choruses,
+                            practice: { loop, keyStep, subs, countIn },
+                            bpm,
+                            mixer: { volumes, muted, master, masterMuted, reverb },
+                            soundBank: playerRef.current?.soundBank,
+                          },
+                          close,
+                        )
+                      }}
+                    >
+                      <span className="share-name">{audioExportLabel(audioState, format, label)}</span>
+                      <span className="share-desc">{desc}</span>
+                    </button>
+                  ))}
                   <button
                     className="share-option"
                     onClick={() => {

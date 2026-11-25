@@ -1,7 +1,13 @@
-import { abortError, renderWavCore, type RenderWavOptions } from './renderCore'
+import {
+  abortError,
+  renderAudioCore,
+  type AudioFormat,
+  type RenderAudioOptions,
+  type RenderWavOptions,
+} from './renderCore'
 import type { WorkerRequest, WorkerResponse } from './renderWorker'
 
-export type { RenderWavOptions }
+export type { AudioFormat, RenderAudioOptions, RenderWavOptions }
 
 function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError'
@@ -10,9 +16,9 @@ function isAbortError(err: unknown): boolean {
 function renderInWorker(
   midi: Uint8Array,
   soundBank: ArrayBuffer,
-  options: RenderWavOptions,
+  options: RenderAudioOptions,
 ): Promise<Uint8Array> {
-  const { volumes, masterGain, reverb, onProgress, signal } = options
+  const { format = 'wav', volumes, masterGain, reverb, onProgress, signal } = options
   if (signal?.aborted) return Promise.reject(abortError(signal))
 
   const worker = new Worker(new URL('./renderWorker.ts', import.meta.url), { type: 'module' })
@@ -46,7 +52,7 @@ function renderInWorker(
       settled = true
       cleanup()
       if (msg.type === 'done') {
-        resolve(new Uint8Array(msg.wav))
+        resolve(new Uint8Array(msg.data))
       } else {
         const err = new Error(msg.message)
         if (msg.name) err.name = msg.name
@@ -64,6 +70,7 @@ function renderInWorker(
     const midiBuffer = midi.slice().buffer
     const request: WorkerRequest = {
       type: 'render',
+      format,
       midi: midiBuffer,
       soundBank,
       volumes,
@@ -76,12 +83,12 @@ function renderInWorker(
 }
 
 /**
- * Renders MIDI bytes into a 44.1 kHz stereo WAV file, running in a Web Worker when available.
+ * Renders MIDI bytes into a 44.1 kHz stereo WAV or MP3 file, running in a Web Worker when available.
  */
-export async function renderWav(
+export async function renderAudio(
   midi: Uint8Array,
   soundBank: ArrayBuffer,
-  options: RenderWavOptions,
+  options: RenderAudioOptions,
 ): Promise<Uint8Array> {
   if (typeof Worker !== 'undefined') {
     try {
@@ -91,5 +98,27 @@ export async function renderWav(
       // Fall back to main-thread rendering if Worker creation/loading fails
     }
   }
-  return renderWavCore(midi, soundBank, options)
+  return renderAudioCore(midi, soundBank, options)
+}
+
+/**
+ * Renders MIDI bytes into a 44.1 kHz stereo WAV file, running in a Web Worker when available.
+ */
+export async function renderWav(
+  midi: Uint8Array,
+  soundBank: ArrayBuffer,
+  options: RenderWavOptions,
+): Promise<Uint8Array> {
+  return renderAudio(midi, soundBank, { ...options, format: 'wav' })
+}
+
+/**
+ * Renders MIDI bytes into a 44.1 kHz stereo 192 kbps MP3 file, running in a Web Worker when available.
+ */
+export async function renderMp3(
+  midi: Uint8Array,
+  soundBank: ArrayBuffer,
+  options: RenderWavOptions,
+): Promise<Uint8Array> {
+  return renderAudio(midi, soundBank, { ...options, format: 'mp3' })
 }
