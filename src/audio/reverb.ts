@@ -1,9 +1,10 @@
-import { MIDIControllers, type MIDIController } from 'spessasynth_core'
 import { CHANNELS, PART_REVERB, type Part } from '../engine/arrange'
 
 // The fader's middle: each part keeps the send arrange.ts writes (bass 20, comp 40, drums 35)
 export const DEFAULT_REVERB = 64
 export const REVERB_KEY = 'openstand:reverb'
+// MIDI CC 91 (reverbDepth in spessasynth_core MIDIControllers)
+const MIDI_CC_REVERB = 91 as const
 
 // 0 is dry, 64 as written, 127 about three times the written send (the curve keeps the top useful)
 export function reverbSend(part: Part, reverb: number): number {
@@ -11,8 +12,8 @@ export function reverbSend(part: Part, reverb: number): number {
 }
 
 export interface ReverbSynthTarget {
-  midiChannels: readonly { lockController(controller: MIDIController, isLocked: boolean): void }[]
-  controllerChange(channel: number, controller: MIDIController, value: number): void
+  midiChannels: readonly { lockController(controller: typeof MIDI_CC_REVERB, isLocked: boolean): void }[]
+  controllerChange(channel: number, controller: typeof MIDI_CC_REVERB, value: number): void
 }
 
 export function clampReverb(value: number): number {
@@ -38,8 +39,8 @@ export function applyReverb(synth: ReverbSynthTarget, reverb: number): void {
     const midiChannel = synth.midiChannels[channel]
     if (!midiChannel) continue
     const send = reverbSend(part, reverb)
-    midiChannel.lockController(MIDIControllers.reverbDepth, false)
-    synth.controllerChange(channel, MIDIControllers.reverbDepth, send)
-    midiChannel.lockController(MIDIControllers.reverbDepth, true)
+    midiChannel.lockController(MIDI_CC_REVERB, false)
+    synth.controllerChange(channel, MIDI_CC_REVERB, send)
+    midiChannel.lockController(MIDI_CC_REVERB, true)
   }
 }

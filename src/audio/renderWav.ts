@@ -1,10 +1,9 @@
 import {
   abortError,
-  renderAudioCore,
   type AudioFormat,
   type RenderAudioOptions,
   type RenderWavOptions,
-} from './renderCore'
+} from './constants'
 import type { WorkerRequest, WorkerResponse } from './renderWorker'
 
 export type { AudioFormat, RenderAudioOptions, RenderWavOptions }
@@ -99,6 +98,7 @@ export async function renderAudio(
       // Fall back to main-thread rendering if Worker creation/loading fails
     }
   }
+  const { renderAudioCore } = await import('./renderCore')
   return renderAudioCore(midi, soundBank, options)
 }
 

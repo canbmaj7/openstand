@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { loadMuted, loadVolumes, saveMuted, saveVolumes } from './audio/mixerState'
-import { Player } from './audio/player'
+import type { Player } from './audio/player'
 import { loadReverb, REVERB_KEY } from './audio/reverb'
 import { loadTuning, saveTuning } from './audio/tuning'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
@@ -311,20 +311,24 @@ export default function App() {
   useEffect(() => {
     // The effect may run twice (StrictMode); a discarded player must not update the UI
     let active = true
-    const player = new Player()
-    playerRef.current = player
-    player.onEnded = () => {
-      if (previewingRef.current) {
-        previewingRef.current = false
-        return
-      }
-      setPlaying(false)
-      setPosition(null)
-      if (!userStoppedRef.current) onTrackEndedRef.current()
-    }
-    player
-      .init((progress) => active && setReadiness({ kind: 'loading', progress }))
-      .then(() => {
+    let player: Player | null = null
+
+    void (async () => {
+      try {
+        const { Player } = await import('./audio/player')
+        if (!active) return
+        player = new Player()
+        playerRef.current = player
+        player.onEnded = () => {
+          if (previewingRef.current) {
+            previewingRef.current = false
+            return
+          }
+          setPlaying(false)
+          setPosition(null)
+          if (!userStoppedRef.current) onTrackEndedRef.current()
+        }
+        await player.init((progress) => active && setReadiness({ kind: 'loading', progress }))
         if (!active) return
         setReadiness({ kind: 'ready' })
         // Decode the sounds in the background, the style on screen first
@@ -332,15 +336,19 @@ export default function App() {
         const first = getStyle(styleRef.current)
         const styles = [first, ...STYLES.filter((s) => s !== first)].map((s) => withSounds(s, soundsRef.current))
         void player.warmUp(styles.map(warmUpMidi))
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (!active) return
         setReadiness({ kind: 'error', message: err instanceof Error ? err.message : String(err) })
-        if (player.supported) reportError(err, 'sound bank')
-      })
+        if (!player || player.supported) reportError(err, 'sound bank')
+      }
+    })()
+
     return () => {
       active = false
-      void player.dispose()
+      if (player) {
+        if (playerRef.current === player) playerRef.current = null
+        void player.dispose()
+      }
     }
   }, [])
 

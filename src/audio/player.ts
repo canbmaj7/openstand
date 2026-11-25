@@ -1,10 +1,11 @@
 import { MIDIControllers } from 'spessasynth_core'
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib'
 import processorUrl from 'spessasynth_lib/dist/spessasynth_processor.min.js?url'
+import { masterGainFor, SOUNDFONT_URL } from './constants'
 import { applyReverb, DEFAULT_REVERB } from './reverb'
 import { applyTuning, centsForA4, clampA4, DEFAULT_A4 } from './tuning'
 
-export const SOUNDFONT_URL = '/soundfonts/openstand.sf3'
+export { masterGainFor, SOUNDFONT_URL }
 const UNLOCK_EVENTS = ['pointerdown', 'touchend', 'keydown'] as const
 
 async function fetchWithProgress(url: string, onProgress: (ratio: number) => void): Promise<ArrayBuffer> {
@@ -29,10 +30,6 @@ async function fetchWithProgress(url: string, onProgress: (ratio: number) => voi
   }
   return out.buffer
 }
-
-// About +10 dB: brings the band from around -28 dBFS (RMS) to the level of other music
-const MASTER_GAIN = 3.2
-export const masterGainFor = (volume: number) => MASTER_GAIN * (volume / 100) ** 2
 
 // Thin layer over SpessaSynth: sound bank loading, MIDI playback, mixer
 export class Player {

@@ -5,6 +5,9 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 
 ## Unreleased
 
+#### Changed
+- The chart shows sooner on first load: the audio engine now loads after the page (#142).
+
 #### Fixed
 - MIDI, WAV and MP3 exports now speed up like playback when Practice > Speed up is on (#126).
 
