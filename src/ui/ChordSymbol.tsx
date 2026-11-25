@@ -1,5 +1,6 @@
-import { spellRoot, type Chord } from '../music/chords'
+import type { Chord } from '../music/chords'
 import { plainChordParts } from '../music/chordText'
+import { formatChordRoot, type ChordNames, type RootParts } from '../music/degrees'
 
 // SMuFL chord-symbol glyphs (rendered with Petaluma Text), so symbols look hand-copied
 const GLYPH = {
@@ -37,30 +38,71 @@ function typeset(suffix: string): { quality: string; extensions: string } {
   return { quality: marker + number, extensions }
 }
 
-function ChordBody({ chord, keyPc, plain }: { chord: Chord; keyPc: number; plain: boolean }) {
+function formatBassHandwritten(parts: RootParts): string {
+  const acc = parts.accidental ? accidental(parts.accidental) : ''
+  return parts.accidentalBefore ? `${acc}${parts.root}` : `${parts.root}${acc}`
+}
+
+function chordAriaLabel(
+  chord: Chord,
+  keyPc: number,
+  minor: boolean,
+  chordNames: ChordNames,
+  includeBass: boolean,
+): string {
+  const rootParts = formatChordRoot(chord.root, keyPc, minor, chordNames)
+  const rootText = rootParts.accidentalBefore
+    ? `${rootParts.accidental}${rootParts.root}`
+    : `${rootParts.root}${rootParts.accidental}`
+  const bassParts = includeBass && chord.bass !== chord.root ? formatChordRoot(chord.bass, keyPc, minor, chordNames) : null
+  const bassText = bassParts
+    ? `/${bassParts.accidentalBefore ? `${bassParts.accidental}${bassParts.root}` : `${bassParts.root}${bassParts.accidental}`}`
+    : ''
+  return `${rootText}${chord.suffix}${bassText}`
+}
+
+function ChordBody({
+  chord,
+  keyPc,
+  minor,
+  plain,
+  chordNames,
+}: {
+  chord: Chord
+  keyPc: number
+  minor: boolean
+  plain: boolean
+  chordNames: ChordNames
+}) {
+  const accidentalBefore = chordNames !== 'letters'
   if (plain) {
-    const parts = plainChordParts(chord, keyPc)
+    const parts = plainChordParts(chord, keyPc, chordNames, minor)
     return (
       <>
+        {accidentalBefore && parts.accidental && <span className="chord-accidental">{parts.accidental}</span>}
         <span>{parts.root}</span>
-        {parts.accidental && <span className="chord-accidental">{parts.accidental}</span>}
+        {!accidentalBefore && parts.accidental && <span className="chord-accidental">{parts.accidental}</span>}
         {parts.quality && <span className="chord-quality">{parts.quality}</span>}
         {parts.extensions && <span className="chord-ext">{parts.extensions}</span>}
         {parts.bass && <span className="chord-bass">/{parts.bass}</span>}
       </>
     )
   }
-  const name = spellRoot(chord.root, keyPc)
+  const rootParts = formatChordRoot(chord.root, keyPc, minor, chordNames)
   const { quality, extensions } = typeset(chord.suffix)
+  const bassParts = chord.bass !== chord.root ? formatChordRoot(chord.bass, keyPc, minor, chordNames) : null
   return (
     <>
-      <span>{name[0]}</span>
-      {name[1] && <span className="chord-accidental">{accidental(name[1])}</span>}
+      {accidentalBefore && rootParts.accidental && (
+        <span className="chord-accidental">{accidental(rootParts.accidental)}</span>
+      )}
+      <span>{rootParts.root}</span>
+      {!accidentalBefore && rootParts.accidental && (
+        <span className="chord-accidental">{accidental(rootParts.accidental)}</span>
+      )}
       {quality && <span className="chord-quality">{quality}</span>}
       {extensions && <span className="chord-ext">{extensions}</span>}
-      {chord.bass !== chord.root && (
-        <span className="chord-bass">/{spellRoot(chord.bass, keyPc).replace(/[b#]/, accidental)}</span>
-      )}
+      {bassParts && <span className="chord-bass">/{formatBassHandwritten(bassParts)}</span>}
     </>
   )
 }
@@ -70,7 +112,9 @@ export function ChordSymbol({
   alt,
   subActive = false,
   keyPc,
+  minor = false,
   plain = false,
+  chordNames = 'letters',
   isStart = false,
   onSelect,
 }: {
@@ -78,15 +122,14 @@ export function ChordSymbol({
   alt?: Chord | null
   subActive?: boolean
   keyPc: number
+  minor?: boolean
   plain?: boolean
+  chordNames?: ChordNames
   isStart?: boolean
   onSelect?: (chord: Chord) => void
 }) {
-  const name = spellRoot(chord.root, keyPc)
-  const baseLabel = `${name}${chord.suffix}`
-  const altLabel = alt
-    ? `${spellRoot(alt.root, keyPc)}${alt.suffix}${alt.bass !== alt.root ? `/${spellRoot(alt.bass, keyPc)}` : ''}`
-    : ''
+  const baseLabel = chordAriaLabel(chord, keyPc, minor, chordNames, chordNames !== 'letters')
+  const altLabel = alt ? chordAriaLabel(alt, keyPc, minor, chordNames, true) : ''
   const label = [baseLabel, altLabel && `or ${altLabel}`, isStart && 'start point'].filter(Boolean).join(', ')
 
   return (
@@ -119,11 +162,11 @@ export function ChordSymbol({
     >
       {alt && (
         <span className="chord-alt" aria-hidden="true">
-          <ChordBody chord={alt} keyPc={keyPc} plain={plain} />
+          <ChordBody chord={alt} keyPc={keyPc} minor={minor} plain={plain} chordNames={chordNames} />
         </span>
       )}
       <span className="chord-main">
-        <ChordBody chord={chord} keyPc={keyPc} plain={plain} />
+        <ChordBody chord={chord} keyPc={keyPc} minor={minor} plain={plain} chordNames={chordNames} />
       </span>
     </span>
   )

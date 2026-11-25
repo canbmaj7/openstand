@@ -1,4 +1,5 @@
-import { parseChord, spellRoot, type Chord } from './chords'
+import { parseChord, type Chord } from './chords'
+import { formatChordRoot, type ChordNames } from './degrees'
 
 export type ChordFont = 'Handwritten' | 'Plain'
 
@@ -68,23 +69,35 @@ export function typesetPlain(suffix: string): { quality: string; extensions: str
   return { quality, extensions }
 }
 
-export function plainChordParts(chord: Chord, keyPc = 0): ChordParts {
-  const name = spellRoot(chord.root, keyPc)
-  const root = name[0] ?? ''
-  const accidental = accidentalPlain(name[1] ?? '')
+export function plainChordParts(
+  chord: Chord,
+  keyPc = 0,
+  chordNames: ChordNames = 'letters',
+  minor = false,
+): ChordParts {
+  const rootParts = formatChordRoot(chord.root, keyPc, minor, chordNames)
+  const root = rootParts.root
+  const accidental = accidentalPlain(rootParts.accidental)
   const { quality, extensions } = typesetPlain(chord.suffix)
   let bass = ''
   if (chord.bass !== chord.root) {
-    const bassName = spellRoot(chord.bass, keyPc)
-    bass = (bassName[0] ?? '') + accidentalPlain(bassName[1] ?? '')
+    const bassParts = formatChordRoot(chord.bass, keyPc, minor, chordNames)
+    const bassAcc = accidentalPlain(bassParts.accidental)
+    bass = bassParts.accidentalBefore ? `${bassAcc}${bassParts.root}` : `${bassParts.root}${bassAcc}`
   }
   return { root, accidental, quality, extensions, bass }
 }
 
-export function plainChordText(chord: Chord | string, keyPc = 0): string {
+export function plainChordText(
+  chord: Chord | string,
+  keyPc = 0,
+  chordNames: ChordNames = 'letters',
+  minor = false,
+): string {
   const c = typeof chord === 'string' ? parseChord(chord) : chord
   if (!c) return typeof chord === 'string' ? chord : ''
-  const parts = plainChordParts(c, keyPc)
+  const parts = plainChordParts(c, keyPc, chordNames, minor)
   const bassPart = parts.bass ? `/${parts.bass}` : ''
-  return `${parts.root}${parts.accidental}${parts.quality}${parts.extensions}${bassPart}`
+  const rootPart = chordNames === 'letters' ? `${parts.root}${parts.accidental}` : `${parts.accidental}${parts.root}`
+  return `${rootPart}${parts.quality}${parts.extensions}${bassPart}`
 }
