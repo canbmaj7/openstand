@@ -3,6 +3,7 @@ export interface PracticeShortcuts {
   tempo: (delta: number) => void
   transpose: (delta: number) => void
   clearLoop: () => void
+  scale: (delta: -1 | 1) => void
 }
 
 export interface EditorShortcuts {
@@ -103,7 +104,19 @@ export function handlePracticeShortcut(
     case 'KeyL':
       event.preventDefault()
       actions.clearLoop()
-      break
+      return
+  }
+
+  if (event.key === '-' || (!event.key && (event.code === 'Minus' || event.code === 'NumpadSubtract'))) {
+    event.preventDefault()
+    actions.scale(-1)
+  } else if (
+    event.key === '=' ||
+    event.key === '+' ||
+    (!event.key && (event.code === 'Equal' || event.code === 'NumpadAdd'))
+  ) {
+    event.preventDefault()
+    actions.scale(1)
   }
 }
 

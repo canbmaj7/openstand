@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Make the chart bigger or smaller with A− / A+ in the top bar; the size is remembered and used for printing (#80).
 - Undo/redo and copy, cut and paste of bars in the chart editor (#72).
 - Download the backing track as audio (WAV) from the Share menu, rendered with the current key, tempo and mixer levels (#70).
 - Ukulele chord diagrams in the chord helper, and a count-in setting (auto, off, one or two bars) (#74).

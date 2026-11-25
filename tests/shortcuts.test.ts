@@ -16,7 +16,7 @@ function keyEvent(code: string, patch: Partial<KeyboardEvent> = {}) {
 }
 
 function actions() {
-  return { toggle: vi.fn(), tempo: vi.fn(), transpose: vi.fn(), clearLoop: vi.fn() }
+  return { toggle: vi.fn(), tempo: vi.fn(), transpose: vi.fn(), clearLoop: vi.fn(), scale: vi.fn() }
 }
 
 function controlTarget(kind: 'button' | 'input') {
@@ -46,6 +46,34 @@ describe('practice keyboard shortcuts', () => {
       expect(handler).toHaveBeenCalledTimes(name === action ? 1 : 0)
     }
     if (delta !== undefined) expect(handlers[action]).toHaveBeenCalledWith(delta)
+  })
+
+  test.each([
+    ['Minus', '-', -1],
+    ['Equal', '=', 1],
+    ['Equal', '+', 1],
+  ] as const)('key %s invokes scale(%d) outside text inputs and editor', (code, key, delta) => {
+    const handlers = actions()
+    const event = keyEvent(code, { key })
+    handlePracticeShortcut(event, false, handlers)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(handlers.scale).toHaveBeenCalledWith(delta)
+
+    const blocked = actions()
+    const inInput = keyEvent(code, { key, target: controlTarget('input') })
+    handlePracticeShortcut(inInput, false, blocked)
+    expect(inInput.preventDefault).not.toHaveBeenCalled()
+    expect(blocked.scale).not.toHaveBeenCalled()
+
+    const whileEditing = keyEvent(code, { key })
+    handlePracticeShortcut(whileEditing, true, blocked)
+    expect(whileEditing.preventDefault).not.toHaveBeenCalled()
+    expect(blocked.scale).not.toHaveBeenCalled()
+
+    const withCtrl = keyEvent(code, { key, ctrlKey: true })
+    handlePracticeShortcut(withCtrl, false, blocked)
+    expect(withCtrl.preventDefault).not.toHaveBeenCalled()
+    expect(blocked.scale).not.toHaveBeenCalled()
   })
 
   test('unrelated keys keep their default behavior', () => {

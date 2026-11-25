@@ -33,6 +33,7 @@ import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
 import { switchMode } from './music/mode'
 import { Transport, type ModeOption, type Readiness } from './ui/Transport'
+import { CHART_SCALES, loadChartScale, saveChartScale, stepScale, type ChartScale } from './ui/chartScale'
 import { handlePracticeShortcut, isChordInputElement, isTextInputElement, type PracticeShortcuts } from './ui/shortcuts'
 
 interface Position {
@@ -241,6 +242,7 @@ export default function App() {
   const wavResetTimer = useRef(0)
   const [mode, setMode] = useState<ModeOption>('original')
   const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
+  const [chartScale, setChartScale] = useState<ChartScale>(loadChartScale)
 
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
   const baseChart = draftChart ?? tune.chart
@@ -350,6 +352,10 @@ export default function App() {
   }, [chordFont])
 
   useEffect(() => {
+    saveChartScale(chartScale)
+  }, [chartScale])
+
+  useEffect(() => {
     saveSounds(sounds)
   }, [sounds])
 
@@ -443,6 +449,7 @@ export default function App() {
       setPicking(null)
       if (practice.loop) changePractice({ ...practice, loop: null })
     },
+    scale: (delta) => setChartScale((current) => stepScale(current, delta)),
   }
   const shortcutsRef = useRef(shortcuts)
   useEffect(() => {
@@ -903,6 +910,28 @@ export default function App() {
             </Popover>
           </>
         )}
+        <div className="topbar-scale" role="group" aria-label="Chart size">
+          <button
+            type="button"
+            className="topbar-button topbar-scale-button"
+            aria-label="Smaller chart"
+            title={`Smaller chart (${chartScale}%)`}
+            disabled={chartScale <= CHART_SCALES[0]}
+            onClick={() => setChartScale((s) => stepScale(s, -1))}
+          >
+            A−
+          </button>
+          <button
+            type="button"
+            className="topbar-button topbar-scale-button"
+            aria-label="Larger chart"
+            title={`Larger chart (${chartScale}%)`}
+            disabled={chartScale >= CHART_SCALES[CHART_SCALES.length - 1]}
+            onClick={() => setChartScale((s) => stepScale(s, 1))}
+          >
+            A+
+          </button>
+        </div>
         <button
           type="button"
           className="topbar-button topbar-chord-font"
@@ -967,6 +996,7 @@ export default function App() {
             selectedBar={draft ? editor.editBar : null}
             selectedRange={draft ? editor.selectionRange : null}
             plain={chordFont === 'Plain'}
+            scale={chartScale}
             startAt={!playing ? selectedChordAt : null}
             onBarClick={draft ? editor.selectBar : picking ? pickBar : undefined}
             onChordClick={
