@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Sort the tune list by title, composer, style or key (#79).
 - Setlists: make your own lists from any tunes, reorder them, share them as one iReal Pro link, and play straight through (#71).
 - Download a chart as MusicXML from the Share menu, to open it in MuseScore, Finale, Dorico or Sibelius (#73).
 - Undo/redo and copy, cut and paste of bars in the chart editor (#72).
