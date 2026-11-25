@@ -3,11 +3,18 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { mapStyle } from '../formats/ireal'
 import type { Chart } from '../music/chart'
+import type { Setlist } from '../music/setlist'
 import type { Tune } from '../music/songs'
 
-const db = new Dexie('openstand') as Dexie & { tunes: EntityTable<Tune, 'id'> }
+const db = new Dexie('openstand') as Dexie & {
+  tunes: EntityTable<Tune, 'id'>
+  setlists: EntityTable<Setlist, 'id'>
+}
 
 db.version(1).stores({ tunes: 'id, playlist, addedAt' })
+db.version(2).stores({ tunes: 'id, playlist, addedAt', setlists: 'id, updatedAt' })
+
+export type { Setlist }
 
 export const STORAGE_ERROR = "Couldn't save to this browser's storage."
 
@@ -67,6 +74,35 @@ export async function removeTune(id: string): Promise<void> {
 export async function saveTune(tune: Tune, onError?: (message: string) => void): Promise<boolean> {
   try {
     await db.tunes.put(tune)
+    return true
+  } catch {
+    onError?.(STORAGE_ERROR)
+    return false
+  }
+}
+
+export async function loadSetlists(onError?: (message: string) => void): Promise<Setlist[]> {
+  try {
+    return await db.setlists.orderBy('updatedAt').reverse().toArray()
+  } catch {
+    onError?.(STORAGE_ERROR)
+    return []
+  }
+}
+
+export async function saveSetlist(setlist: Setlist, onError?: (message: string) => void): Promise<boolean> {
+  try {
+    await db.setlists.put(setlist)
+    return true
+  } catch {
+    onError?.(STORAGE_ERROR)
+    return false
+  }
+}
+
+export async function removeSetlist(id: string, onError?: (message: string) => void): Promise<boolean> {
+  try {
+    await db.setlists.delete(id)
     return true
   } catch {
     onError?.(STORAGE_ERROR)
