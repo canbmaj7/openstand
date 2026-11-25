@@ -52,6 +52,8 @@ export const DRUM_ROWS: DrumName[] = [
   'clap',
   'kick',
   'tambourine',
+  'triangleOpen',
+  'triangleMute',
   'shaker',
   'cabasa',
   'cowbell',

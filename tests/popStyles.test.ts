@@ -141,7 +141,8 @@ describe('disco, rock-12-8, and soul styles', () => {
     const drums = generateDrums(timeline.bars, soul.drums, soul.swing, timeline.clicks)
     const grooveHits = drums.filter((e) => e.tick >= timeline.countIn * PPQ - 20)
 
-    const playedBars = timeline.bars.filter((b) => b.measure >= 0)
+    // The final bar is the ending hit (crash + snare on 1), so only groove bars are checked
+    const playedBars = timeline.bars.filter((b) => b.measure >= 0).slice(0, -1)
     for (const bar of playedBars) {
       const barStartTick = toTicks(bar.start)
       const barEndTick = toTicks(bar.start + bar.beats)
