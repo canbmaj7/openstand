@@ -12,6 +12,7 @@ export interface SetlistDetailProps {
   activeSetlistId: string | null
   playThrough: boolean
   shuffle: boolean
+  repeat: boolean
   styleOverrides: Record<string, string>
   styleNames: Record<string, string>
   onBack: () => void
@@ -22,11 +23,12 @@ export interface SetlistDetailProps {
   onRemoveTune: (setlistId: string, index: number) => void
   onTogglePlayThrough: () => void
   onToggleShuffle: () => void
+  onToggleRepeat: () => void
   onAddTune: (setlistId: string, tuneId: string) => void
 }
 
 export function SetlistDetail(props: SetlistDetailProps) {
-  const { setlist, items, selectedId, activeSetlistId, playThrough, shuffle, styleOverrides, styleNames } = props
+  const { setlist, items, selectedId, activeSetlistId, playThrough, shuffle, repeat, styleOverrides, styleNames } = props
   const [renaming, setRenaming] = useState(false)
   const [renameText, setRenameText] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -153,6 +155,16 @@ export function SetlistDetail(props: SetlistDetailProps) {
           onClick={props.onToggleShuffle}
         >
           Shuffle
+        </button>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={repeat}
+          disabled={!playThrough}
+          title="Start the setlist over after the last tune"
+          onClick={props.onToggleRepeat}
+        >
+          Repeat
         </button>
         <button
           type="button"

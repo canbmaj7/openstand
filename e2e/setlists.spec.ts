@@ -163,3 +163,33 @@ test('shuffle chip requires play-through, persists across reload, and updates re
   await expect(page.getByRole('button', { name: 'Play through' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: 'Shuffle' })).toHaveAttribute('aria-pressed', 'true')
 })
+
+test('setlist Repeat is remembered and shown in the readout', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Setlists' }).click()
+  await page.getByRole('button', { name: 'New setlist' }).click()
+  await page.getByLabel('Setlist name').fill('Repeat Set')
+  await page.getByRole('button', { name: 'Create' }).click()
+
+  await page.getByRole('tab', { name: 'Tunes' }).click()
+  await page.getByText('Rhythm Changes (A section)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Add to setlist' }).click()
+  await page.getByRole('button', { name: /Repeat Set/ }).click()
+
+  await page.getByRole('tab', { name: 'Setlists' }).click()
+  await page.getByRole('button', { name: /Repeat Set/ }).click()
+
+  const repeat = page.getByRole('button', { name: 'Repeat', exact: true })
+  await expect(repeat).toBeDisabled()
+  await page.getByRole('button', { name: 'Play through' }).click()
+  await repeat.click()
+  await expect(repeat).toHaveAttribute('aria-pressed', 'true')
+
+  await page.locator('.setlist-row').nth(0).locator('.setlist-tune').click()
+  await expect(page.locator('.readout')).toContainText('Repeat Set · 1/1 · repeat')
+
+  await page.reload()
+  await expect(page.locator('[aria-label$="chord chart"]').first()).toBeVisible()
+  await page.getByRole('tab', { name: 'Setlists' }).click()
+  await page.getByRole('button', { name: /Repeat Set/ }).click()
+  await expect(page.getByRole('button', { name: 'Repeat', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})

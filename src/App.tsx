@@ -1216,6 +1216,7 @@ export default function App() {
             activeSetlistId: setlists.activeSetlistId,
             playThrough: setlists.playThrough,
             shuffle: setlists.shuffle,
+            repeat: setlists.repeat,
             onOpenSetlist: setlists.setOpenSetlistId,
             onCreate: setlists.create,
             onRename: setlists.rename,
@@ -1225,6 +1226,7 @@ export default function App() {
             onRemoveTune: setlists.removeTuneAt,
             onTogglePlayThrough: setlists.togglePlayThrough,
             onToggleShuffle: setlists.toggleShuffle,
+            onToggleRepeat: setlists.toggleRepeat,
             onAddTune: setlists.add,
           }}
         />
@@ -1366,7 +1368,7 @@ export default function App() {
         setlistStatus={
           setlists.activePosition
             ? `${setlists.activePosition.name} · ${setlists.activePosition.index + 1}/${setlists.activePosition.total}${
-                setlists.playThrough && setlists.shuffle ? ' · shuffle' : ''
+                setlists.playThrough && setlists.shuffle ? ' · shuffle' : setlists.playThrough && setlists.repeat ? ' · repeat' : ''
               }`
             : null
         }

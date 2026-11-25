@@ -53,4 +53,12 @@ describe('setlist helpers', () => {
     expect(nextTuneId(s, 'missing')).toBeNull()
     expect(nextTuneId(sample([]), 'a')).toBeNull()
   })
+
+  test('nextTuneId with repeat goes back to the first tune after the last', () => {
+    const s = sample(['a', 'b', 'c'])
+    expect(nextTuneId(s, 'b', true)).toBe('c')
+    expect(nextTuneId(s, 'c', true)).toBe('a')
+    expect(nextTuneId(sample(['a']), 'a', true)).toBe('a')
+    expect(nextTuneId(s, 'missing', true)).toBeNull()
+  })
 })

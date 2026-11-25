@@ -43,9 +43,11 @@ export function move(setlist: Setlist, from: number, to: number): Setlist {
   return { ...setlist, tuneIds }
 }
 
-export function nextTuneId(setlist: Setlist, currentId: string): string | null {
+// With repeat, the tune after the last one is the first one again
+export function nextTuneId(setlist: Setlist, currentId: string, repeat = false): string | null {
   const index = setlist.tuneIds.indexOf(currentId)
-  if (index === -1 || index + 1 >= setlist.tuneIds.length) return null
+  if (index === -1) return null
+  if (index + 1 >= setlist.tuneIds.length) return repeat ? setlist.tuneIds[0] : null
   return setlist.tuneIds[index + 1]
 }
 
