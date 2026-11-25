@@ -7,6 +7,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 
 #### Added
 - Second Line, Even 8ths and Smooth Jazz styles; iReal Pro tunes in these styles open in them (#114).
+- Bluegrass, Calypso and Ska styles; iReal Pro tunes in these styles open in them (#115).
 - Chord names: show a chart as Roman numerals or Nashville numbers relative to the tune's key (Aa menu) (#112).
 - Metronome: a Click part in the mixer plays a click on every beat (accented downbeat, follows compound and odd-meter groupings); off by default (#110).
 - Disco, Rock 12/8 and Soul styles; iReal Pro tunes in these styles open in them (#107).

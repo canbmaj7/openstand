@@ -3,8 +3,10 @@ import { aksak } from './library/aksak'
 import { bachata } from './library/bachata'
 import { baiao } from './library/baiao'
 import { ballad } from './library/ballad'
+import { bluegrass } from './library/bluegrass'
 import { bolero } from './library/bolero'
 import { bossaNova } from './library/bossa-nova'
+import { calypso } from './library/calypso'
 import { chaCha } from './library/cha-cha'
 import { choro } from './library/choro'
 import { country } from './library/country'
@@ -25,6 +27,7 @@ import { rock128 } from './library/rock-12-8'
 import { samba } from './library/samba'
 import { secondLine } from './library/second-line'
 import { shuffle } from './library/shuffle'
+import { ska } from './library/ska'
 import { slowBlues } from './library/slow-blues'
 import { smoothJazz } from './library/smooth-jazz'
 import { soul } from './library/soul'
@@ -54,6 +57,7 @@ export const STYLES: StyleDefinition[] = [
   bachata,
   merengue,
   cumbia,
+  calypso,
   popRock,
   smoothJazz,
   disco,
@@ -65,7 +69,9 @@ export const STYLES: StyleDefinition[] = [
   slowBlues,
   rock128,
   reggae,
+  ska,
   country,
+  bluegrass,
   aksak,
 ]
 
