@@ -1944,8 +1944,13 @@ input.fader::-moz-range-thumb {
   }
 
   .topbar-scale-button,
-  .chord-display .band-toggle {
+  .chord-display .band-toggle,
+  .topbar-fullscreen {
     padding: 0 5px;
+  }
+
+  .wordmark-name {
+    display: none;
   }
 
   /* No room on phones, and bars there are too narrow for bigger chords; pinch zoom works instead */
@@ -1965,6 +1970,131 @@ input.fader::-moz-range-thumb {
 
   .mixer-divider {
     margin: 0 2px;
+  }
+}
+
+/* ---------- Full screen ---------- */
+
+.topbar-fullscreen {
+  padding: 0 7px;
+}
+
+.topbar-fullscreen svg,
+.transport-exit-fullscreen svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.transport-exit-fullscreen {
+  display: none;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--ink-2);
+}
+
+.transport-exit-fullscreen:hover {
+  color: var(--ink);
+  border-color: var(--ink-2);
+}
+
+@media screen {
+  .app[data-fullscreen='true'] {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .app[data-fullscreen='true'] .topbar,
+  .app[data-fullscreen='true'] .library,
+  .app[data-fullscreen='true'] .lab,
+  .app[data-fullscreen='true'] .controls > :not(.control-tempo),
+  .app[data-fullscreen='true'] .control-tempo .label,
+  .app[data-fullscreen='true'] .control-tempo input[type='range'],
+  .app[data-fullscreen='true'] .control-tempo .stepper > button:not(.stepper-value),
+  .app[data-fullscreen='true'] .transport-band {
+    display: none;
+  }
+
+  .app[data-fullscreen='true'] .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app[data-fullscreen='true'] .stage {
+    padding: 20px 28px 28px;
+  }
+
+  .app[data-fullscreen='true'] .sheet {
+    max-width: none;
+  }
+
+  .app[data-fullscreen='true'] .transport {
+    height: auto;
+    min-height: 54px;
+    flex-wrap: nowrap;
+    gap: 14px;
+    padding: 7px 16px;
+  }
+
+  .app[data-fullscreen='true'] .transport-main {
+    flex: 1;
+    min-width: 0;
+    gap: 12px;
+  }
+
+  .app[data-fullscreen='true'] .play {
+    width: 40px;
+    height: 40px;
+  }
+
+  .app[data-fullscreen='true'] .play-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .app[data-fullscreen='true'] .controls {
+    flex: 0 0 auto;
+    order: 0;
+    flex-basis: auto;
+    gap: 0;
+  }
+
+  .app[data-fullscreen='true'] .control-tempo {
+    display: flex;
+    align-items: center;
+  }
+
+  .app[data-fullscreen='true'] .control-tempo .stepper-value {
+    padding: 0 6px;
+  }
+
+  .app[data-fullscreen='true'] .control-tempo .stepper-value::after {
+    content: ' BPM';
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .app[data-fullscreen='true'] .transport-exit-fullscreen {
+    display: inline-flex;
+  }
+}
+
+@media screen and (max-width: 820px) {
+  .app[data-fullscreen='true'] .stage {
+    padding: 12px;
+  }
+
+  .app[data-fullscreen='true'] .transport {
+    gap: 10px;
+    padding: 7px 12px;
   }
 }
 

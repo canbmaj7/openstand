@@ -51,6 +51,7 @@ import { Transport, type ModeOption, type Readiness } from './ui/Transport'
 import { useTuneSettings } from './ui/useTuneSettings'
 import { CHART_SCALES, loadChartScale, saveChartScale, stepScale, type ChartScale } from './ui/chartScale'
 import { handlePracticeShortcut, isChordInputElement, isTextInputElement, type PracticeShortcuts } from './ui/shortcuts'
+import { useFullscreen } from './ui/useFullscreen'
 
 interface Position {
   measure: number // -1 during the count-in and the ending
@@ -255,6 +256,7 @@ export default function App() {
   const editor = useEditorHistory()
   const draft = editor.draft
   const draftChart = editor.chart
+  const { fullscreen, enter: enterFullscreen, exit: exitFullscreen, toggle: toggleFullscreen } = useFullscreen(draft !== null)
   const [irealState, setIrealState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const { audioState, exportAudio } = useAudioExport()
   const [mode, setMode] = useState<ModeOption>('original')
@@ -539,6 +541,7 @@ export default function App() {
       if (practice.loop) changePractice({ ...practice, loop: null })
     },
     scale: (delta) => setChartScale((current) => stepScale(current, delta)),
+    fullscreen: toggleFullscreen,
   }
   const shortcutsRef = useRef(shortcuts)
   useEffect(() => {
@@ -964,7 +967,11 @@ export default function App() {
   })()
 
   return (
-    <div className="app" data-chord-font={chordFont === 'Plain' ? 'plain' : undefined}>
+    <div
+      className="app"
+      data-chord-font={chordFont === 'Plain' ? 'plain' : undefined}
+      data-fullscreen={fullscreen ? 'true' : undefined}
+    >
       <header className="topbar">
         <a className="wordmark" href="/" aria-label="OpenStand home">
           <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -1110,6 +1117,18 @@ export default function App() {
             A+
           </button>
         </div>
+        <button
+          type="button"
+          className="topbar-button topbar-fullscreen"
+          aria-label="Full screen"
+          title="Full screen (F)"
+          disabled={editing}
+          onClick={enterFullscreen}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2.5 5.5v-3h3M10.5 2.5h3v3M2.5 10.5v3h3M13.5 10.5v3h-3" />
+          </svg>
+        </button>
         <ChordDisplay
           chordFont={chordFont}
           onChordFont={setChordFont}
@@ -1337,6 +1356,7 @@ export default function App() {
         onChoruses={(n) => changeArrangement({ choruses: n })}
         hasTuneSettings={Boolean(tuneSettings[tune.id])}
         onResetTune={resetTune}
+        onExitFullscreen={exitFullscreen}
       >
         <Practice chart={chart} settings={practice} onChange={changePractice} onPickLoop={() => setPicking('first')} />
         <ChordHelper

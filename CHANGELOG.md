@@ -9,6 +9,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 - MIDI, WAV and MP3 exports now speed up like playback when Practice > Speed up is on (#126).
 
 #### Added
+- Full screen chart view for the music stand: button or F key (#130).
 - Setlists: Shuffle plays the tunes in random order; library search also matches style names (#128).
 - Practice: random keys, up a minor/major third or a fifth each chorus, and speed up every 2–4 choruses (#124).
 - Download the backing track as MP3 (192 kbps), next to WAV (#122).
