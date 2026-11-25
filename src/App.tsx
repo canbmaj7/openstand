@@ -20,6 +20,7 @@ import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
 import { hiddenFraction, isBarHidden, loadHideChords, saveHideChords, type HideChords } from './music/hideChords'
 import { distinctChords } from './music/tuneChords'
+import { withSwing } from './music/swingFeel'
 import { emptyChart } from './music/edit'
 import { CHORD_FONT_KEY, loadChordFont, type ChordFont } from './music/chordText'
 import { loadChordNames, saveChordNames, type ChordNames } from './music/degrees'
@@ -74,6 +75,7 @@ interface ArrangeOptions {
   transpose: number
   choruses: number
   practice: PracticeSettings
+  swing?: number
 }
 
 // Keeps the transposition within -5..+6 so the band's register doesn't drift
@@ -229,6 +231,7 @@ export default function App() {
   const [importOpen, setImportOpen] = useState(false)
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [choruses, setChoruses] = useState(() => initialSaved?.choruses ?? DEFAULT_CHORUSES)
+  const [swing, setSwing] = useState<number | undefined>(() => initialSaved?.swing)
   const chorusesRef = useRef(choruses)
   useEffect(() => {
     chorusesRef.current = choruses
@@ -293,6 +296,7 @@ export default function App() {
     return saved ? { ...styleFromLab(saved), id } : getStyle(id)
   }
   const resolveStyle = (id: string) => withSounds(styleFor(id, labRef.current, myStylesRef.current), soundsRef.current)
+  const resolvePlayStyle = (id: string, ratio: number | undefined) => (id === LAB_STYLE ? resolveStyle(id) : withSwing(resolveStyle(id), ratio))
   const style = withSounds(draftChart ? getStyle(draftChart.style) : styleFor(styleId, lab, myStyles), sounds)
   const keyPc = (chart.key + transpose + 12) % 12
 
@@ -462,7 +466,15 @@ export default function App() {
     cancelAutoPlayRef.current()
     userStoppedRef.current = false
     setNotice(null)
-    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, practiceOptions(opts.practice), undefined, { click: true })
+    const { midi, timeline } = arrange(
+      chartToUse,
+      resolvePlayStyle(opts.styleId, opts.swing),
+      opts.transpose,
+      opts.choruses,
+      practiceOptions(opts.practice),
+      undefined,
+      { click: true },
+    )
     timelineRef.current = timeline
 
     let offsetSeconds = fromSeconds
@@ -522,15 +534,17 @@ export default function App() {
   // Changing style, key or choruses while playing continues from the same spot with a new arrangement;
   // a new loop starts over
   const changeArrangement = (patch: Partial<ArrangeOptions>) => {
-    const next = { styleId, transpose, choruses, practice, ...patch }
+    const next = { styleId, transpose, choruses, practice, swing, ...patch }
     setStyleId(next.styleId)
     setTranspose(next.transpose)
     setChoruses(next.choruses)
     setPractice(next.practice)
+    setSwing(next.swing)
     const settingsPatch: Partial<TuneSettings> = {}
     if (patch.styleId && patch.styleId !== LAB_STYLE) settingsPatch.style = patch.styleId
     if (patch.transpose !== undefined) settingsPatch.transpose = patch.transpose
     if (patch.choruses !== undefined) settingsPatch.choruses = patch.choruses
+    if ('swing' in patch) settingsPatch.swing = patch.swing
     if (Object.keys(settingsPatch).length > 0) {
       updateSavedTune(tune.id, settingsPatch, { style: tune.chart.style, bpm: tune.chart.bpm })
     }
@@ -559,7 +573,7 @@ export default function App() {
     const nextChart = !draft && nextMode !== 'original' ? switchMode(baseChart, nextMode) : baseChart
     const player = playerRef.current
     if (playing && player) {
-      void start({ styleId, transpose, choruses, practice }, player.position, nextChart)
+      void start({ styleId, transpose, choruses, practice, swing }, player.position, nextChart)
     }
   }
 
@@ -571,7 +585,7 @@ export default function App() {
     changeArrangement(nextChoruses !== choruses ? { practice: next, choruses: nextChoruses } : { practice: next })
   }
 
-  const toggle = () => (playing ? stop() : void start({ styleId, transpose, choruses, practice }, 0, chart, true))
+  const toggle = () => (playing ? stop() : void start({ styleId, transpose, choruses, practice, swing }, 0, chart, true))
   const shortcuts: PracticeShortcuts = {
     toggle: () => {
       if (readiness.kind === 'ready') toggle()
@@ -678,6 +692,7 @@ export default function App() {
     setBpm(nextBpm)
     tapTempoRef.current?.reset()
     if (saved?.choruses !== undefined) setChoruses(saved.choruses)
+    setSwing(saved?.swing)
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
     setSelectedChord(null)
@@ -701,9 +716,10 @@ export default function App() {
     setBpm(tune.chart.bpm)
     tapTempoRef.current?.reset()
     setChoruses(DEFAULT_CHORUSES)
+    setSwing(undefined)
     const player = playerRef.current
     if (playing && player) {
-      void start({ styleId: nextStyleId, transpose: 0, choruses: DEFAULT_CHORUSES, practice }, player.position)
+      void start({ styleId: nextStyleId, transpose: 0, choruses: DEFAULT_CHORUSES, practice, swing: undefined }, player.position)
     }
   }
 
@@ -720,7 +736,7 @@ export default function App() {
       void setlists.onTrackEnded()
     }
     startNextRef.current = () => {
-      void start({ styleId, transpose, choruses, practice }, 0, chart, false)
+      void start({ styleId, transpose, choruses, practice, swing }, 0, chart, false)
     }
   })
 
@@ -1094,7 +1110,7 @@ export default function App() {
                   <button
                     className="share-option"
                     onClick={() => {
-                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, practiceOptions(practice), bpm, {
+                      downloadMidi(chart, resolvePlayStyle(styleId, swing), transpose, choruses, practiceOptions(practice), bpm, {
                         click: !muted.click,
                         ramp: exportRamp,
                       })
@@ -1114,7 +1130,7 @@ export default function App() {
                           format,
                           {
                             chart,
-                            style: resolveStyle(styleId),
+                            style: resolvePlayStyle(styleId, swing),
                             transpose,
                             choruses,
                             practice: practiceOptions(practice),
@@ -1453,6 +1469,10 @@ export default function App() {
           onPickLoop={() => setPicking('first')}
           hideChords={hideChords}
           onHideChords={setHideChords}
+          swing={swing}
+          styleSwing={style.swing}
+          swingDisabled={styleId === LAB_STYLE}
+          onSwing={(nextSwing) => changeArrangement({ swing: nextSwing })}
         />
         <ChordHelper
           chord={shownChord}

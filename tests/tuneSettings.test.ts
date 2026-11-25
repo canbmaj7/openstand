@@ -60,30 +60,43 @@ describe('tuneSettings', () => {
         bpm: BPM_RANGE[1] + 1, // out of range -> dropped
         transpose: 1.5, // non-integer -> dropped
         choruses: MAX_CHORUSES, // valid
+        swing: 0.6, // valid
+      },
+      swingOutOfRange: {
+        swing: 0.9,
+      },
+      swingTooLow: {
+        swing: 0.49,
+      },
+      swingBadType: {
+        swing: 'x',
       },
       edgeValid: {
         style: 'my:custom',
         bpm: BPM_RANGE[0],
         transpose: -11,
         choruses: 1,
+        swing: 0.5,
       },
       edgeMax: {
         bpm: BPM_RANGE[1],
         transpose: 11,
         choruses: MAX_CHORUSES,
+        swing: 0.75,
       },
       nonFinite: {
         bpm: Number.NaN,
         transpose: Number.POSITIVE_INFINITY,
         choruses: MAX_CHORUSES + 1,
+        swing: Number.NaN,
         style: 42,
       },
     })
 
     expect(parsed).toEqual({
-      mixed: { style: 'bossa-nova', choruses: MAX_CHORUSES },
-      edgeValid: { style: 'my:custom', bpm: BPM_RANGE[0], transpose: -11, choruses: 1 },
-      edgeMax: { bpm: BPM_RANGE[1], transpose: 11, choruses: MAX_CHORUSES },
+      mixed: { style: 'bossa-nova', choruses: MAX_CHORUSES, swing: 0.6 },
+      edgeValid: { style: 'my:custom', bpm: BPM_RANGE[0], transpose: -11, choruses: 1, swing: 0.5 },
+      edgeMax: { bpm: BPM_RANGE[1], transpose: 11, choruses: MAX_CHORUSES, swing: 0.75 },
     })
   })
 
@@ -108,6 +121,12 @@ describe('tuneSettings', () => {
     all = updateTuneSettings(all, 'jazz-blues', { transpose: 0, choruses: DEFAULT_CHORUSES }, defaults)
     expect(all).toEqual({})
     expect('jazz-blues' in all).toBe(false)
+
+    // Swing override can be saved and cleared via undefined
+    all = updateTuneSettings(all, 'jazz-blues', { swing: 0.7 }, defaults)
+    expect(all).toEqual({ 'jazz-blues': { swing: 0.7 } })
+    all = updateTuneSettings(all, 'jazz-blues', { swing: undefined }, defaults)
+    expect(all).toEqual({})
   })
 
   test('clearTuneSettings and clearStyleFromTuneSettings preserve unrelated data', () => {
