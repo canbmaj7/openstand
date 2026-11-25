@@ -2,7 +2,7 @@ import { MIDIControllers } from 'spessasynth_core'
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib'
 import processorUrl from 'spessasynth_lib/dist/spessasynth_processor.min.js?url'
 
-const SOUNDFONT_URL = '/soundfonts/openstand.sf3'
+export const SOUNDFONT_URL = '/soundfonts/openstand.sf3'
 const UNLOCK_EVENTS = ['pointerdown', 'touchend', 'keydown'] as const
 
 async function fetchWithProgress(url: string, onProgress: (ratio: number) => void): Promise<ArrayBuffer> {
@@ -30,7 +30,7 @@ async function fetchWithProgress(url: string, onProgress: (ratio: number) => voi
 
 // About +10 dB: brings the band from around -28 dBFS (RMS) to the level of other music
 const MASTER_GAIN = 3.2
-const masterGainFor = (volume: number) => MASTER_GAIN * (volume / 100) ** 2
+export const masterGainFor = (volume: number) => MASTER_GAIN * (volume / 100) ** 2
 
 // Thin layer over SpessaSynth: sound bank loading, MIDI playback, mixer
 export class Player {
@@ -43,6 +43,7 @@ export class Player {
   private playRequested = false
   private latencyOffset = 0
   private removeUnlock: () => void = () => {}
+  private soundBankBuffer: ArrayBuffer | null = null
   onEnded: () => void = () => {}
 
   constructor() {
@@ -77,6 +78,10 @@ export class Player {
 
   get supported(): boolean {
     return this.ctx !== null
+  }
+
+  get soundBank(): ArrayBuffer | null {
+    return this.soundBankBuffer ? this.soundBankBuffer.slice(0) : null
   }
 
   // The output stage: the General MIDI sound bank plays well below full scale, so the band is
@@ -124,6 +129,7 @@ export class Player {
       fetchWithProgress(SOUNDFONT_URL, onProgress),
       ctx.audioWorklet.addModule(processorUrl),
     ])
+    this.soundBankBuffer = soundfont.slice(0)
     const synth = new WorkletSynthesizer(ctx)
     synth.connect(this.master(ctx))
     await synth.soundBankManager.addSoundBank(soundfont, 'main')
@@ -197,6 +203,7 @@ export class Player {
   async dispose(): Promise<void> {
     this.removeUnlock()
     this.stop()
+    this.soundBankBuffer = null
     if (this.ctx && this.ctx.state !== 'closed') {
       await this.ctx.close().catch(() => {})
     }

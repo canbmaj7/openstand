@@ -236,3 +236,64 @@ function underTimeChange(chart: Chart, index: number): boolean {
   for (let i = 1; i <= index; i++) if (chart.bars[i].time) return true
   return false
 }
+
+function cloneBar(bar: ChartBar): ChartBar {
+  return {
+    ...bar,
+    chords: bar.chords.map((c) => ({ ...c })),
+    ...(bar.time ? { time: [...bar.time] as TimeSignature } : {}),
+    ...(bar.groups ? { groups: [...bar.groups] } : {}),
+  }
+}
+
+function normalizeRange(length: number, from: number, to: number): [number, number] | null {
+  if (length <= 0) return null
+  const [start, end] = from <= to ? [from, to] : [to, from]
+  return end < 0 || start >= length ? null : [Math.max(0, start), Math.min(length - 1, end)]
+}
+
+/** Deep-copy bars in the inclusive `[from, to]` range (supports reversed `from > to`). */
+export function copyBars(chart: Chart, from: number, to: number): ChartBar[] {
+  const range = normalizeRange(chart.bars.length, from, to)
+  return range ? chart.bars.slice(range[0], range[1] + 1).map(cloneBar) : []
+}
+
+/** Paste `bars` starting at `at`, overwriting existing bars and extending the chart if needed. */
+export function pasteBars(chart: Chart, at: number, bars: ChartBar[]): Chart {
+  if (bars.length === 0) return chart
+  const start = Math.max(0, Math.min(at, chart.bars.length))
+  const hadFinal = chart.bars[chart.bars.length - 1]?.barline === 'final'
+  const hasExplicitRows = chart.bars.some((b) => b.rowStart)
+  const totalBars = Math.max(chart.bars.length, start + bars.length)
+  const nextBars = chart.bars.map(cloneBar)
+  for (let offset = 0; offset < bars.length; offset++) {
+    const idx = start + offset
+    const incoming = cloneBar(bars[offset])
+    incoming.rowStart = idx < chart.bars.length ? chart.bars[idx].rowStart : hasExplicitRows ? (idx % 4 === 0 || undefined) : undefined
+    if (incoming.barline === 'final' && idx < totalBars - 1) incoming.barline = undefined
+    if (idx < chart.bars.length) nextBars[idx] = tidy(incoming)
+    else nextBars.push(tidy(incoming))
+  }
+  if (nextBars.length > chart.bars.length && hadFinal) {
+    const oldLast = chart.bars.length - 1
+    if (oldLast >= 0 && oldLast < start && nextBars[oldLast].barline === 'final') {
+      nextBars[oldLast] = tidy({ ...nextBars[oldLast], barline: undefined })
+    }
+    const newLast = nextBars.length - 1
+    if (!nextBars[newLast].barline && !nextBars[newLast].repeatEnd) nextBars[newLast] = tidy({ ...nextBars[newLast], barline: 'final' })
+  }
+  return { ...chart, bars: nextBars }
+}
+
+/** Empty bars in `[from, to]`, keeping bar count, layout row starts, and the closing final barline. */
+export function clearBars(chart: Chart, from: number, to: number): Chart {
+  const range = normalizeRange(chart.bars.length, from, to)
+  if (!range) return chart
+  const [start, end] = range
+  const bars = chart.bars.map((bar, i) =>
+    i < start || i > end
+      ? bar
+      : tidy({ chords: [], cells: bar.cells, rowStart: bar.rowStart, barline: i === chart.bars.length - 1 && bar.barline === 'final' ? 'final' : undefined }),
+  )
+  return { ...chart, bars }
+}
