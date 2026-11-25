@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Practice: random keys, up a minor/major third or a fifth each chorus, and speed up every 2–4 choruses (#124).
 - Download the backing track as MP3 (192 kbps), next to WAV (#122).
 - Tap tempo: tap the tempo number (or press T) to set the tempo (#119).
 - Chord helper: a This tune view with diagrams for every chord in the chart; click one to study it (#118).

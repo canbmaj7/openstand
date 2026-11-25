@@ -5,7 +5,7 @@ import { loadReverb, REVERB_KEY } from './audio/reverb'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { auditionMidi } from './engine/audition'
 import { warmUpMidi } from './engine/warmup'
-import { chorusTranspose, slotAtBeat, type Timeline } from './engine/timeline'
+import { chorusKeyOffset, slotAtBeat, type Timeline } from './engine/timeline'
 import { parseBackup } from './formats/backup'
 import { parseChartFile } from './formats/chartFile'
 import { parseIrealLinks } from './formats/ireal'
@@ -42,7 +42,7 @@ import { Mixer } from './ui/Mixer'
 import { Popover } from './ui/Popover'
 import { AddToSetlist } from './ui/AddToSetlist'
 import { useSetlists } from './ui/useSetlists'
-import { loadCountIn, NO_PRACTICE, saveCountIn, startBeatFor, type PracticeSettings } from './music/practice'
+import { chorusBpm, loadCountIn, NO_PRACTICE, practiceOptions, saveCountIn, startBeatFor, type PracticeSettings } from './music/practice'
 import { createTapTempo, type TapTempo } from './music/tapTempo'
 import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
@@ -281,10 +281,10 @@ export default function App() {
 
   // During practice the chorus decides the key on the stand and the tempo
   const chorus = position ? Math.min(position.chorus, choruses - 1) : 0
-  const shownTranspose = playing ? chorusTranspose(transpose, practice.keyStep, chorus) : transpose
+  const shownTranspose = playing ? chorusKeyOffset(practice, chorus, transpose) : transpose
   const viewTranspose = shownTranspose + viewOffset(instrument)
   const shownKeyPc = (chart.key + viewTranspose + 12) % 12
-  const liveBpm = clampBpm(bpm + practice.ramp * (playing ? chorus : 0))
+  const liveBpm = chorusBpm(bpm, practice.ramp, practice.rampEvery, playing ? chorus : 0)
   const shownChord = selectedChord
     ? transposeChord(selectedChord, viewTranspose)
     : (playing && position?.slotChord ? transposeChord(position.slotChord, viewOffset(instrument)) : null) ??
@@ -418,12 +418,11 @@ export default function App() {
     cancelAutoPlayRef.current()
     userStoppedRef.current = false
     setNotice(null)
-    const { loop, keyStep, subs, countIn } = opts.practice
-    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs, countIn }, undefined, { click: true })
+    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, practiceOptions(opts.practice), undefined, { click: true })
     timelineRef.current = timeline
 
     let offsetSeconds = fromSeconds
-    if (fromStartPoint && !loop && selectedChordAt) {
+    if (fromStartPoint && !opts.practice.loop && selectedChordAt) {
       const [barStr, chordStr] = selectedChordAt.split(':')
       const startBeat = startBeatFor(timeline, Number(barStr), Number(chordStr), chartToUse)
       // When starting from a selected chord, count-in is skipped and playback begins directly at the chord.
@@ -519,9 +518,10 @@ export default function App() {
   }
 
   const changePractice = (next: PracticeSettings) => {
-    // Going round the keys needs enough choruses to get back home
-    const keysNeeded = next.keyStep ? 12 / gcd(next.keyStep, 12) : 0
-    const nextChoruses = next.keyStep !== practice.keyStep && choruses < keysNeeded ? keysNeeded : choruses
+    // Going round the keys needs enough choruses to get back home (or 12 for random keys)
+    const keysNeeded = next.randomKeys ? 12 : next.keyStep ? 12 / gcd(next.keyStep, 12) : 0
+    const keyModeChanged = next.keyStep !== practice.keyStep || Boolean(next.randomKeys) !== Boolean(practice.randomKeys)
+    const nextChoruses = keyModeChanged && choruses < keysNeeded ? keysNeeded : choruses
     changeArrangement(nextChoruses !== choruses ? { practice: next, choruses: nextChoruses } : { practice: next })
   }
 
@@ -950,7 +950,7 @@ export default function App() {
   const readout = (() => {
     if (picking) return picking === 'first' ? 'Tap the first bar of the loop' : 'Now tap the last bar'
     const extras = [
-      practice.keyStep && position && !position.countIn ? `in\u00a0${noteNameFor((chart.key + shownTranspose + 12) % 12)}` : '',
+      (practice.keyStep || practice.randomKeys) && position && !position.countIn ? `in\u00a0${noteNameFor((chart.key + shownTranspose + 12) % 12)}` : '',
       practice.ramp && position ? `${liveBpm}\u00a0bpm` : '',
     ]
       .filter(Boolean)
@@ -1015,8 +1015,7 @@ export default function App() {
                   <button
                     className="share-option"
                     onClick={() => {
-                      const { loop, keyStep, subs, countIn } = practice
-                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm, {
+                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, practiceOptions(practice), bpm, {
                         click: !muted.click,
                       })
                       close()
@@ -1031,7 +1030,6 @@ export default function App() {
                       className="share-option"
                       disabled={audioState.kind === 'rendering'}
                       onClick={() => {
-                        const { loop, keyStep, subs, countIn } = practice
                         void exportAudio(
                           format,
                           {
@@ -1039,7 +1037,7 @@ export default function App() {
                             style: resolveStyle(styleId),
                             transpose,
                             choruses,
-                            practice: { loop, keyStep, subs, countIn },
+                            practice: practiceOptions(practice),
                             bpm,
                             mixer: { volumes, muted, master, masterMuted, reverb },
                             soundBank: playerRef.current?.soundBank,

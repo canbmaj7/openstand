@@ -1,6 +1,6 @@
 import type { CountInMode, SubMode } from '../engine/timeline'
 import type { Chart } from '../music/chart'
-import { KEY_STEPS, parseCountIn, sections, type PracticeSettings } from '../music/practice'
+import { KEY_STEPS, newRandomKeySeed, parseCountIn, RAMP_INTERVALS, sections, type PracticeSettings } from '../music/practice'
 import { Popover } from './Popover'
 
 const barRange = ([a, b]: [number, number]) => (a === b ? `Bar ${a + 1}` : `Bars ${a + 1}–${b + 1}`)
@@ -17,6 +17,7 @@ export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProp
   const active =
     settings.loop !== null ||
     settings.keyStep !== 0 ||
+    Boolean(settings.randomKeys) ||
     settings.ramp !== 0 ||
     settings.subs !== 'off' ||
     settings.countIn !== 'auto'
@@ -87,11 +88,17 @@ export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProp
             <span className="label">Keys</span>
             <select
               className="select"
-              value={settings.keyStep}
-              onChange={(e) => onChange({ ...settings, keyStep: Number(e.target.value) })}
+              value={settings.randomKeys ? 'random' : String(settings.keyStep)}
+              onChange={(e) => {
+                if (e.target.value === 'random') {
+                  onChange({ ...settings, keyStep: 0, randomKeys: { seed: newRandomKeySeed() } })
+                } else {
+                  onChange({ ...settings, keyStep: Number(e.target.value), randomKeys: undefined })
+                }
+              }}
             >
               {KEY_STEPS.map((k) => (
-                <option key={k.step} value={k.step}>
+                <option key={k.step} value={String(k.step)}>
                   {k.label}
                 </option>
               ))}
@@ -110,7 +117,20 @@ export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProp
               <button aria-label="More" disabled={settings.ramp >= 20} onClick={() => onChange({ ...settings, ramp: settings.ramp + 2 })}>
                 +
               </button>
-              <span className="practice-unit">bpm each chorus</span>
+              <span className="practice-unit">bpm</span>
+              <select
+                className="select"
+                aria-label="Speed up interval"
+                disabled={settings.ramp === 0}
+                value={settings.rampEvery}
+                onChange={(e) => onChange({ ...settings, rampEvery: Number(e.target.value) })}
+              >
+                {RAMP_INTERVALS.map((r) => (
+                  <option key={r.every} value={r.every}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

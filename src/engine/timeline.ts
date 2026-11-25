@@ -2,6 +2,7 @@ import { beatsPerBar, isCompound, playbackOrder, type BarChord, type Chart, type
 import { parseChord, transposeChord, type Chord } from '../music/chords'
 import { groupsFor } from '../music/meter'
 import { groupStarts } from '../styles/aksak'
+import { chorusKeyOffset, chorusTranspose } from './keyOrder'
 import { PULSE } from './meter'
 
 // One click of the count-in: where it falls, the number shown, and how strong it is
@@ -118,6 +119,7 @@ export type SubMode = 'off' | 'alternate' | 'random'
 export interface PracticeOptions {
   loop?: [from: number, to: number] | null // written bar indices, inclusive
   keyStep?: number // semitones added to the key on each chorus (5 = round the cycle of fourths)
+  randomKeys?: { seed: number } // deterministic shuffled keys per 12-chorus block
   subs?: SubMode // whether to play optional substitution chords ('off' by default)
   countIn?: CountInMode // count-in bars: 'auto' (default), 'off', 1, or 2
 }
@@ -138,10 +140,7 @@ function shouldUseSub(subs: SubMode, chorus: number, measure: number, chordIndex
   return false
 }
 
-// Transposition for each chorus, kept within -5..+6 so the band's register doesn't drift
-export function chorusTranspose(transpose: number, keyStep: number, chorus: number): number {
-  return ((((transpose + keyStep * chorus + 5) % 12) + 12) % 12) - 5
-}
+export { chorusKeyOffset, chorusTranspose }
 
 // Bars in the order they are played, or the looped range in written order
 export function practiceOrder(chart: Chart, loop: PracticeOptions['loop']): number[] {
@@ -155,11 +154,10 @@ export function practiceOrder(chart: Chart, loop: PracticeOptions['loop']): numb
 }
 
 export function buildTimeline(chart: Chart, transpose: number, choruses: number, practice: PracticeOptions = {}): Timeline {
-  const keyStep = practice.keyStep ?? 0
   const subs: SubMode = practice.subs ?? 'off'
   const chords = new Map<string, Chord>()
   const toChord = (symbol: string, chorus: number): Chord => {
-    const semitones = chorusTranspose(transpose, keyStep, chorus)
+    const semitones = chorusKeyOffset(practice, chorus, transpose)
     const id = `${semitones} ${symbol}`
     let chord = chords.get(id)
     if (!chord) {
