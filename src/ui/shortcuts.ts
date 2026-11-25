@@ -6,6 +6,7 @@ export interface PracticeShortcuts {
   clearLoop: () => void
   scale: (delta: -1 | 1) => void
   fullscreen: () => void
+  pageTurn: (dir: -1 | 1) => void
 }
 
 export interface EditorShortcuts {
@@ -32,6 +33,7 @@ export const PRACTICE_SHORTCUTS: ShortcutInfo[] = [
   { keys: 'L', description: 'Clear loop', scope: 'practice' },
   { keys: '- / +', description: 'Chart size', scope: 'practice' },
   { keys: 'F', description: 'Full screen', scope: 'practice' },
+  { keys: 'Page Down / Page Up', description: 'Turn the page (pedal); next/previous tune in a setlist', scope: 'practice' },
 ]
 
 export const EDITOR_SHORTCUTS: ShortcutInfo[] = [
@@ -77,10 +79,13 @@ export function handlePracticeShortcut(
 ) {
   const target = event.target as HTMLElement | null
   const control = target?.closest?.('input, select, textarea, button, [role="button"], [contenteditable]:not([contenteditable="false"])')
-  // A pointer-clicked button keeps browser focus, but Space should return to its
-  // practice shortcut. Keyboard-focused buttons keep their native Space action.
-  const spaceAfterPointerClick =
-    event.code === 'Space' && pointerFocusedButton !== null && target?.closest?.('button, [role="button"]') === pointerFocusedButton
+  // A pointer-clicked button keeps browser focus, but Space and page-turner
+  // pedals should still work as practice shortcuts. Keyboard-focused buttons
+  // keep their native action.
+  const buttonAfterPointerClick =
+    (event.code === 'Space' || event.code === 'PageDown' || event.code === 'PageUp') &&
+    pointerFocusedButton !== null &&
+    target?.closest?.('button, [role="button"]') === pointerFocusedButton
   if (
     editing ||
     event.defaultPrevented ||
@@ -88,7 +93,7 @@ export function handlePracticeShortcut(
     event.altKey ||
     event.ctrlKey ||
     event.metaKey ||
-    (control && !spaceAfterPointerClick)
+    (control && !buttonAfterPointerClick)
   ) return
 
   // Leave all other keys and browser shortcuts to their normal handlers.
@@ -124,6 +129,14 @@ export function handlePracticeShortcut(
     case 'KeyF':
       event.preventDefault()
       if (!event.repeat) actions.fullscreen()
+      return
+    case 'PageDown':
+      event.preventDefault()
+      actions.pageTurn(1)
+      return
+    case 'PageUp':
+      event.preventDefault()
+      actions.pageTurn(-1)
       return
   }
 

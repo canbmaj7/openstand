@@ -24,6 +24,7 @@ function actions() {
     clearLoop: vi.fn(),
     scale: vi.fn(),
     fullscreen: vi.fn(),
+    pageTurn: vi.fn(),
   }
 }
 
@@ -47,6 +48,8 @@ describe('practice keyboard shortcuts', () => {
     ['KeyL', 'clearLoop', undefined],
     ['KeyT', 'tapTempo', undefined],
     ['KeyF', 'fullscreen', undefined],
+    ['PageDown', 'pageTurn', 1],
+    ['PageUp', 'pageTurn', -1],
   ] as const)('%s invokes only its practice action', (code, action, delta) => {
     const handlers = actions()
     const event = keyEvent(code)
@@ -94,7 +97,7 @@ describe('practice keyboard shortcuts', () => {
     for (const handler of Object.values(handlers)) expect(handler).not.toHaveBeenCalled()
   })
 
-  test.each(['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL', 'KeyT', 'KeyF'])(
+  test.each(['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL', 'KeyT', 'KeyF', 'PageDown', 'PageUp'])(
     '%s is ignored while editing or focusing a control', (code) => {
       for (const editing of [false, true]) {
         const handlers = actions()
@@ -108,13 +111,18 @@ describe('practice keyboard shortcuts', () => {
     },
   )
 
-  test('Space toggles playback after a button receives pointer focus', () => {
+  test('Space and page-turner pedals work after a button receives pointer focus', () => {
     const handlers = actions()
     const button = controlTarget('button')
-    const event = keyEvent('Space', { target: button })
-    handlePracticeShortcut(event, false, handlers, button)
-    expect(event.preventDefault).toHaveBeenCalledOnce()
+    const space = keyEvent('Space', { target: button })
+    handlePracticeShortcut(space, false, handlers, button)
+    expect(space.preventDefault).toHaveBeenCalledOnce()
     expect(handlers.toggle).toHaveBeenCalledOnce()
+
+    const down = keyEvent('PageDown', { target: button })
+    handlePracticeShortcut(down, false, handlers, button)
+    expect(down.preventDefault).toHaveBeenCalledOnce()
+    expect(handlers.pageTurn).toHaveBeenCalledWith(1)
   })
 
   test('Space keeps its native action on a keyboard-focused button', () => {
@@ -147,9 +155,14 @@ describe('practice keyboard shortcuts', () => {
     expect(handlers.tapTempo).toHaveBeenCalledOnce()
   })
 
-  test('PRACTICE_SHORTCUTS lists T for tap tempo and F for full screen', () => {
+  test('PRACTICE_SHORTCUTS lists T for tap tempo, F for full screen, and Page Down / Page Up', () => {
     expect(PRACTICE_SHORTCUTS).toContainEqual({ keys: 'T', description: 'Tap tempo', scope: 'practice' })
     expect(PRACTICE_SHORTCUTS).toContainEqual({ keys: 'F', description: 'Full screen', scope: 'practice' })
+    expect(PRACTICE_SHORTCUTS).toContainEqual({
+      keys: 'Page Down / Page Up',
+      description: 'Turn the page (pedal); next/previous tune in a setlist',
+      scope: 'practice',
+    })
   })
 
   test('KeyF handles Shift+F and ignores OS key repeat', () => {
@@ -167,7 +180,7 @@ describe('practice keyboard shortcuts', () => {
 
   test.each(['altKey', 'ctrlKey', 'metaKey', 'isComposing', 'defaultPrevented'] as const)(
     '%s leaves handled or composing keys alone', (flag) => {
-      for (const code of ['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL', 'KeyT', 'KeyF']) {
+      for (const code of ['Space', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'KeyL', 'KeyT', 'KeyF', 'PageDown', 'PageUp']) {
         const handlers = actions()
         const event = keyEvent(code, { [flag]: true })
         handlePracticeShortcut(event, false, handlers)

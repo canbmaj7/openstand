@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { loadMuted, loadVolumes, saveMuted, saveVolumes } from './audio/mixerState'
 import { Player } from './audio/player'
 import { loadReverb, REVERB_KEY } from './audio/reverb'
@@ -54,6 +54,7 @@ import { CHART_SCALES, loadChartScale, saveChartScale, stepScale, type ChartScal
 import { handlePracticeShortcut, isChordInputElement, isTextInputElement, type PracticeShortcuts } from './ui/shortcuts'
 import { useFitScale } from './ui/useFitScale'
 import { useFullscreen } from './ui/useFullscreen'
+import { getScrollTarget, pageTurn, readScrollMetrics, scrollForNewTune } from './ui/pageTurn'
 
 interface Position {
   measure: number // -1 during the count-in and the ending
@@ -158,6 +159,7 @@ export default function App() {
   const timelineRef = useRef<Timeline | null>(null)
   const tapTempoRef = useRef<TapTempo | null>(null)
   const pointerFocusedButtonRef = useRef<HTMLElement | null>(null)
+  const pendingTurnScrollRef = useRef<1 | -1 | null>(null)
   const userStoppedRef = useRef(false)
   const previewingRef = useRef(false)
   const auditionSeqRef = useRef(0)
@@ -558,11 +560,32 @@ export default function App() {
     },
     scale: (delta) => setChartScale((current) => stepScale(current, delta)),
     fullscreen: toggleFullscreen,
+    pageTurn: (dir) => {
+      const scroller = getScrollTarget(stageRef.current)
+      const action = pageTurn(dir, readScrollMetrics(scroller), {
+        playing,
+        hasNext: setlists.hasAdjacent(1),
+        hasPrev: setlists.hasAdjacent(-1),
+      })
+      if (action.kind === 'scroll') {
+        scroller?.scrollTo({ top: action.to, behavior: 'smooth' })
+      } else if (action.kind === 'tune') {
+        pendingTurnScrollRef.current = action.dir
+        if (!setlists.openAdjacent(action.dir)) pendingTurnScrollRef.current = null
+      }
+    },
   }
   const shortcutsRef = useRef(shortcuts)
   useEffect(() => {
     shortcutsRef.current = shortcuts
   })
+
+  useLayoutEffect(() => {
+    const dir = pendingTurnScrollRef.current
+    if (dir === null) return
+    pendingTurnScrollRef.current = null
+    scrollForNewTune(dir, stageRef.current)
+  }, [tune.id])
 
   // The registered listener uses the latest arrangement without accumulating handlers.
   const editing = draft !== null

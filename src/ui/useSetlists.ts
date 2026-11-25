@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadSetlists, removeSetlist, saveSetlist } from '../library/db'
-import { addTune, createSetlist, move, nextShuffledTuneId, nextTuneId, removeAt, type Setlist } from '../music/setlist'
+import { addTune, createSetlist, move, nextShuffledTuneId, nextTuneId, prevTuneId, removeAt, type Setlist } from '../music/setlist'
 import type { Tune } from '../music/songs'
 
 const PLAY_THROUGH_KEY = 'openstand:play-through'
@@ -229,6 +229,34 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     return true
   }, [clearTimer])
 
+  const openAdjacent = useCallback(
+    (dir: 1 | -1): boolean => {
+      const { activeSetlistId: activeId, setlists: lists, tuneMap: map, songId: currentId, showTune: open } = latestRef.current
+      if (!activeId) return false
+      const active = lists.find((s) => s.id === activeId)
+      if (!active) return false
+      const validIds = active.tuneIds.filter((id) => map.has(id))
+      const subset = { ...active, tuneIds: validIds }
+      const targetId = dir === 1 ? nextTuneId(subset, currentId) : prevTuneId(subset, currentId)
+      if (!targetId) return false
+      const targetTune = map.get(targetId)
+      if (!targetTune) return false
+      clearTimer()
+      playedRef.current.add(targetTune.id)
+      open(targetTune)
+      return true
+    },
+    [clearTimer],
+  )
+
+  const hasAdjacent = useCallback(
+    (dir: 1 | -1): boolean => {
+      if (!activePosition) return false
+      return dir === 1 ? activePosition.index + 1 < activePosition.total : activePosition.index > 0
+    },
+    [activePosition],
+  )
+
   return {
     setlists,
     openSetlistId,
@@ -250,5 +278,7 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     reload,
     onTrackEnded,
     cancelAutoPlay: clearTimer,
+    openAdjacent,
+    hasAdjacent,
   }
 }

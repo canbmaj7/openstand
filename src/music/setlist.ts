@@ -49,6 +49,12 @@ export function nextTuneId(setlist: Setlist, currentId: string): string | null {
   return setlist.tuneIds[index + 1]
 }
 
+export function prevTuneId(setlist: Setlist, currentId: string): string | null {
+  const index = setlist.tuneIds.indexOf(currentId)
+  if (index <= 0) return null
+  return setlist.tuneIds[index - 1]
+}
+
 /** Pick the next unplayed tune id (excluding currentId), starting a new round once all have played. */
 export function nextShuffledTuneId(
   tuneIds: string[],
