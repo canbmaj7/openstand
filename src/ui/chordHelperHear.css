@@ -1,0 +1,62 @@
+/* Audition buttons in the chord helper */
+
+.chords-title-group {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chords-hear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.chords-hear:hover:not(:disabled),
+.scale-hear:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink-2);
+}
+
+.chords-hear:active:not(:disabled),
+.scale-hear:active:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+
+.chords-hear:disabled,
+.scale-hear:disabled {
+  opacity: 0.45;
+}
+
+.scale-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.scale-row .scale-item {
+  min-width: 0;
+}
+
+.scale-hear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--ink-2);
+  font-size: 11px;
+}

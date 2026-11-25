@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Player } from './audio/player'
 import { loadReverb, REVERB_KEY } from './audio/reverb'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
+import { auditionMidi } from './engine/audition'
 import { warmUpMidi } from './engine/warmup'
 import { chorusTranspose, slotAtBeat, type Timeline } from './engine/timeline'
 import { parseChartFile } from './formats/chartFile'
@@ -152,6 +153,8 @@ export default function App() {
   const timelineRef = useRef<Timeline | null>(null)
   const pointerFocusedButtonRef = useRef<HTMLElement | null>(null)
   const userStoppedRef = useRef(false)
+  const previewingRef = useRef(false)
+  const auditionSeqRef = useRef(0)
   const cancelAutoPlayRef = useRef<() => void>(() => {})
   const onTrackEndedRef = useRef<() => void>(() => {})
   const startNextRef = useRef<() => void>(() => {})
@@ -287,6 +290,10 @@ export default function App() {
     const player = new Player()
     playerRef.current = player
     player.onEnded = () => {
+      if (previewingRef.current) {
+        previewingRef.current = false
+        return
+      }
       setPlaying(false)
       setPosition(null)
       if (!userStoppedRef.current) onTrackEndedRef.current()
@@ -389,6 +396,11 @@ export default function App() {
   const start = async (opts: ArrangeOptions, fromSeconds = 0, chartToUse = chart, fromStartPoint = false) => {
     const player = playerRef.current
     if (!player) return
+    auditionSeqRef.current += 1
+    if (previewingRef.current) {
+      previewingRef.current = false
+      player.stop()
+    }
     cancelAutoPlayRef.current()
     userStoppedRef.current = false
     setNotice(null)
@@ -416,12 +428,37 @@ export default function App() {
   }
 
   const stop = useCallback(() => {
+    auditionSeqRef.current += 1
+    previewingRef.current = false
     cancelAutoPlayRef.current()
     userStoppedRef.current = true
     playerRef.current?.stop()
     setPlaying(false)
     setPosition(null)
   }, [])
+
+  const audition = async (chord: Chord, scale?: number[]) => {
+    const player = playerRef.current
+    if (!player || playing || readiness.kind !== 'ready') return
+    const seqId = ++auditionSeqRef.current
+    if (previewingRef.current) player.stop()
+    previewingRef.current = true
+    setNotice(null)
+    const concertChord = transposeChord(chord, -viewOffset(instrument))
+    const midi = auditionMidi(concertChord, {
+      program: resolveStyle(styleId).comp.program,
+      scale,
+    })
+    player.setRate(1)
+    try {
+      await player.play(midi)
+      if (auditionSeqRef.current !== seqId || !previewingRef.current) return
+      player.setRate(1)
+    } catch (err) {
+      if (auditionSeqRef.current === seqId) previewingRef.current = false
+      setNotice(err instanceof Error ? err.message : "Couldn't start the audio. Check your sound output and try Play again.")
+    }
+  }
 
   // Changing style, key or choruses while playing continues from the same spot with a new arrangement;
   // a new loop starts over
@@ -519,6 +556,8 @@ export default function App() {
   }, [playing])
 
   const showTune = useCallback((next: Tune) => {
+    auditionSeqRef.current += 1
+    previewingRef.current = false
     cancelAutoPlayRef.current()
     userStoppedRef.current = true
     playerRef.current?.stop()
@@ -1234,6 +1273,8 @@ export default function App() {
           }}
           open={chordsOpen}
           onOpenChange={setChordsOpen}
+          canAudition={readiness.kind === 'ready' && !playing}
+          onAudition={(c, scale) => void audition(c, scale)}
         />
         <Mixer
           labels={{ bass: 'Bass', comp: compLabel(style.comp.program), drums: 'Drums' }}
