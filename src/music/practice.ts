@@ -8,19 +8,21 @@ export interface PracticeSettings {
   loop: [number, number] | null // written bar indices
   keyStep: number // semitones per chorus
   randomKeys?: { seed: number } // deterministic shuffled keys per 12-chorus block
+  keyEvery: number // choruses in each key before changing (1–4)
   ramp: number // bpm added per speed-up step
   rampEvery: number // choruses between speed-up steps (1–4)
   subs: SubMode // play optional chord substitutions
   countIn: CountInMode // count-in bars: 'auto', 'off', 1, or 2
 }
 
-export const NO_PRACTICE: PracticeSettings = { loop: null, keyStep: 0, ramp: 0, rampEvery: 1, subs: 'off', countIn: 'auto' }
+export const NO_PRACTICE: PracticeSettings = { loop: null, keyStep: 0, keyEvery: 1, ramp: 0, rampEvery: 1, subs: 'off', countIn: 'auto' }
 
 export function practiceOptions(settings: PracticeSettings): PracticeOptions {
   return {
     loop: settings.loop,
     keyStep: settings.keyStep,
     ...(settings.randomKeys ? { randomKeys: settings.randomKeys } : {}),
+    ...(settings.keyEvery > 1 ? { keyEvery: settings.keyEvery } : {}),
     subs: settings.subs,
     countIn: settings.countIn,
   }
@@ -64,14 +66,14 @@ export function saveCountIn(mode: CountInMode): void {
 
 export const KEY_STEPS: { step: number | 'random'; label: string }[] = [
   { step: 0, label: 'Stay in the written key' },
-  { step: 5, label: 'Up a fourth each chorus (all 12 keys)' },
-  { step: 7, label: 'Up a fifth each chorus' },
-  { step: 1, label: 'Up a half step each chorus' },
-  { step: 11, label: 'Down a half step each chorus' },
-  { step: 2, label: 'Up a whole step each chorus' },
-  { step: 3, label: 'Up a minor third each chorus' },
-  { step: 4, label: 'Up a major third each chorus' },
-  { step: 'random', label: 'Random key each chorus' },
+  { step: 5, label: 'Up a fourth' },
+  { step: 7, label: 'Up a fifth' },
+  { step: 1, label: 'Up a half step' },
+  { step: 11, label: 'Down a half step' },
+  { step: 2, label: 'Up a whole step' },
+  { step: 3, label: 'Up a minor third' },
+  { step: 4, label: 'Up a major third' },
+  { step: 'random', label: 'Random keys' },
 ]
 
 export const RAMP_INTERVALS: { every: number; label: string }[] = [

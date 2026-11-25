@@ -578,9 +578,11 @@ export default function App() {
   }
 
   const changePractice = (next: PracticeSettings) => {
-    // Going round the keys needs enough choruses to get back home (or 12 for random keys)
-    const keysNeeded = next.randomKeys ? 12 : next.keyStep ? 12 / gcd(next.keyStep, 12) : 0
-    const keyModeChanged = next.keyStep !== practice.keyStep || Boolean(next.randomKeys) !== Boolean(practice.randomKeys)
+    // Going round the keys needs enough choruses to get back home (or 12 for random keys), times the choruses per key
+    const keyCount = next.randomKeys ? 12 : next.keyStep ? 12 / gcd(next.keyStep, 12) : 0
+    const keysNeeded = Math.min(MAX_CHORUSES, keyCount * (next.keyEvery || 1))
+    const keyModeChanged =
+      next.keyStep !== practice.keyStep || Boolean(next.randomKeys) !== Boolean(practice.randomKeys) || next.keyEvery !== practice.keyEvery
     const nextChoruses = keyModeChanged && choruses < keysNeeded ? keysNeeded : choruses
     changeArrangement(nextChoruses !== choruses ? { practice: next, choruses: nextChoruses } : { practice: next })
   }

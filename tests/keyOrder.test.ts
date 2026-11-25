@@ -101,3 +101,26 @@ describe('KEY_STEPS and chorusBpm', () => {
     })
   })
 })
+
+describe('chorusKeyOffset with keyEvery', () => {
+  test('keeps each key for keyEvery choruses', () => {
+    const offsets = Array.from({ length: 8 }, (_, c) => chorusKeyOffset({ keyStep: 5, keyEvery: 2 }, c))
+    expect(offsets).toEqual([0, 0, 5, 5, -2, -2, 3, 3])
+  })
+
+  test('random keys hold for keyEvery choruses and follow the same order', () => {
+    const seed = 1234
+    for (let c = 0; c < 12; c++) {
+      const held = chorusKeyOffset({ randomKeys: { seed }, keyEvery: 3 }, c)
+      expect(held).toBe(chorusKeyOffset({ randomKeys: { seed } }, Math.floor(c / 3)))
+    }
+  })
+
+  test('keyEvery of 1, missing or out of range behaves sensibly', () => {
+    for (let c = 0; c < 6; c++) {
+      expect(chorusKeyOffset({ keyStep: 7, keyEvery: 1 }, c)).toBe(chorusKeyOffset({ keyStep: 7 }, c))
+      expect(chorusKeyOffset({ keyStep: 7, keyEvery: 0 }, c)).toBe(chorusKeyOffset({ keyStep: 7 }, c))
+      expect(chorusKeyOffset({ keyStep: 7, keyEvery: 9 }, c)).toBe(chorusKeyOffset({ keyStep: 7, keyEvery: 4 }, c))
+    }
+  })
+})
