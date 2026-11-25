@@ -7,6 +7,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 
 #### Added
 - Tap tempo: tap the tempo number (or press T) to set the tempo (#119).
+- Chord helper: a This tune view with diagrams for every chord in the chart; click one to study it (#118).
 - Second Line, Even 8ths and Smooth Jazz styles; iReal Pro tunes in these styles open in them (#114).
 - Bluegrass, Calypso and Ska styles; iReal Pro tunes in these styles open in them (#115).
 - Chord names: show a chart as Roman numerals or Nashville numbers relative to the tune's key (Aa menu) (#112).

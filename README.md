@@ -54,7 +54,7 @@ OpenStand is an **early but usable** practice tool (see the [changelog](CHANGELO
 - **Practice modes:** loop any bars or a rehearsal section, go round all 12 keys (or step up a half or whole tone each chorus), speed up a few BPM every chorus, and optionally have the band play chord substitutions (every other chorus or at random).
 - **Switch a tune between major and minor (same tonic) with one click.**
 - **Transposing instruments:** read the chart in Bb or Eb while the band plays in concert pitch.
-- **Chord and scale helper:** keyboard, guitar diagrams and fitting scales for any chord.
+- **Chord and scale helper:** keyboard, guitar and ukulele diagrams and fitting scales for any chord, plus a **This tune** view showing diagrams for every chord in the chart.
 - **Style lab:** change a style's drums (a main groove, a variation the band switches to, and a fill for the end of the form), bass line and chord rhythm on a grid (each with an optional second pattern the band switches to) and hear it while the band plays. Save your styles and pick them from the style menu, share one as a link, or send it to the project as a new style.
 - **Mixer** with per-instrument volume and mute, a metronome Click channel (off by default), a master volume and an output level meter. You can also pick the bass, comping and drum kit sounds from the mixer, and your choices are remembered; when you pick a guitar sound for comping, it switches to guitar voicings (and four-to-the-bar strumming in swing styles).
 - **Light and dark themes** that follow your system setting, and a layout that works on phones.
