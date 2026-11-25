@@ -793,6 +793,24 @@ button:disabled {
   color: var(--danger);
 }
 
+.chord-hidden .chord-main,
+.chord-hidden .chord-alt,
+.chord-hidden .chord-hidden-content {
+  visibility: hidden;
+}
+
+.chord-hidden-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--sans);
+  font-weight: 400;
+  color: var(--muted);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 /* Plain chord font (sans-serif) */
 [data-chord-font='plain'] .chord,
 [data-chord-font='plain'] .chord-main,

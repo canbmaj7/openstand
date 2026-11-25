@@ -4,7 +4,7 @@ import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } fro
 import type { ChordNames } from '../music/degrees'
 import { groupsAt } from '../music/edit'
 import type { StyleDefinition } from '../styles/types'
-import { ChordSymbol } from './ChordSymbol'
+import { BarChord } from './ChordSymbol'
 
 // SMuFL glyphs from Petaluma Text
 const GLYPH = { repeatLeft: '', repeatRight: '', segno: '', coda: '', fermata: '' }
@@ -26,6 +26,7 @@ interface ChartProps {
   fitScale?: number
   sheetRef?: Ref<HTMLElement>
   startAt?: string | null
+  hiddenBars?: (barIndex: number) => boolean
   onBarClick?: (index: number, shiftKey?: boolean) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   header?: ReactNode // replaces the title block, e.g. with inputs in the editor
@@ -100,6 +101,7 @@ interface BarProps {
   plain?: boolean
   chordNames?: ChordNames
   startChordIndex?: number | null
+  hidden?: boolean
   onClick?: (index: number, shiftKey?: boolean) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
   barRef?: (el: HTMLDivElement | null) => void
@@ -122,6 +124,7 @@ function Bar({
   plain,
   chordNames,
   startChordIndex,
+  hidden = false,
   onClick,
   onChordClick,
   barRef,
@@ -209,30 +212,22 @@ function Bar({
       )}
       {showTime && <TimeSig time={showTime} groups={showGroups} />}
       {active && <span className="bar-highlight" style={{ transform: `scaleX(${progress})` }} />}
-      {chords.map(({ chord, altChord, symbol }, j) =>
-        chord ? (
-          <ChordSymbol
-            key={j}
-            chord={chord}
-            alt={altChord}
-            subActive={Boolean(active && activeSub && activeChordIdx === j && altChord)}
-            keyPc={keyPc}
-            minor={minor}
-            plain={plain}
-            chordNames={chordNames}
-            isStart={startChordIndex === j}
-            onSelect={onChordClick ? (selected) => onChordClick(selected, index, j) : undefined}
-          />
-        ) : symbol === null ? (
-          <span key={j} className="chord chord-nc">
-            N.C.
-          </span>
-        ) : (
-          <span key={j} className="chord chord-unknown" title="Unrecognized chord">
-            {symbol}
-          </span>
-        ),
-      )}
+      {chords.map(({ chord, altChord, symbol }, j) => (
+        <BarChord
+          key={j}
+          chord={chord}
+          altChord={altChord}
+          symbol={symbol}
+          subActive={Boolean(active && activeSub && activeChordIdx === j && altChord)}
+          keyPc={keyPc}
+          minor={minor}
+          plain={plain}
+          chordNames={chordNames}
+          isStart={startChordIndex === j}
+          hidden={hidden}
+          onSelect={onChordClick ? (selectedChord) => onChordClick(selectedChord, index, j) : undefined}
+        />
+      ))}
       {bar.fermata && (
         <span className="mark-fermata" aria-label="Fermata">
           {GLYPH.fermata}
@@ -254,7 +249,7 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, chordNames = 'letters', scale = 100, fitScale, sheetRef, startAt, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, chordNames = 'letters', scale = 100, fitScale, sheetRef, startAt, hiddenBars, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const minor = Boolean(chart.minor)
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
@@ -365,6 +360,7 @@ export function Chart(props: ChartProps) {
                   plain={plain}
                   chordNames={chordNames}
                   startChordIndex={placed.index === startBar ? startChord : null}
+                  hidden={Boolean(hiddenBars?.(placed.index))}
                   onClick={onBarClick}
                   onChordClick={onChordClick}
                 />

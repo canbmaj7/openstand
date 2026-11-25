@@ -18,6 +18,7 @@ import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/m
 import { BPM_RANGE, clampBpm, DEFAULT_CHORUSES, MAX_CHORUSES, type TuneSettings } from './library/tuneSettings'
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
+import { hiddenFraction, isBarHidden, loadHideChords, saveHideChords, type HideChords } from './music/hideChords'
 import { distinctChords } from './music/tuneChords'
 import { emptyChart } from './music/edit'
 import { CHORD_FONT_KEY, loadChordFont, type ChordFont } from './music/chordText'
@@ -228,8 +229,13 @@ export default function App() {
   const [importOpen, setImportOpen] = useState(false)
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [choruses, setChoruses] = useState(() => initialSaved?.choruses ?? DEFAULT_CHORUSES)
+  const chorusesRef = useRef(choruses)
+  useEffect(() => {
+    chorusesRef.current = choruses
+  }, [choruses])
   const [playing, setPlaying] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
+  const [helperPosition, setHelperPosition] = useState<Position | null>(null)
   const [volumes, setVolumes] = useState<Record<Part, number>>(loadVolumes)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [muted, setMuted] = useState<Record<Part, boolean>>(loadMuted)
@@ -256,6 +262,8 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null)
   const outputLevel = useCallback(() => playerRef.current?.level() ?? { peak: -100, rms: -100 }, [])
   const [practice, setPractice] = useState<PracticeSettings>(() => ({ ...NO_PRACTICE, countIn: loadCountIn() }))
+  const [hideChords, setHideChords] = useState<HideChords>(loadHideChords)
+  const hideChordsRef = useRef(hideChords)
   const [picking, setPicking] = useState<null | 'first' | { from: number }>(null)
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null)
   const [selectedChordAt, setSelectedChordAt] = useState<string | null>(null)
@@ -301,10 +309,11 @@ export default function App() {
     deps: [chart, viewTranspose, chartScale, chordNames, chordFont, style.name],
   })
   const exportRamp = practice.ramp > 0 ? { bpm: practice.ramp, every: practice.rampEvery } : undefined
+  const hiddenBars = !draft && playing && hideChords !== 'off' ? (i: number) => isBarHidden(i, hiddenFraction(hideChords, chorus)) : undefined
   const shownChord = selectedChord
     ? transposeChord(selectedChord, viewTranspose)
-    : (playing && position?.slotChord ? transposeChord(position.slotChord, viewOffset(instrument)) : null) ??
-      (playing ? playingChord(chart, position, viewTranspose) : null) ??
+    : (playing && helperPosition?.slotChord ? transposeChord(helperPosition.slotChord, viewOffset(instrument)) : null) ??
+      (playing ? playingChord(chart, helperPosition, viewTranspose) : null) ??
       firstChord(chart, viewTranspose)
   const tuneChords = useMemo(() => distinctChords(chart, viewTranspose), [chart, viewTranspose])
 
@@ -326,6 +335,7 @@ export default function App() {
           }
           setPlaying(false)
           setPosition(null)
+          setHelperPosition(null)
           if (!userStoppedRef.current) onTrackEndedRef.current()
         }
         await player.init((progress) => active && setReadiness({ kind: 'loading', progress }))
@@ -431,6 +441,11 @@ export default function App() {
     saveCountIn(practice.countIn)
   }, [practice.countIn])
 
+  useEffect(() => {
+    hideChordsRef.current = hideChords
+    saveHideChords(hideChords)
+  }, [hideChords])
+
   // Tempo changes only the playback rate; the arrangement is not regenerated
   useEffect(() => {
     playerRef.current?.setRate(liveBpm / BASE_BPM)
@@ -465,6 +480,7 @@ export default function App() {
     } catch (err) {
       setPlaying(false)
       setPosition(null)
+      setHelperPosition(null)
       setNotice(err instanceof Error ? err.message : "Couldn't start the audio. Check your sound output and try Play again.")
     }
   }
@@ -477,6 +493,7 @@ export default function App() {
     playerRef.current?.stop()
     setPlaying(false)
     setPosition(null)
+    setHelperPosition(null)
   }, [])
 
   const audition = async (chord: Chord, scale?: number[]) => {
@@ -628,7 +645,13 @@ export default function App() {
     const tick = () => {
       const player = playerRef.current
       const timeline = timelineRef.current
-      if (player && timeline) setPosition(positionAt(timeline, (player.heardPosition * BASE_BPM) / 60))
+      if (player && timeline) {
+        const pos = positionAt(timeline, (player.heardPosition * BASE_BPM) / 60)
+        setPosition(pos)
+        const posChorus = pos ? Math.min(pos.chorus, chorusesRef.current - 1) : 0
+        const posHidden = Boolean(pos && pos.measure >= 0 && isBarHidden(pos.measure, hiddenFraction(hideChordsRef.current, posChorus)))
+        if (!posHidden) setHelperPosition(pos)
+      }
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
@@ -644,6 +667,7 @@ export default function App() {
     playerRef.current?.stop()
     setPlaying(false)
     setPosition(null)
+    setHelperPosition(null)
     setSongId(next.id)
     const saved = tuneSettingsRef.current[next.id]
     setStyleId(labRef.current ? LAB_STYLE : isKnownStyle(saved?.style, myStylesRef.current) ? saved.style : next.chart.style)
@@ -1272,6 +1296,7 @@ export default function App() {
             fitScale={fullscreen ? fitScale : undefined}
             sheetRef={sheetRef}
             startAt={!playing ? selectedChordAt : null}
+            hiddenBars={hiddenBars}
             onBarClick={draft ? editor.selectBar : picking ? pickBar : undefined}
             onChordClick={
               !draft && !picking
@@ -1421,7 +1446,14 @@ export default function App() {
         onResetTune={resetTune}
         onExitFullscreen={exitFullscreen}
       >
-        <Practice chart={chart} settings={practice} onChange={changePractice} onPickLoop={() => setPicking('first')} />
+        <Practice
+          chart={chart}
+          settings={practice}
+          onChange={changePractice}
+          onPickLoop={() => setPicking('first')}
+          hideChords={hideChords}
+          onHideChords={setHideChords}
+        />
         <ChordHelper
           chord={shownChord}
           tuneChords={tuneChords}
