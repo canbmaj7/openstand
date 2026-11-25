@@ -51,6 +51,7 @@ import { Transport, type ModeOption, type Readiness } from './ui/Transport'
 import { useTuneSettings } from './ui/useTuneSettings'
 import { CHART_SCALES, loadChartScale, saveChartScale, stepScale, type ChartScale } from './ui/chartScale'
 import { handlePracticeShortcut, isChordInputElement, isTextInputElement, type PracticeShortcuts } from './ui/shortcuts'
+import { useFitScale } from './ui/useFitScale'
 import { useFullscreen } from './ui/useFullscreen'
 
 interface Position {
@@ -151,6 +152,8 @@ function positionAt(timeline: Timeline, beat: number): Position | null {
 
 export default function App() {
   const playerRef = useRef<Player | null>(null)
+  const stageRef = useRef<HTMLElement | null>(null)
+  const sheetRef = useRef<HTMLElement | null>(null)
   const timelineRef = useRef<Timeline | null>(null)
   const tapTempoRef = useRef<TapTempo | null>(null)
   const pointerFocusedButtonRef = useRef<HTMLElement | null>(null)
@@ -287,6 +290,12 @@ export default function App() {
   const viewTranspose = shownTranspose + viewOffset(instrument)
   const shownKeyPc = (chart.key + viewTranspose + 12) % 12
   const liveBpm = chorusBpm(bpm, practice.ramp, practice.rampEvery, playing ? chorus : 0)
+  const fitScale = useFitScale({
+    active: fullscreen,
+    stageRef,
+    sheetRef,
+    deps: [chart, viewTranspose, chartScale, chordNames, chordFont, style.name],
+  })
   const exportRamp = practice.ramp > 0 ? { bpm: practice.ramp, every: practice.rampEvery } : undefined
   const shownChord = selectedChord
     ? transposeChord(selectedChord, viewTranspose)
@@ -1191,6 +1200,7 @@ export default function App() {
         />
 
         <main
+          ref={stageRef}
           className={['stage', editing && 'stage-editing', picking && 'stage-picking'].filter(Boolean).join(' ')}
           onClick={() => setLibraryOpen(false)}
         >
@@ -1208,6 +1218,8 @@ export default function App() {
             plain={chordFont === 'Plain'}
             chordNames={draft ? 'letters' : chordNames}
             scale={chartScale}
+            fitScale={fullscreen ? fitScale : undefined}
+            sheetRef={sheetRef}
             startAt={!playing ? selectedChordAt : null}
             onBarClick={draft ? editor.selectBar : picking ? pickBar : undefined}
             onChordClick={

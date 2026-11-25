@@ -2033,6 +2033,7 @@ input.fader::-moz-range-thumb {
   }
 
   .app[data-fullscreen='true'] .sheet {
+    --sheet-scale: calc(var(--chart-scale) * var(--fit-scale, 1));
     max-width: none;
   }
 
