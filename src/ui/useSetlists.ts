@@ -5,6 +5,7 @@ import type { Tune } from '../music/songs'
 
 const PLAY_THROUGH_KEY = 'openstand:play-through'
 const SHUFFLE_KEY = 'openstand:setlist-shuffle'
+const REPEAT_KEY = 'openstand:setlist-repeat'
 const PLAY_THROUGH_DELAY_MS = 1000
 
 function loadFlag(key: string): boolean {
@@ -49,6 +50,7 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
   const [activeSetlistId, setActiveSetlistId] = useState<string | null>(null)
   const [playThrough, setPlayThrough] = useState<boolean>(() => loadFlag(PLAY_THROUGH_KEY))
   const [shuffle, setShuffle] = useState<boolean>(() => loadFlag(SHUFFLE_KEY))
+  const [repeat, setRepeat] = useState<boolean>(() => loadFlag(REPEAT_KEY))
   const playedRef = useRef<Set<string>>(new Set())
 
   const timerRef = useRef(0)
@@ -177,6 +179,13 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     })
   }, [])
 
+  const toggleRepeat = useCallback(() => {
+    setRepeat((prev) => {
+      saveFlag(REPEAT_KEY, !prev)
+      return !prev
+    })
+  }, [])
+
   const tuneMap = useMemo(() => new Map(tunes.map((t) => [t.id, t])), [tunes])
 
   const activePosition = useMemo<SetlistPosition | null>(() => {
@@ -189,15 +198,16 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     return { setlistId: active.id, name: active.name, index, total: validIds.length }
   }, [activeSetlistId, setlists, songId, tuneMap])
 
-  const latestRef = useRef({ playThrough, shuffle, activeSetlistId, setlists, tuneMap, songId, showTune, startNext })
+  const latestRef = useRef({ playThrough, shuffle, repeat, activeSetlistId, setlists, tuneMap, songId, showTune, startNext })
   useEffect(() => {
-    latestRef.current = { playThrough, shuffle, activeSetlistId, setlists, tuneMap, songId, showTune, startNext }
+    latestRef.current = { playThrough, shuffle, repeat, activeSetlistId, setlists, tuneMap, songId, showTune, startNext }
   })
 
   const onTrackEnded = useCallback((): boolean => {
     const {
       playThrough: pt,
       shuffle: sh,
+      repeat: rp,
       activeSetlistId: activeId,
       setlists: lists,
       tuneMap: map,
@@ -215,7 +225,7 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
       playedRef.current = result.played
       nextId = result.nextId
     } else {
-      nextId = nextTuneId({ ...active, tuneIds: validIds }, currentId)
+      nextId = nextTuneId({ ...active, tuneIds: validIds }, currentId, rp)
     }
     if (!nextId) return false
     const nextTune = map.get(nextId)
@@ -267,6 +277,8 @@ export function useSetlists({ tunes, songId, showTune, startNext, onError }: Use
     togglePlayThrough,
     shuffle,
     toggleShuffle,
+    repeat,
+    toggleRepeat,
     create,
     rename,
     remove,
