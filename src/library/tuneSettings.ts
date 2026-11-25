@@ -1,10 +1,11 @@
-// Per-tune playback overrides (style, tempo, key, choruses), persisted in localStorage.
+// Per-tune playback overrides (style, tempo, key, choruses, swing), persisted in localStorage.
 
 export interface TuneSettings {
   style?: string
   bpm?: number
   transpose?: number
   choruses?: number
+  swing?: number
 }
 
 export interface TuneDefaults {
@@ -16,6 +17,7 @@ export const TUNE_SETTINGS_KEY = 'openstand:tune-settings'
 export const LEGACY_TUNE_STYLES_KEY = 'openstand:tune-styles'
 
 export const BPM_RANGE: [number, number] = [40, 300]
+export const SWING_RANGE: [number, number] = [0.5, 0.75]
 export const MAX_CHORUSES = 24
 export const DEFAULT_CHORUSES = 3
 
@@ -35,6 +37,9 @@ function sanitizeEntry(raw: unknown): TuneSettings {
   }
   if (typeof raw.choruses === 'number' && Number.isInteger(raw.choruses) && raw.choruses >= 1 && raw.choruses <= MAX_CHORUSES) {
     clean.choruses = raw.choruses
+  }
+  if (typeof raw.swing === 'number' && Number.isFinite(raw.swing) && raw.swing >= SWING_RANGE[0] && raw.swing <= SWING_RANGE[1]) {
+    clean.swing = raw.swing
   }
   return clean
 }

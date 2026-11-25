@@ -2,6 +2,7 @@ import type { CountInMode, SubMode } from '../engine/timeline'
 import type { Chart } from '../music/chart'
 import { parseHideChords, type HideChords } from '../music/hideChords'
 import { KEY_STEPS, newRandomKeySeed, parseCountIn, RAMP_INTERVALS, sections, type PracticeSettings } from '../music/practice'
+import { closestSwingFeel, SWING_FEELS, swingLabel, swingRatioForId } from '../music/swingFeel'
 import { Popover } from './Popover'
 
 const barRange = ([a, b]: [number, number]) => (a === b ? `Bar ${a + 1}` : `Bars ${a + 1}–${b + 1}`)
@@ -13,9 +14,24 @@ interface PracticeProps {
   onPickLoop: () => void
   hideChords: HideChords
   onHideChords: (mode: HideChords) => void
+  swing: number | undefined
+  styleSwing: number
+  swingDisabled?: boolean
+  onSwing: (ratio: number | undefined) => void
 }
 
-export function Practice({ chart, settings, onChange, onPickLoop, hideChords, onHideChords }: PracticeProps) {
+export function Practice({
+  chart,
+  settings,
+  onChange,
+  onPickLoop,
+  hideChords,
+  onHideChords,
+  swing,
+  styleSwing,
+  swingDisabled,
+  onSwing,
+}: PracticeProps) {
   const hasSubs = chart.bars.some((b) => b.chords.some((c) => Boolean(c.alt)))
   const active =
     settings.loop !== null ||
@@ -24,7 +40,8 @@ export function Practice({ chart, settings, onChange, onPickLoop, hideChords, on
     settings.ramp !== 0 ||
     settings.subs !== 'off' ||
     settings.countIn !== 'auto' ||
-    hideChords !== 'off'
+    hideChords !== 'off' ||
+    (!swingDisabled && swing !== undefined)
   const marks = sections(chart)
 
   return (
@@ -164,6 +181,24 @@ export function Practice({ chart, settings, onChange, onPickLoop, hideChords, on
               <option value="off">Off</option>
               <option value="1">1 bar</option>
               <option value="2">2 bars</option>
+            </select>
+          </label>
+
+          <label className="practice-row">
+            <span className="label">Swing</span>
+            <select
+              className="select"
+              aria-label="Swing"
+              disabled={swingDisabled}
+              value={swing !== undefined ? closestSwingFeel(swing).id : ''}
+              onChange={(e) => onSwing(swingRatioForId(e.target.value))}
+            >
+              <option value="">{`Style (${swingLabel(styleSwing)})`}</option>
+              {SWING_FEELS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.id === 'straight' ? f.label : `${f.label} · ${Math.round(f.ratio * 100)}%`}
+                </option>
+              ))}
             </select>
           </label>
 
