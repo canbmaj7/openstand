@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { loadMuted, loadVolumes, saveMuted, saveVolumes } from './audio/mixerState'
 import { Player } from './audio/player'
 import { loadReverb, REVERB_KEY } from './audio/reverb'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
@@ -216,9 +217,9 @@ export default function App() {
   const [choruses, setChoruses] = useState(() => initialSaved?.choruses ?? DEFAULT_CHORUSES)
   const [playing, setPlaying] = useState(false)
   const [position, setPosition] = useState<Position | null>(null)
-  const [volumes, setVolumes] = useState<Record<Part, number>>({ bass: 110, comp: 85, drums: 95 })
+  const [volumes, setVolumes] = useState<Record<Part, number>>(loadVolumes)
   const [libraryOpen, setLibraryOpen] = useState(false)
-  const [muted, setMuted] = useState<Record<Part, boolean>>({ bass: false, comp: false, drums: false })
+  const [muted, setMuted] = useState<Record<Part, boolean>>(loadMuted)
   // The master volume is kept in the browser: it depends on the speakers, not the tune
   const [master, setMaster] = useState(() => {
     try {
@@ -321,6 +322,8 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    saveVolumes(volumes)
+    saveMuted(muted)
     const player = playerRef.current
     if (!player || readiness.kind !== 'ready') return
     for (const part of Object.keys(CHANNELS) as Part[]) {
@@ -405,7 +408,7 @@ export default function App() {
     userStoppedRef.current = false
     setNotice(null)
     const { loop, keyStep, subs, countIn } = opts.practice
-    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs, countIn })
+    const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs, countIn }, undefined, { click: true })
     timelineRef.current = timeline
 
     let offsetSeconds = fromSeconds
@@ -1012,7 +1015,9 @@ export default function App() {
                     className="share-option"
                     onClick={() => {
                       const { loop, keyStep, subs, countIn } = practice
-                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm)
+                      downloadMidi(chart, resolveStyle(styleId), transpose, choruses, { loop, keyStep, subs, countIn }, bpm, {
+                        click: !muted.click,
+                      })
                       close()
                     }}
                   >
@@ -1331,7 +1336,7 @@ export default function App() {
           onAudition={(c, scale) => void audition(c, scale)}
         />
         <Mixer
-          labels={{ bass: 'Bass', comp: compLabel(style.comp.program), drums: 'Drums' }}
+          labels={{ bass: 'Bass', comp: compLabel(style.comp.program), drums: 'Drums', click: 'Click' }}
           volumes={volumes}
           muted={muted}
           sounds={sounds}

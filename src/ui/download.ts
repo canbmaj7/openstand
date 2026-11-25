@@ -59,6 +59,10 @@ async function fetchSoundBank(signal?: AbortSignal): Promise<ArrayBuffer> {
   return res.arrayBuffer()
 }
 
+export interface DownloadMidiOptions {
+  click?: boolean
+}
+
 export function downloadMidi(
   chart: Chart,
   style: StyleDefinition,
@@ -66,9 +70,10 @@ export function downloadMidi(
   choruses: number,
   practice: PracticeOptions,
   bpm: number,
+  options: DownloadMidiOptions = {},
 ): void {
   const filename = backingTrackFilename(chart, transpose, bpm, 'mid')
-  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm)
+  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, { click: Boolean(options.click) })
   downloadBlob(new Uint8Array(midi), filename, 'audio/midi')
 }
 
@@ -88,7 +93,7 @@ export async function downloadWav(
   }
   const masterGain = masterGainFor(mixer.masterMuted ? 0 : mixer.master)
   const soundBank = options.soundBank ?? (await fetchSoundBank(signal))
-  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm)
+  const { midi } = arrange(chart, style, transpose, choruses, practice, bpm, { click: !mixer.muted.click })
   const wav = await renderWav(midi, soundBank, {
     volumes: channelVolumes,
     masterGain,

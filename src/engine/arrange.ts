@@ -2,20 +2,25 @@ import type { Chart } from '../music/chart'
 import { compoundStyle } from '../styles/compound'
 import type { StyleDefinition } from '../styles/types'
 import { generateBass } from './bass'
+import { CLICK_CHANNEL, generateClicks } from './click'
 import { generateComp, pedalChanges } from './comp'
 import { DRUM_CHANNEL, generateDrums } from './drums'
-import { writeMidi } from './midiWriter'
+import { writeMidi, type TrackSpec } from './midiWriter'
 import { buildTimeline, type PracticeOptions, type Timeline } from './timeline'
 
 // Channel layout, shared with the mixer
 // Reverb send (CC91) written for each part; the mixer's Reverb fader scales these
-export const PART_REVERB = { bass: 20, comp: 40, drums: 35 } as const
+export const PART_REVERB = { bass: 20, comp: 40, drums: 35, click: 0 } as const
 
-export const CHANNELS = { bass: 0, comp: 1, drums: DRUM_CHANNEL } as const
+export const CHANNELS = { bass: 0, comp: 1, drums: DRUM_CHANNEL, click: CLICK_CHANNEL } as const
 export type Part = keyof typeof CHANNELS
 
 // Playback rate is set relative to this tempo, so tempo changes don't regenerate the MIDI
 export const BASE_BPM = 120
+
+export interface ArrangeOptions {
+  click?: boolean // add the metronome track (channel 3); off by default so plain MIDI exports keep three parts
+}
 
 export interface Arrangement {
   midi: Uint8Array
@@ -29,6 +34,7 @@ export function arrange(
   choruses: number,
   practice: PracticeOptions = {},
   bpm: number = BASE_BPM,
+  options: ArrangeOptions = {},
 ): Arrangement {
   const timeline = buildTimeline(chart, transpose, choruses, practice)
   const { swing, firstChorus } = style
@@ -37,7 +43,7 @@ export function arrange(
   const comp = generateComp(timeline.slots, style.comp, swing, timeline.countIn, compound.comp, style.family, firstChorus?.comp)
   const compUsesPedal = (slot: (typeof timeline.slots)[number]) =>
     slot.chorus === 0 && firstChorus?.comp ? !!firstChorus.comp.pedal : !!style.comp.pedal
-  const midi = writeMidi(bpm, [
+  const tracks: TrackSpec[] = [
     {
       name: 'Bass',
       channel: CHANNELS.bass,
@@ -66,6 +72,18 @@ export function arrange(
       reverb: PART_REVERB.drums,
       events: generateDrums(timeline.bars, style.drums, swing, timeline.clicks, compound.drums, style.family, firstChorus?.drums),
     },
-  ])
+  ]
+  if (options.click) {
+    tracks.push({
+      name: 'Click',
+      channel: CHANNELS.click,
+      program: 0,
+      pan: 64,
+      reverb: PART_REVERB.click,
+      drums: true,
+      events: generateClicks(timeline),
+    })
+  }
+  const midi = writeMidi(bpm, tracks)
   return { midi, timeline }
 }
