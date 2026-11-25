@@ -17,6 +17,7 @@ import { loadMyStyles, myStyleId, removeMyStyle, saveMyStyle } from './library/m
 import { BPM_RANGE, clampBpm, DEFAULT_CHORUSES, MAX_CHORUSES, type TuneSettings } from './library/tuneSettings'
 import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
+import { distinctChords } from './music/tuneChords'
 import { emptyChart } from './music/edit'
 import { CHORD_FONT_KEY, loadChordFont, type ChordFont } from './music/chordText'
 import { loadChordNames, saveChordNames, type ChordNames } from './music/degrees'
@@ -289,6 +290,7 @@ export default function App() {
     : (playing && position?.slotChord ? transposeChord(position.slotChord, viewOffset(instrument)) : null) ??
       (playing ? playingChord(chart, position, viewTranspose) : null) ??
       firstChord(chart, viewTranspose)
+  const tuneChords = useMemo(() => distinctChords(chart, viewTranspose), [chart, viewTranspose])
 
   useEffect(() => {
     // The effect may run twice (StrictMode); a discarded player must not update the UI
@@ -1340,10 +1342,15 @@ export default function App() {
         <Practice chart={chart} settings={practice} onChange={changePractice} onPickLoop={() => setPicking('first')} />
         <ChordHelper
           chord={shownChord}
+          tuneChords={tuneChords}
           keyPc={shownKeyPc}
           following={selectedChord === null}
           onFollowChange={(follow) => {
             setSelectedChord(follow ? null : transposeChord(shownChord, -viewTranspose))
+            setSelectedChordAt(null)
+          }}
+          onPickChord={(c) => {
+            setSelectedChord(transposeChord(c, -viewTranspose))
             setSelectedChordAt(null)
           }}
           open={chordsOpen}

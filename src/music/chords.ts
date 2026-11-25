@@ -279,3 +279,21 @@ export function spellRoot(pc: number, keyPc: number): string {
   const inScale = MAJOR_SCALE.some((step) => (keyPc + step) % 12 === ((pc % 12) + 12) % 12)
   return noteName(pc, !inScale)
 }
+
+export function chordKey(chord: Chord): string {
+  return `${chord.root}:${chord.bass}:${chord.quality}:${chord.tensions.join(',')}`
+}
+
+export function chordSpellLabel(chord: Chord, keyPc: number): string {
+  const rootName = spellRoot(chord.root, keyPc)
+  const bassPart = chord.bass !== chord.root ? `/${spellRoot(chord.bass, keyPc)}` : ''
+  return `${rootName}${chord.suffix}${bassPart}`
+}
+
+export function chordToneData(chord: Chord) {
+  const preferFlats = keyPrefersFlats(chord.root)
+  const tones = closeVoicingTones(chord)
+  const toneNames = tones.map((t) => noteName((chord.root + t) % 12, preferFlats))
+  const chordKeys = new Set(tones.map((t) => chord.root + t))
+  return { preferFlats, toneNames, chordKeys }
+}
