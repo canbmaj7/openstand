@@ -1,9 +1,10 @@
-// Browser file download helpers for MIDI, ChordPro, and .openstand.json exports.
+// Browser file download helpers for MIDI, ChordPro, MusicXML, and .openstand.json exports.
 
 import { arrange } from '../engine/arrange'
 import type { PracticeOptions } from '../engine/timeline'
 import { chartToFile } from '../formats/chartFile'
 import { chartToChordPro } from '../formats/chordpro'
+import { chartToMusicXml } from '../formats/musicxml'
 import type { Chart } from '../music/chart'
 import { keyPrefersFlats, noteName } from '../music/chords'
 import type { StyleDefinition } from '../styles/types'
@@ -43,6 +44,11 @@ export function downloadMidi(
 export function downloadChordPro(chart: Chart, transpose: number): void {
   const filename = `${sanitizeFilename(chart.title)}.cho`
   downloadBlob(chartToChordPro(chart, transpose), filename, 'text/plain;charset=utf-8')
+}
+
+export function downloadMusicXml(chart: Chart, transpose: number): void {
+  const filename = `${sanitizeFilename(chart.title)}.musicxml`
+  downloadBlob(chartToMusicXml(chart, transpose), filename, 'application/vnd.recordare.musicxml+xml')
 }
 
 export function downloadChartFile(chart: Chart): void {
