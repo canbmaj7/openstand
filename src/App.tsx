@@ -19,6 +19,7 @@ import type { Chart as ChartData } from './music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from './music/chords'
 import { emptyChart } from './music/edit'
 import { CHORD_FONT_KEY, loadChordFont, type ChordFont } from './music/chordText'
+import { loadChordNames, saveChordNames, type ChordNames } from './music/degrees'
 import { isInstrumentId, viewOffset, type InstrumentId } from './music/instrument'
 import { EXERCISES } from './music/exercises'
 import { EXAMPLES, type Tune } from './music/songs'
@@ -28,6 +29,7 @@ import { getStyle, STYLES, type StyleDefinition } from './styles'
 import { labFromStyle, styleFromLab, styleSource, labId, STEPS_PER_BEAT, type LabStyle } from './styles/lab'
 import { loadSounds, saveSounds, withSounds, type SoundChoice } from './styles/sounds'
 import { Chart } from './ui/Chart'
+import { ChordDisplay } from './ui/ChordDisplay'
 import { ChordHelper } from './ui/ChordHelper'
 import { downloadBackup, downloadChartFile, downloadChordPro, downloadMidi, downloadMusicXml, downloadWav } from './ui/download'
 import { Editor, EditorHeader } from './ui/Editor'
@@ -254,6 +256,7 @@ export default function App() {
   const wavResetTimer = useRef(0)
   const [mode, setMode] = useState<ModeOption>('original')
   const [chordFont, setChordFont] = useState<ChordFont>(loadChordFont)
+  const [chordNames, setChordNames] = useState<ChordNames>(loadChordNames)
   const [chartScale, setChartScale] = useState<ChartScale>(loadChartScale)
 
   const tune = tunes.find((t) => t.id === songId) ?? tunes[0] ?? EXAMPLES[0]
@@ -378,6 +381,10 @@ export default function App() {
       delete document.documentElement.dataset.chordFont
     }
   }, [chordFont])
+
+  useEffect(() => {
+    saveChordNames(chordNames)
+  }, [chordNames])
 
   useEffect(() => {
     saveChartScale(chartScale)
@@ -1095,16 +1102,12 @@ export default function App() {
             A+
           </button>
         </div>
-        <button
-          type="button"
-          className="topbar-button topbar-chord-font"
-          aria-pressed={chordFont === 'Plain'}
-          aria-label="Plain chords"
-          title="Plain chords"
-          onClick={() => setChordFont((f) => (f === 'Plain' ? 'Handwritten' : 'Plain'))}
-        >
-          Aa
-        </button>
+        <ChordDisplay
+          chordFont={chordFont}
+          onChordFont={setChordFont}
+          chordNames={chordNames}
+          onChordNames={setChordNames}
+        />
         <button className="tunes-toggle" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(!libraryOpen)}>
           Tunes
         </button>
@@ -1174,6 +1177,7 @@ export default function App() {
             selectedBar={draft ? editor.editBar : null}
             selectedRange={draft ? editor.selectionRange : null}
             plain={chordFont === 'Plain'}
+            chordNames={draft ? 'letters' : chordNames}
             scale={chartScale}
             startAt={!playing ? selectedChordAt : null}
             onBarClick={draft ? editor.selectBar : picking ? pickBar : undefined}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { ROW_CELLS, type Chart as ChartData, type ChartBar, type TimeSignature } from '../music/chart'
 import { keyPrefersFlats, noteName, parseChord, transposeChord, type Chord } from '../music/chords'
+import type { ChordNames } from '../music/degrees'
 import { groupsAt } from '../music/edit'
 import type { StyleDefinition } from '../styles/types'
 import { ChordSymbol } from './ChordSymbol'
@@ -20,6 +21,7 @@ interface ChartProps {
   selectedBar?: number | null // the bar being edited
   selectedRange?: [number, number] | null // contiguous selected bars in the editor
   plain?: boolean
+  chordNames?: ChordNames
   scale?: number
   startAt?: string | null
   onBarClick?: (index: number, shiftKey?: boolean) => void
@@ -83,6 +85,7 @@ interface BarProps {
   placed: PlacedBar
   prev: PlacedBar | undefined
   keyPc: number
+  minor: boolean
   active: boolean
   activeSub: boolean
   beatInBar: number
@@ -93,6 +96,7 @@ interface BarProps {
   selected: boolean
   inSelection: boolean
   plain?: boolean
+  chordNames?: ChordNames
   startChordIndex?: number | null
   onClick?: (index: number, shiftKey?: boolean) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
@@ -103,6 +107,7 @@ function Bar({
   placed,
   prev,
   keyPc,
+  minor,
   active,
   activeSub,
   beatInBar,
@@ -113,6 +118,7 @@ function Bar({
   selected,
   inSelection,
   plain,
+  chordNames,
   startChordIndex,
   onClick,
   onChordClick,
@@ -209,7 +215,9 @@ function Bar({
             alt={altChord}
             subActive={Boolean(active && activeSub && activeChordIdx === j && altChord)}
             keyPc={keyPc}
+            minor={minor}
             plain={plain}
+            chordNames={chordNames}
             isStart={startChordIndex === j}
             onSelect={onChordClick ? (selected) => onChordClick(selected, index, j) : undefined}
           />
@@ -244,8 +252,9 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, scale = 100, startAt, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, chordNames = 'letters', scale = 100, startAt, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
+  const minor = Boolean(chart.minor)
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
   const keyName = prettyKey(noteName(keyPc, keyPrefersFlats(keyPc))) + (chart.minor ? '−' : '')
   const [startBar, startChord] = startAt ? startAt.split(':').map(Number) : [-1, -1]
@@ -311,6 +320,7 @@ export function Chart(props: ChartProps) {
   return (
     <article
       className="sheet"
+      data-chord-names={chordNames === 'letters' ? undefined : chordNames}
       style={{ '--chart-scale': String(scale / 100) } as CSSProperties}
       aria-label={`${chart.title} chord chart`}
     >
@@ -333,6 +343,7 @@ export function Chart(props: ChartProps) {
                   placed={placed}
                   prev={row[b - 1]}
                   keyPc={keyPc}
+                  minor={minor}
                   active={activeMeasure === placed.index}
                   activeSub={activeMeasure === placed.index && activeSub}
                   beatInBar={activeMeasure === placed.index ? beatInBar : 0}
@@ -344,6 +355,7 @@ export function Chart(props: ChartProps) {
                   selected={selectedBar === placed.index}
                   inSelection={!!selectedRange && placed.index >= Math.min(...selectedRange) && placed.index <= Math.max(...selectedRange)}
                   plain={plain}
+                  chordNames={chordNames}
                   startChordIndex={placed.index === startBar ? startChord : null}
                   onClick={onBarClick}
                   onChordClick={onChordClick}

@@ -10,13 +10,13 @@ const control = (page: Page, label: string) =>
 const barNumber = async (page: Page) => Number((await page.locator('.readout').textContent())?.match(/Bar\s(\d+)/)?.[1] ?? 0)
 
 async function play(page: Page) {
-  await page.getByRole('button', { name: 'Play' }).click()
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
 }
 
 async function stop(page: Page) {
   await page.getByRole('button', { name: 'Stop' }).click()
-  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
 }
 
 test.beforeEach(async ({ page }) => {
@@ -36,22 +36,22 @@ test('a tune plays and the bar counter moves', async ({ page }) => {
 })
 
 test('Space toggles playback after a pointer click but keeps keyboard button activation', async ({ page }) => {
-  const plainChords = page.getByRole('button', { name: 'Plain chords' })
+  const chordDisplay = page.getByRole('button', { name: 'Chord names and font' })
 
-  await plainChords.focus()
-  await plainChords.press('Space')
-  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
-  await plainChords.press('Space')
-  await expect(plainChords).toHaveAttribute('aria-pressed', 'false')
+  await chordDisplay.focus()
+  await chordDisplay.press('Space')
+  await expect(chordDisplay).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
+  await chordDisplay.press('Space')
+  await expect(chordDisplay).toHaveAttribute('aria-expanded', 'false')
 
-  await plainChords.click()
-  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
-  await plainChords.press('Space')
+  await chordDisplay.click()
+  await expect(chordDisplay).toHaveAttribute('aria-expanded', 'true')
+  await chordDisplay.press('Space')
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
-  await expect(plainChords).toHaveAttribute('aria-pressed', 'true')
+  await expect(chordDisplay).toHaveAttribute('aria-expanded', 'true')
   await page.keyboard.press('Space')
-  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
 })
 
 test('changing the key re-spells the chords', async ({ page }) => {

@@ -198,11 +198,28 @@ button:disabled {
   padding: 0 8px;
 }
 
-.topbar-chord-font {
+.chord-display .band-toggle {
   font-family: var(--sans);
   font-weight: 600;
   letter-spacing: -0.02em;
   padding: 0 9px;
+}
+
+.chord-display-panel {
+  display: grid;
+  gap: 12px;
+  padding: 8px;
+}
+
+.chord-display-row {
+  display: grid;
+  gap: 6px;
+}
+
+.chord-display-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .topbar-link svg {
@@ -685,6 +702,12 @@ button:disabled {
 
 .bar-dense .chord {
   font-size: max(calc(var(--chord-dense-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-dense-size) * var(--sheet-scale)), 20cqi));
+}
+
+/* Roman numerals run wider than letter names, so two or more chords in a bar get a bit smaller */
+.sheet[data-chord-names='roman'] .bar-pair .chord-main,
+.sheet[data-chord-names='roman'] .bar-dense .chord-main {
+  font-size: 0.86em;
 }
 
 .chord-main {
@@ -1696,7 +1719,7 @@ input.fader::-moz-range-thumb {
   }
 
   .topbar-scale-button,
-  .topbar-chord-font {
+  .chord-display .band-toggle {
     padding: 0 7px;
   }
 
@@ -1907,7 +1930,7 @@ input.fader::-moz-range-thumb {
   }
 
   .topbar-scale-button,
-  .topbar-chord-font {
+  .chord-display .band-toggle {
     padding: 0 5px;
   }
 
