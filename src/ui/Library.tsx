@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { keyPrefersFlats, noteName } from '../music/chords'
 import type { Tune } from '../music/songs'
+import { parseTuneSort, sortTunes, type TuneSort } from '../music/sortTunes'
 import { getStyle } from '../styles'
 import { Setlists, type SetlistsProps } from './Setlists'
 
@@ -19,6 +20,24 @@ interface LibraryProps {
 
 const ALL = ''
 const LIMIT = 250 // long playlists are filtered by search rather than scrolled
+const SORT_KEY = 'openstand:tune-sort'
+
+function loadTuneSort(): TuneSort {
+  try {
+    if (typeof localStorage === 'undefined') return 'title'
+    return parseTuneSort(localStorage.getItem(SORT_KEY))
+  } catch {
+    return 'title'
+  }
+}
+
+function saveTuneSort(sort: TuneSort): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(SORT_KEY, sort)
+  } catch {
+    // Storage may be disabled in private browsing
+  }
+}
 
 const fold = (s: string) =>
   s
@@ -30,18 +49,24 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
   const [tab, setTab] = useState<'tunes' | 'setlists'>('tunes')
   const [query, setQuery] = useState('')
   const [playlist, setPlaylist] = useState(ALL)
+  const [sort, setSort] = useState<TuneSort>(loadTuneSort)
   const [confirming, setConfirming] = useState(false)
 
   const playlists = useMemo(() => [...new Set(tunes.map((t) => t.playlist ?? 'Tunes'))], [tunes])
   const activePlaylist = playlists.includes(playlist) ? playlist : ALL
 
+  const styleNameOf = useCallback(
+    (tune: Tune) => styleNames[styleOverrides[tune.id]] ?? tune.chart.sourceStyle ?? getStyle(tune.chart.style).name,
+    [styleNames, styleOverrides],
+  )
+
   const matches = useMemo(() => {
     const q = fold(query.trim())
-    return tunes
+    const filtered = tunes
       .filter((t) => activePlaylist === ALL || t.playlist === activePlaylist)
       .filter((t) => !q || fold(`${t.chart.title} ${t.chart.composer ?? ''}`).includes(q))
-      .sort((a, b) => a.chart.title.localeCompare(b.chart.title))
-  }, [tunes, query, activePlaylist])
+    return sortTunes(filtered, sort, styleNameOf)
+  }, [tunes, query, activePlaylist, sort, styleNameOf])
 
   const canRemove = activePlaylist !== ALL && activePlaylist !== 'Examples'
 
@@ -101,6 +126,25 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
         onChange={(e) => setQuery(e.target.value)}
       />
 
+      <label className="library-filter">
+        <span className="label">Sort</span>
+        <select
+          className="select"
+          aria-label="Sort tunes"
+          value={sort}
+          onChange={(e) => {
+            const next = parseTuneSort(e.target.value)
+            setSort(next)
+            saveTuneSort(next)
+          }}
+        >
+          <option value="title">Title</option>
+          <option value="composer">Composer</option>
+          <option value="style">Style</option>
+          <option value="key">Key</option>
+        </select>
+      </label>
+
       {playlists.length > 1 && (
         <div className="library-filter">
           <select
@@ -138,8 +182,7 @@ export function Library({ tunes, selectedId, styleOverrides, styleNames, onSelec
 
       <ul className="library-list">
         {matches.slice(0, LIMIT).map((tune) => {
-          const overrideName = styleNames[styleOverrides[tune.id]]
-          const styleName = overrideName ?? tune.chart.sourceStyle ?? getStyle(tune.chart.style).name
+          const styleName = styleNameOf(tune)
           return (
             <li key={tune.id}>
               <button
