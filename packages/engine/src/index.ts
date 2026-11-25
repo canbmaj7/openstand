@@ -52,6 +52,7 @@ export type {
 export { arrange, BASE_BPM, CHANNELS, type Arrangement, type Part } from '../../../src/engine/arrange'
 export {
   buildTimeline,
+  chorusKeyOffset,
   chorusTranspose,
   countInBeats,
   countInClicks,

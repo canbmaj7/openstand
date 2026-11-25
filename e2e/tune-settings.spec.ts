@@ -102,6 +102,38 @@ test('practice ramp and key cycle do not overwrite saved tempo or key, and lab s
   await expect(control(page, 'Style')).toHaveValue('medium-swing')
 })
 
+test('random keys sets at least 12 choruses and speed-up interval select changes', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+
+  const practiceBtn = page.getByRole('button', { name: 'Practice' })
+  await practiceBtn.click()
+
+  const rampInterval = page.getByLabel('Speed up interval')
+  await expect(rampInterval).toBeVisible()
+  await expect(rampInterval).toBeDisabled()
+
+  await page.getByRole('button', { name: 'More', exact: true }).click()
+  await expect(rampInterval).toBeEnabled()
+  await rampInterval.selectOption('2')
+  await expect(rampInterval).toHaveValue('2')
+  await rampInterval.selectOption('4')
+  await expect(rampInterval).toHaveValue('4')
+
+  await page.getByLabel('Keys').selectOption('random')
+  await expect(page.getByLabel('Keys')).toHaveValue('random')
+  await expect(practiceBtn).toHaveClass(/band-toggle-active/)
+  await expect(chorusesValue(page)).toHaveText('12')
+
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
+  await page.waitForTimeout(800)
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
+
+  expect(errors).toEqual([])
+})
+
 test('migrates legacy openstand:tune-styles on load without deleting it', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.removeItem('openstand:tune-settings')
