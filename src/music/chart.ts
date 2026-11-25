@@ -12,6 +12,7 @@ export interface BarChord {
   symbol: string | null // null = N.C. (no chord)
   alt?: string // optional substitution chord symbol, same duration
   beats: number
+  small?: true // smaller/passing chord display (iReal Pro `s` ... `l`)
 }
 
 export interface ChartBar {

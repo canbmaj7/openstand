@@ -19,8 +19,15 @@ function validateBarChord(raw: unknown, barIndex: number, chordIndex: number): B
   if (raw.alt !== undefined && typeof raw.alt !== 'string') {
     throw new Error(`Invalid bar ${barIndex + 1} chord ${chordIndex + 1}: "alt" must be a string.`)
   }
+  if (raw.small !== undefined && typeof raw.small !== 'boolean') {
+    throw new Error(`Invalid bar ${barIndex + 1} chord ${chordIndex + 1}: "small" must be a boolean.`)
+  }
   if (!isPosNum(raw.beats)) {
     throw new Error(`Invalid bar ${barIndex + 1} chord ${chordIndex + 1}: "beats" must be a positive number.`)
+  }
+  if (raw.small === false) {
+    const { small: _, ...rest } = raw
+    return rest as unknown as BarChord
   }
   return raw as unknown as BarChord
 }
@@ -31,9 +38,10 @@ const STR_BAR_FIELDS = ['section', 'directive', 'comment'] as const
 function validateBar(raw: unknown, index: number): ChartBar {
   if (!isRecord(raw)) throw new Error(`Invalid bar ${index + 1}: expected an object.`)
   if (!Array.isArray(raw.chords)) throw new Error(`Invalid bar ${index + 1}: "chords" must be an array.`)
+  const rawChords = raw.chords
   if (!isPosNum(raw.cells)) throw new Error(`Invalid bar ${index + 1}: "cells" must be a positive number.`)
 
-  for (let j = 0; j < raw.chords.length; j++) validateBarChord(raw.chords[j], index, j)
+  const chords = rawChords.map((c, j) => validateBarChord(c, index, j))
 
   for (const field of BOOL_BAR_FIELDS) {
     if (raw[field] !== undefined && typeof raw[field] !== 'boolean') {
@@ -61,7 +69,7 @@ function validateBar(raw: unknown, index: number): ChartBar {
     throw new Error(`Invalid bar ${index + 1}: "barline" must be "double" or "final".`)
   }
 
-  return raw as unknown as ChartBar
+  return (chords.some((c, j) => c !== rawChords[j]) ? { ...raw, chords } : raw) as unknown as ChartBar
 }
 
 export function validateChart(data: unknown): Chart {
@@ -94,10 +102,11 @@ export function validateChart(data: unknown): Chart {
   if (!Array.isArray(data.bars) || data.bars.length === 0) {
     throw new Error('Invalid chart: "bars" must be a non-empty array.')
   }
+  const rawBars = data.bars
 
-  for (let i = 0; i < data.bars.length; i++) validateBar(data.bars[i], i)
+  const bars = rawBars.map((b, i) => validateBar(b, i))
 
-  return data as unknown as Chart
+  return (bars.some((b, i) => b !== rawBars[i]) ? { ...data, bars } : data) as unknown as Chart
 }
 
 export function chartToFile(chart: Chart): string {

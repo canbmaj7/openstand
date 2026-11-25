@@ -692,16 +692,29 @@ button:disabled {
   align-items: baseline;
   white-space: nowrap;
   /* Shrinks freely; grows only as far as the bar has room */
-  font-size: max(calc(var(--chord-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-size) * var(--sheet-scale)), 40cqi));
+  font-size: max(
+    calc(var(--chord-size) * var(--chord-factor, 1) * min(var(--sheet-scale), 1)),
+    min(calc(var(--chord-size) * var(--chord-factor, 1) * var(--sheet-scale)), calc(40cqi * var(--chord-factor, 1)))
+  );
   line-height: 1;
 }
 
+.chord-small {
+  --chord-factor: 0.7;
+}
+
 .bar-pair .chord {
-  font-size: max(calc(var(--chord-pair-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-pair-size) * var(--sheet-scale)), 32cqi));
+  font-size: max(
+    calc(var(--chord-pair-size) * var(--chord-factor, 1) * min(var(--sheet-scale), 1)),
+    min(calc(var(--chord-pair-size) * var(--chord-factor, 1) * var(--sheet-scale)), calc(32cqi * var(--chord-factor, 1)))
+  );
 }
 
 .bar-dense .chord {
-  font-size: max(calc(var(--chord-dense-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-dense-size) * var(--sheet-scale)), 20cqi));
+  font-size: max(
+    calc(var(--chord-dense-size) * var(--chord-factor, 1) * min(var(--sheet-scale), 1)),
+    min(calc(var(--chord-dense-size) * var(--chord-factor, 1) * var(--sheet-scale)), calc(20cqi * var(--chord-factor, 1)))
+  );
 }
 
 /* Roman numerals run wider than letter names, so two or more chords in a bar get a bit smaller */
@@ -1858,15 +1871,15 @@ input.fader::-moz-range-thumb {
   }
 
   .chord {
-    font-size: min(calc(var(--chord-size) * var(--sheet-scale)), 8.2vw);
+    font-size: min(calc(var(--chord-size) * var(--chord-factor, 1) * var(--sheet-scale)), calc(8.2vw * var(--chord-factor, 1)));
   }
 
   .bar-pair .chord {
-    font-size: min(calc(var(--chord-pair-size) * var(--sheet-scale)), 5.2vw);
+    font-size: min(calc(var(--chord-pair-size) * var(--chord-factor, 1) * var(--sheet-scale)), calc(5.2vw * var(--chord-factor, 1)));
   }
 
   .bar-dense .chord {
-    font-size: min(calc(var(--chord-dense-size) * var(--sheet-scale)), 4vw);
+    font-size: min(calc(var(--chord-dense-size) * var(--chord-factor, 1) * var(--sheet-scale)), calc(4vw * var(--chord-factor, 1)));
   }
 
   .chord.chord-nc {

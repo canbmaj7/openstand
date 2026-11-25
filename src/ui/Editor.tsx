@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { type BarChord, type Chart, type ChartBar, type TimeSignature } from '../music/chart'
 import { deleteBar, insertBar, timeAt, updateBar } from '../music/edit'
-import { barToInput, parseBarInput } from '../music/notation'
+import { barToInput, parseBarInput, preserveSmall } from '../music/notation'
 import { STYLES } from '../styles'
 import { EditorMarks } from './EditorMarks'
 import { EditorTune } from './EditorTune'
@@ -24,7 +24,13 @@ const TIMES: TimeSignature[] = [
 function sameChords(a: BarChord[], b: BarChord[]): boolean {
   return (
     a.length === b.length &&
-    a.every((c, i) => c.symbol === b[i].symbol && c.alt === b[i].alt && Math.abs(c.beats - b[i].beats) < 1e-9)
+    a.every(
+      (c, i) =>
+        c.symbol === b[i].symbol &&
+        c.alt === b[i].alt &&
+        Boolean(c.small) === Boolean(b[i].small) &&
+        Math.abs(c.beats - b[i].beats) < 1e-9,
+    )
   )
 }
 
@@ -152,8 +158,9 @@ export function Editor({
     const result = parseBarInput(value, time)
     if (result.ok) {
       setError('')
-      if (!sameChords(bar.chords, result.chords)) {
-        const next = updateBar(chart, index, { chords: result.chords })
+      const nextChords = preserveSmall(result.chords, bar.chords)
+      if (!sameChords(bar.chords, nextChords)) {
+        const next = updateBar(chart, index, { chords: nextChords })
         selfChartRef.current = next
         onChange(next)
       }

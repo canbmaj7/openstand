@@ -110,6 +110,7 @@ function ChordBody({
 export function ChordSymbol({
   chord,
   alt,
+  small = false,
   subActive = false,
   keyPc,
   minor = false,
@@ -121,6 +122,7 @@ export function ChordSymbol({
 }: {
   chord: Chord
   alt?: Chord | null
+  small?: boolean
   subActive?: boolean
   keyPc: number
   minor?: boolean
@@ -139,6 +141,7 @@ export function ChordSymbol({
     <span
       className={[
         interactive ? 'chord chord-interactive' : 'chord',
+        small && 'chord-small',
         isStart && !hidden && 'chord-start',
         subActive && !hidden && 'chord-sub-active',
         hidden && 'chord-hidden',
@@ -189,6 +192,7 @@ export function BarChord({
   chord,
   altChord,
   symbol,
+  small = false,
   subActive,
   keyPc,
   minor,
@@ -201,6 +205,7 @@ export function BarChord({
   chord: Chord | null
   altChord: Chord | null
   symbol: string | null
+  small?: boolean
   subActive: boolean
   keyPc: number
   minor: boolean
@@ -215,6 +220,7 @@ export function BarChord({
       <ChordSymbol
         chord={chord}
         alt={altChord}
+        small={small}
         subActive={subActive}
         keyPc={keyPc}
         minor={minor}
@@ -226,7 +232,9 @@ export function BarChord({
       />
     )
   }
-  const baseClass = symbol === null ? 'chord chord-nc' : 'chord chord-unknown'
+  const baseClass = [symbol === null ? 'chord chord-nc' : 'chord chord-unknown', small && symbol !== null && 'chord-small']
+    .filter(Boolean)
+    .join(' ')
   if (hidden) {
     return (
       <span className={`${baseClass} chord-hidden`} aria-label="Hidden chord">
