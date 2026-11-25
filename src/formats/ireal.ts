@@ -30,13 +30,13 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   const s = name.toLowerCase()
   const inThree = beatsPerBar(time) === 3
   if (/partido/.test(s)) return 'partido-alto'
-  if (/baião|baiao/.test(s)) return 'baiao'
+  if (/baião|baiao|forr[oó]|xote|xaxado/.test(s)) return 'baiao'
   if (/choro/.test(s)) return 'choro'
-  if (/samba|afox|frevo/.test(s)) return 'samba'
+  if (/samba|afox|frevo|marchinha/.test(s)) return 'samba'
   // Bolero and tango keep their straight-eighth Latin/chamber styles even in 3/4 (like bossa and country) rather than switching to swung jazz-waltz.
   if (/bolero/.test(s)) return 'bolero'
   if (/tango/.test(s)) return 'tango'
-  if (/bossa|chacarera/.test(s)) return 'bossa-nova'
+  if (/bossa|chacarera|\bmpb\b/.test(s)) return 'bossa-nova'
   if (/cha.?cha|chachacha/.test(s)) return 'cha-cha'
   if (/bachata/.test(s)) return 'bachata'
   if (/merengue/.test(s)) return 'merengue'
@@ -51,7 +51,7 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   if (/gospel/.test(s)) return 'gospel'
   if (/disco/.test(s)) return 'disco'
   if (/soul/.test(s) && !/ballad/.test(s)) return 'soul'
-  if (/funk|rnb|r&b/.test(s)) return 'funk'
+  if (/funk|r'?n'?b|r&b/.test(s)) return 'funk'
   if (/slow blues|blues.?slow|12\/8 blues/.test(s)) return 'slow-blues'
   if (beatsPerBar(time) === 4 && /12\/8|rock.?12/.test(s)) return 'rock-12-8'
   if (/shuffle|blues|boogie|rock'?n'?roll/.test(s) && !/swing/.test(s)) return 'shuffle'
