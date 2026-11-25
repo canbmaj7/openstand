@@ -116,6 +116,7 @@ export function ChordSymbol({
   plain = false,
   chordNames = 'letters',
   isStart = false,
+  hidden = false,
   onSelect,
 }: {
   chord: Chord
@@ -126,23 +127,30 @@ export function ChordSymbol({
   plain?: boolean
   chordNames?: ChordNames
   isStart?: boolean
+  hidden?: boolean
   onSelect?: (chord: Chord) => void
 }) {
+  const interactive = Boolean(onSelect && !hidden)
   const baseLabel = chordAriaLabel(chord, keyPc, minor, chordNames, chordNames !== 'letters')
   const altLabel = alt ? chordAriaLabel(alt, keyPc, minor, chordNames, true) : ''
-  const label = [baseLabel, altLabel && `or ${altLabel}`, isStart && 'start point'].filter(Boolean).join(', ')
+  const label = hidden ? 'Hidden chord' : [baseLabel, altLabel && `or ${altLabel}`, isStart && 'start point'].filter(Boolean).join(', ')
 
   return (
     <span
-      className={[onSelect ? 'chord chord-interactive' : 'chord', isStart && 'chord-start', subActive && 'chord-sub-active']
+      className={[
+        interactive ? 'chord chord-interactive' : 'chord',
+        isStart && !hidden && 'chord-start',
+        subActive && !hidden && 'chord-sub-active',
+        hidden && 'chord-hidden',
+      ]
         .filter(Boolean)
         .join(' ')}
       aria-label={label}
-      role={onSelect ? 'button' : undefined}
-      tabIndex={onSelect ? 0 : undefined}
-      data-opens={onSelect ? 'chords' : undefined}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      data-opens={interactive ? 'chords' : undefined}
       onClick={
-        onSelect
+        interactive && onSelect
           ? (e) => {
               e.stopPropagation()
               onSelect(chord)
@@ -150,7 +158,7 @@ export function ChordSymbol({
           : undefined
       }
       onKeyDown={
-        onSelect
+        interactive && onSelect
           ? (e) => {
               if (e.key !== 'Enter' && e.key !== ' ') return
               e.preventDefault()
@@ -165,9 +173,78 @@ export function ChordSymbol({
           <ChordBody chord={alt} keyPc={keyPc} minor={minor} plain={plain} chordNames={chordNames} />
         </span>
       )}
-      <span className="chord-main">
+      <span className="chord-main" aria-hidden={hidden || undefined}>
         <ChordBody chord={chord} keyPc={keyPc} minor={minor} plain={plain} chordNames={chordNames} />
       </span>
+      {hidden && (
+        <span className="chord-hidden-mark" aria-hidden="true">
+          –
+        </span>
+      )}
+    </span>
+  )
+}
+
+export function BarChord({
+  chord,
+  altChord,
+  symbol,
+  subActive,
+  keyPc,
+  minor,
+  plain,
+  chordNames,
+  isStart,
+  hidden = false,
+  onSelect,
+}: {
+  chord: Chord | null
+  altChord: Chord | null
+  symbol: string | null
+  subActive: boolean
+  keyPc: number
+  minor: boolean
+  plain?: boolean
+  chordNames?: ChordNames
+  isStart: boolean
+  hidden?: boolean
+  onSelect?: (chord: Chord) => void
+}) {
+  if (chord) {
+    return (
+      <ChordSymbol
+        chord={chord}
+        alt={altChord}
+        subActive={subActive}
+        keyPc={keyPc}
+        minor={minor}
+        plain={plain}
+        chordNames={chordNames}
+        isStart={isStart}
+        hidden={hidden}
+        onSelect={onSelect}
+      />
+    )
+  }
+  const baseClass = symbol === null ? 'chord chord-nc' : 'chord chord-unknown'
+  if (hidden) {
+    return (
+      <span className={`${baseClass} chord-hidden`} aria-label="Hidden chord">
+        <span className="chord-hidden-content" aria-hidden="true">
+          {symbol === null ? 'N.C.' : symbol}
+        </span>
+        <span className="chord-hidden-mark" aria-hidden="true">
+          –
+        </span>
+      </span>
+    )
+  }
+  if (symbol === null) {
+    return <span className={baseClass}>N.C.</span>
+  }
+  return (
+    <span className={baseClass} title="Unrecognized chord">
+      {symbol}
     </span>
   )
 }

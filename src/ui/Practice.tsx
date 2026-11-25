@@ -1,5 +1,6 @@
 import type { CountInMode, SubMode } from '../engine/timeline'
 import type { Chart } from '../music/chart'
+import { parseHideChords, type HideChords } from '../music/hideChords'
 import { KEY_STEPS, newRandomKeySeed, parseCountIn, RAMP_INTERVALS, sections, type PracticeSettings } from '../music/practice'
 import { Popover } from './Popover'
 
@@ -10,9 +11,11 @@ interface PracticeProps {
   settings: PracticeSettings
   onChange: (next: PracticeSettings) => void
   onPickLoop: () => void
+  hideChords: HideChords
+  onHideChords: (mode: HideChords) => void
 }
 
-export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProps) {
+export function Practice({ chart, settings, onChange, onPickLoop, hideChords, onHideChords }: PracticeProps) {
   const hasSubs = chart.bars.some((b) => b.chords.some((c) => Boolean(c.alt)))
   const active =
     settings.loop !== null ||
@@ -20,7 +23,8 @@ export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProp
     Boolean(settings.randomKeys) ||
     settings.ramp !== 0 ||
     settings.subs !== 'off' ||
-    settings.countIn !== 'auto'
+    settings.countIn !== 'auto' ||
+    hideChords !== 'off'
   const marks = sections(chart)
 
   return (
@@ -160,6 +164,20 @@ export function Practice({ chart, settings, onChange, onPickLoop }: PracticeProp
               <option value="off">Off</option>
               <option value="1">1 bar</option>
               <option value="2">2 bars</option>
+            </select>
+          </label>
+
+          <label className="practice-row">
+            <span className="label">Hide chords</span>
+            <select
+              className="select"
+              aria-label="Hide chords"
+              value={hideChords}
+              onChange={(e) => onHideChords(parseHideChords(e.target.value))}
+            >
+              <option value="off">Off</option>
+              <option value="gradual">Gradually</option>
+              <option value="all">All</option>
             </select>
           </label>
         </div>
