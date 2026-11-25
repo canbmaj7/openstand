@@ -87,6 +87,7 @@ export interface Bar {
   start: number
   beats: number
   measure: number // -1 for the ending bar
+  chorus: number
   isFirst: boolean
   isLast: boolean
   compound?: boolean // in 6/8, 9/8 or 12/8
@@ -209,7 +210,7 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
     order.forEach((measure, n) => {
       const bar = chart.bars[measure]
       const { beats, compound, groups } = meters[measure]
-      bars.push({ start: beat, beats, measure, isFirst: n === 0, isLast: n === order.length - 1, compound, ...(groups ? { groups } : {}) })
+      bars.push({ start: beat, beats, measure, chorus, isFirst: n === 0, isLast: n === order.length - 1, compound, ...(groups ? { groups } : {}) })
 
       if (bar.chords.length === 0) {
         if (held) {
@@ -257,7 +258,7 @@ export function buildTimeline(chart: Chart, transpose: number, choruses: number,
   if (first && choruses > 0) {
     const last = meters[order[order.length - 1]] ?? { beats: 4 }
     const beats = last.beats >= 3 ? last.beats : last.beats * 2
-    bars.push({ start: beat, beats, measure: -1, isFirst: false, isLast: false, compound: last.compound, ...(last.groups ? { groups: last.groups } : {}) })
+    bars.push({ start: beat, beats, measure: -1, chorus: choruses, isFirst: false, isLast: false, compound: last.compound, ...(last.groups ? { groups: last.groups } : {}) })
     slots.push({
       chord: toChord(first, choruses - 1),
       start: beat,

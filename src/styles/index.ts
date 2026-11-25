@@ -12,12 +12,14 @@ import { popRock } from './library/pop-rock'
 import { reggae } from './library/reggae'
 import { samba } from './library/samba'
 import { shuffle } from './library/shuffle'
+import { swingTwoFour } from './library/swing-two-four'
 import { tango } from './library/tango'
 import { upTempoSwing } from './library/up-tempo-swing'
 import type { StyleDefinition } from './types'
 
 export const STYLES: StyleDefinition[] = [
   mediumSwing,
+  swingTwoFour,
   upTempoSwing,
   ballad,
   jazzWaltz,
