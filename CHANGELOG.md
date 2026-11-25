@@ -9,6 +9,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 - The chart shows sooner on first load: the audio engine now loads after the page (#142).
 
 #### Fixed
+- Style lab: an edited Written bass no longer plays the starting style's hidden lead-ins in shorter chords, e.g. two chords in a bar (#154).
 - The GitHub link in the top bar has a name for screen readers on phones, and the site serves a real robots.txt (#144).
 - MIDI, WAV and MP3 exports now speed up like playback when Practice > Speed up is on (#126).
 
