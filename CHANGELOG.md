@@ -9,6 +9,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 - MIDI, WAV and MP3 exports now speed up like playback when Practice > Speed up is on (#126).
 
 #### Added
+- Share > Print or save as PDF: the chart on a clean page, in the key you see (#140).
 - Setlists: Repeat starts the setlist over after the last tune (#138).
 - Page turner pedals: Page Down / Page Up turn the page, and move to the next or previous tune in a setlist (#136).
 - Mixer: tune the band from A4 = 430 to 450 Hz, live and in audio exports (#134).
