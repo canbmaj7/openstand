@@ -120,6 +120,7 @@ export interface PracticeOptions {
   loop?: [from: number, to: number] | null // written bar indices, inclusive
   keyStep?: number // semitones added to the key on each chorus (5 = round the cycle of fourths)
   randomKeys?: { seed: number } // deterministic shuffled keys per 12-chorus block
+  keyEvery?: number // choruses played in each key before moving on (1–4, default 1)
   subs?: SubMode // whether to play optional substitution chords ('off' by default)
   countIn?: CountInMode // count-in bars: 'auto' (default), 'off', 1, or 2
 }

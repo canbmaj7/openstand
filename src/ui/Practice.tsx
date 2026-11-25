@@ -105,10 +105,14 @@ export function Practice({
             )}
           </div>
 
-          <label className="practice-row">
-            <span className="label">Keys</span>
+          <div className="practice-row">
+            <span className="label" id="keys-label">
+              Keys
+            </span>
+            <div className="practice-keys">
             <select
               className="select"
+              aria-labelledby="keys-label"
               value={settings.randomKeys ? 'random' : String(settings.keyStep)}
               onChange={(e) => {
                 if (e.target.value === 'random') {
@@ -124,7 +128,21 @@ export function Practice({
                 </option>
               ))}
             </select>
-          </label>
+            <select
+              className="select"
+              aria-label="Key change interval"
+              disabled={settings.keyStep === 0 && !settings.randomKeys}
+              value={settings.keyEvery}
+              onChange={(e) => onChange({ ...settings, keyEvery: Number(e.target.value) })}
+            >
+              {RAMP_INTERVALS.map((r) => (
+                <option key={r.every} value={r.every}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            </div>
+          </div>
 
           <div className="practice-row">
             <span className="label" id="ramp-label">

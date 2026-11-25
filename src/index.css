@@ -1162,6 +1162,12 @@ input[type='range']::-moz-range-thumb {
   color: var(--muted);
 }
 
+.practice-keys {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
 .practice-unit {
   color: var(--muted);
   font-size: 13px;

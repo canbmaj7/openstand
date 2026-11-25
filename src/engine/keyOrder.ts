@@ -39,14 +39,16 @@ function randomKeyBlock(seed: number, block: number, prevLast?: number): number[
 /**
  * Returns the chorus transposition in semitones (-5..+6), supporting both fixed keyStep
  * and seeded randomKeys (12 distinct keys per block, starting at 0, no consecutive repeat).
+ * With keyEvery > 1 each key lasts that many choruses.
  */
 export function chorusKeyOffset(
-  practice: Pick<PracticeOptions, 'keyStep' | 'randomKeys'>,
+  practice: Pick<PracticeOptions, 'keyStep' | 'randomKeys' | 'keyEvery'>,
   chorus: number,
   transpose = 0,
 ): number {
+  const every = Math.max(1, Math.min(4, Math.floor(practice.keyEvery || 1)))
+  const c = Math.floor(Math.max(0, Math.floor(chorus)) / every)
   if (practice.randomKeys) {
-    const c = Math.max(0, Math.floor(chorus))
     const block = Math.floor(c / 12)
     let prevLast: number | undefined
     let keys: number[] = []
@@ -56,5 +58,5 @@ export function chorusKeyOffset(
     }
     return chorusTranspose(transpose, keys[c % 12], 1)
   }
-  return chorusTranspose(transpose, practice.keyStep ?? 0, chorus)
+  return chorusTranspose(transpose, practice.keyStep ?? 0, c)
 }
