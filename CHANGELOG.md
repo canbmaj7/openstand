@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Gospel and Slow Blues styles; iReal Pro Gospel and Slow Blues tunes open in them (#103).
 - Bachata, Merengue and Cumbia styles; iReal Pro tunes in these styles open in them (#100).
 - Cha-Cha-Chá and Hip-Hop styles; iReal Pro Cha Cha and Hip Hop tunes open in them (#97).
 - Swing Two/Four style: the head is played in two, then the band walks in four; iReal Pro's Swing Two/Four tunes open in it (#96).
