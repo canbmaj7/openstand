@@ -452,6 +452,8 @@ button:disabled {
   align-items: center;
   min-width: 0;
   column-gap: 0.4em;
+  /* Chords grow with the chart size only as far as the bar has room (cqi below) */
+  container-type: inline-size;
   min-height: calc(var(--bar-min-h) * var(--sheet-scale));
   padding: 0 calc(var(--bar-pad-x) * var(--sheet-scale));
   border-left: 1.5px solid var(--ink);
@@ -671,16 +673,17 @@ button:disabled {
   display: inline-flex;
   align-items: baseline;
   white-space: nowrap;
-  font-size: calc(var(--chord-size) * var(--sheet-scale));
+  /* Shrinks freely; grows only as far as the bar has room */
+  font-size: max(calc(var(--chord-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-size) * var(--sheet-scale)), 40cqi));
   line-height: 1;
 }
 
 .bar-pair .chord {
-  font-size: calc(var(--chord-pair-size) * var(--sheet-scale));
+  font-size: max(calc(var(--chord-pair-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-pair-size) * var(--sheet-scale)), 32cqi));
 }
 
 .bar-dense .chord {
-  font-size: calc(var(--chord-dense-size) * var(--sheet-scale));
+  font-size: max(calc(var(--chord-dense-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-dense-size) * var(--sheet-scale)), 20cqi));
 }
 
 .chord-main {
@@ -1626,7 +1629,7 @@ input.fader::-moz-range-thumb {
 
   .sheet {
     --chord-size: 36px;
-    --chord-pair-size: 32px;
+    --chord-pair-size: 36px;
     --chord-dense-size: 26px;
     --chord-nc-size: 22px;
     padding: 36px 32px 48px;
@@ -1872,7 +1875,8 @@ input.fader::-moz-range-thumb {
     padding: 0 5px;
   }
 
-  .wordmark-name {
+  /* No room on phones, and bars there are too narrow for bigger chords; pinch zoom works instead */
+  .topbar-scale {
     display: none;
   }
 
