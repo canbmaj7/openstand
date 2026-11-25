@@ -27,6 +27,8 @@ import { ImportDialog, type ImportResult } from './ui/ImportDialog'
 import { Library } from './ui/Library'
 import { Mixer } from './ui/Mixer'
 import { Popover } from './ui/Popover'
+import { AddToSetlist } from './ui/AddToSetlist'
+import { useSetlists } from './ui/useSetlists'
 import { loadCountIn, NO_PRACTICE, saveCountIn, startBeatFor, type PracticeSettings } from './music/practice'
 import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
@@ -152,6 +154,10 @@ export default function App() {
   const playerRef = useRef<Player | null>(null)
   const timelineRef = useRef<Timeline | null>(null)
   const pointerFocusedButtonRef = useRef<HTMLElement | null>(null)
+  const userStoppedRef = useRef(false)
+  const cancelAutoPlayRef = useRef<() => void>(() => {})
+  const onTrackEndedRef = useRef<() => void>(() => {})
+  const startNextRef = useRef<() => void>(() => {})
 
   const [readiness, setReadiness] = useState<Readiness>({ kind: 'loading', progress: 0 })
   const [tunes, setTunes] = useState<Tune[]>(EXAMPLES)
@@ -281,6 +287,7 @@ export default function App() {
     player.onEnded = () => {
       setPlaying(false)
       setPosition(null)
+      if (!userStoppedRef.current) onTrackEndedRef.current()
     }
     player
       .init((progress) => active && setReadiness({ kind: 'loading', progress }))
@@ -367,6 +374,8 @@ export default function App() {
   const start = async (opts: ArrangeOptions, fromSeconds = 0, chartToUse = chart, fromStartPoint = false) => {
     const player = playerRef.current
     if (!player) return
+    cancelAutoPlayRef.current()
+    userStoppedRef.current = false
     setNotice(null)
     const { loop, keyStep, subs, countIn } = opts.practice
     const { midi, timeline } = arrange(chartToUse, resolveStyle(opts.styleId), opts.transpose, opts.choruses, { loop, keyStep, subs, countIn })
@@ -392,6 +401,8 @@ export default function App() {
   }
 
   const stop = useCallback(() => {
+    cancelAutoPlayRef.current()
+    userStoppedRef.current = true
     playerRef.current?.stop()
     setPlaying(false)
     setPosition(null)
@@ -492,6 +503,8 @@ export default function App() {
   }, [playing])
 
   const showTune = useCallback((next: Tune) => {
+    cancelAutoPlayRef.current()
+    userStoppedRef.current = true
     playerRef.current?.stop()
     setPlaying(false)
     setPosition(null)
@@ -515,9 +528,30 @@ export default function App() {
     }
   }, [])
 
+  const setlists = useSetlists({
+    tunes,
+    songId: tune.id,
+    showTune,
+    startNext: () => startNextRef.current(),
+    onError: setNotice,
+  })
+  useEffect(() => {
+    cancelAutoPlayRef.current = setlists.cancelAutoPlay
+    onTrackEndedRef.current = () => {
+      void setlists.onTrackEnded()
+    }
+    startNextRef.current = () => {
+      void start({ styleId, transpose, choruses, practice }, 0, chart, false)
+    }
+  })
+
+  const { clearActive: clearSetlist } = setlists
   const selectSong = (id: string) => {
     const next = tunes.find((t) => t.id === id)
-    if (next) showTune(next)
+    if (next) {
+      clearSetlist()
+      showTune(next)
+    }
   }
 
   // Load the saved library, then open a shared tune from the URL or the last tune played
@@ -561,12 +595,13 @@ export default function App() {
       if (!shared) return
       const [added] = await addTunes([shared], 'link', 'Shared with me', setNotice)
       setTunes((all) => [...all.filter((t) => t.id !== added.id), added])
+      clearSetlist()
       showTune(added)
       history.replaceState(null, '', window.location.pathname)
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
-  }, [showTune])
+  }, [clearSetlist, showTune])
 
   const importText = useCallback(
     async (text: string, filename?: string): Promise<ImportResult> => {
@@ -574,6 +609,7 @@ export default function App() {
         const imported = parseChartFile(text)
         const [added] = await addTunes([imported], 'import', 'Imported tunes', setNotice)
         setTunes((all) => [...all.filter((t) => t.id !== added.id), added])
+        clearSetlist()
         showTune(added)
         return { tunes: 1, playlists: ['Imported tunes'] }
       }
@@ -583,11 +619,12 @@ export default function App() {
       if (added.length) {
         const ids = new Set(added.map((t) => t.id))
         setTunes((all) => [...all.filter((t) => !ids.has(t.id)), ...added])
+        clearSetlist()
         showTune(added[0])
       }
       return { tunes: added.length, playlists: [...new Set(lists.filter((l) => l.charts.length).map((l) => l.name))] }
     },
-    [showTune],
+    [clearSetlist, showTune],
   )
 
   // Pasting an iReal Pro link anywhere outside a text field imports it
@@ -740,6 +777,7 @@ export default function App() {
     }
     setTunes((all) => [...all.filter((t) => t.id !== saved.id), saved])
     setDraft(null)
+    clearSetlist()
     showTune(saved)
   }
 
@@ -748,6 +786,7 @@ export default function App() {
     await removeTune(draft.from.id)
     setTunes((all) => all.filter((t) => t.id !== draft.from?.id))
     setDraft(null)
+    clearSetlist()
     showTune(EXAMPLES[0])
   }
 
@@ -809,6 +848,15 @@ export default function App() {
             <button className="topbar-button" onClick={() => startEditing(tune)} title="Edit this chart">
               Edit
             </button>
+            <AddToSetlist
+              tuneId={tune.id}
+              tunes={tunes}
+              setlists={setlists.setlists}
+              onAdd={setlists.add}
+              onCreateAndAdd={(name, id) => {
+                setlists.create(name, id)
+              }}
+            />
             <Popover id="share" className="share" label="Share">
               {(close) => (
                 <div className="share-panel">
@@ -905,6 +953,20 @@ export default function App() {
           onRemovePlaylist={(name) => {
             void removePlaylist(name)
             setTunes((all) => all.filter((t) => t.source === 'example' || t.playlist !== name))
+          }}
+          setlists={{
+            setlists: setlists.setlists,
+            openSetlistId: setlists.openSetlistId,
+            activeSetlistId: setlists.activeSetlistId,
+            playThrough: setlists.playThrough,
+            onOpenSetlist: setlists.setOpenSetlistId,
+            onCreate: setlists.create,
+            onRename: setlists.rename,
+            onDelete: setlists.remove,
+            onSelectTune: setlists.selectTune,
+            onMoveTune: setlists.moveTune,
+            onRemoveTune: setlists.removeTuneAt,
+            onTogglePlayThrough: setlists.togglePlayThrough,
           }}
         />
 
@@ -1025,6 +1087,11 @@ export default function App() {
         playing={playing}
         onToggle={toggle}
         position={readout}
+        setlistStatus={
+          setlists.activePosition
+            ? `${setlists.activePosition.name} · ${setlists.activePosition.index + 1}/${setlists.activePosition.total}`
+            : null
+        }
         notice={notice}
         styleId={styleId}
         extraStyles={[
