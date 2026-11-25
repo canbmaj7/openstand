@@ -183,7 +183,9 @@ function lengths(onsets: number[], end: number, max: number): number[] {
 const round = (n: number) => Math.round(n * 1000) / 1000
 
 export function styleFromLab(lab: LabStyle): StyleDefinition {
-  const base = getStyle(lab.base)
+  const base = { ...getStyle(lab.base) }
+  // The lab edits a single groove across all choruses, so drop chorus-specific overrides from the base style.
+  delete base.firstChorus
   const one = barSteps(lab)
   const key = String(lab.beats) as '3' | '4'
 

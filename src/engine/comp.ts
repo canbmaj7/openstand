@@ -112,22 +112,24 @@ export function generateComp(
   countIn: number,
   compound: CompPart = part,
   family: StyleFamily = 'pop',
+  firstChorus?: CompPart,
 ): NoteEvent[] {
   const events: NoteEvent[] = []
   let prev: number[] = []
   let activeTwoBar: CompHit[] | null = null
 
   slots.forEach((slot) => {
-    const { rhythms, twoBar, anticipation = 0 } = slot.compound ? compound : part
+    const activePart = slot.compound ? compound : slot.chorus === 0 && firstChorus ? firstChorus : part
+    const { rhythms, twoBar, anticipation = 0 } = activePart
     const feel = slot.groups || slot.compound ? 0.5 : swing
-    const voicing = chooseVoicing(slot.chord, part.voicing, prev)
+    const voicing = chooseVoicing(slot.chord, activePart.voicing, prev)
     prev = voicing
 
     if (slot.measure === -1) {
       // Final chord: one long hit, adding a low root in the left hand for piano styles
-      const notes = part.voicing === 'guitar' ? voicing : [slot.chord.root + 36, ...voicing]
+      const notes = activePart.voicing === 'guitar' ? voicing : [slot.chord.root + 36, ...voicing]
       for (const note of notes) {
-        events.push({ tick: toTicks(slot.start), channel: CHANNEL, note, velocity: part.velocity[1], duration: toTicks(slot.beats - 0.5) })
+        events.push({ tick: toTicks(slot.start), channel: CHANNEL, note, velocity: activePart.velocity[1], duration: toTicks(slot.beats - 0.5) })
       }
       return
     }
@@ -161,7 +163,7 @@ export function generateComp(
     }
 
     for (const [at, duration, vel] of hits) {
-      const velocity = vel ?? rand(part.velocity[0], part.velocity[1])
+      const velocity = vel ?? rand(activePart.velocity[0], activePart.velocity[1])
       for (const note of voicing) {
         events.push(
           humanize(

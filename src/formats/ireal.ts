@@ -45,6 +45,7 @@ export function mapStyle(name: string, time: TimeSignature = [4, 4]): string {
   if (/ballad/.test(s) && !/pop|rock|rnb|soul|country|folk/.test(s)) return inThree ? 'jazz-waltz' : 'ballad'
   if (/up.?tempo/.test(s) && !inThree) return 'up-tempo-swing'
   if (/gypsy|manouche/.test(s)) return 'gypsy-jazz'
+  if (/two.?four|2\/4\s*swing|swing\s*2\/4/.test(s)) return inThree ? 'jazz-waltz' : 'swing-two-four'
   if (/swing|bop|jazz|trad|new orleans|second line/.test(s)) return inThree ? 'jazz-waltz' : 'medium-swing'
   if (/reggae/.test(s)) return 'reggae'
   if (/pop|rock|even|country|folk|house|smooth|bluegrass|ballad/.test(s)) return 'pop-rock'
