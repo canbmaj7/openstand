@@ -41,6 +41,7 @@ import { Popover } from './ui/Popover'
 import { AddToSetlist } from './ui/AddToSetlist'
 import { useSetlists } from './ui/useSetlists'
 import { loadCountIn, NO_PRACTICE, saveCountIn, startBeatFor, type PracticeSettings } from './music/practice'
+import { createTapTempo, type TapTempo } from './music/tapTempo'
 import { Practice } from './ui/Practice'
 import { StyleLab } from './ui/StyleLab'
 import { switchMode } from './music/mode'
@@ -148,6 +149,7 @@ function positionAt(timeline: Timeline, beat: number): Position | null {
 export default function App() {
   const playerRef = useRef<Player | null>(null)
   const timelineRef = useRef<Timeline | null>(null)
+  const tapTempoRef = useRef<TapTempo | null>(null)
   const pointerFocusedButtonRef = useRef<HTMLElement | null>(null)
   const userStoppedRef = useRef(false)
   const previewingRef = useRef(false)
@@ -497,6 +499,12 @@ export default function App() {
     updateSavedTune(tune.id, { bpm: clamped }, { style: tune.chart.style, bpm: tune.chart.bpm }, { debounceMs: 400 })
   }
 
+  const tapTempo = () => {
+    tapTempoRef.current ??= createTapTempo()
+    const next = tapTempoRef.current.tap()
+    if (next !== null) changeBpm(next)
+  }
+
   const changeMode = (nextMode: ModeOption) => {
     setMode(nextMode)
     setSelectedChord(null)
@@ -521,6 +529,7 @@ export default function App() {
       if (readiness.kind === 'ready') toggle()
     },
     tempo: (delta) => changeBpm(bpmRef.current + delta),
+    tapTempo,
     transpose: (delta) => changeArrangement({ transpose: offsetToKey(chart.key, (keyPc + delta + 12) % 12) }),
     clearLoop: () => {
       setPicking(null)
@@ -590,6 +599,7 @@ export default function App() {
     const nextBpm = saved?.bpm ?? next.chart.bpm
     bpmRef.current = nextBpm
     setBpm(nextBpm)
+    tapTempoRef.current?.reset()
     if (saved?.choruses !== undefined) setChoruses(saved.choruses)
     setPractice((p) => ({ ...p, loop: null }))
     setPicking(null)
@@ -612,6 +622,7 @@ export default function App() {
     setTranspose(0)
     bpmRef.current = tune.chart.bpm
     setBpm(tune.chart.bpm)
+    tapTempoRef.current?.reset()
     setChoruses(DEFAULT_CHORUSES)
     const player = playerRef.current
     if (playing && player) {
@@ -1319,6 +1330,7 @@ export default function App() {
         bpm={bpm}
         bpmRange={BPM_RANGE}
         onBpm={changeBpm}
+        onTapTempo={tapTempo}
         choruses={choruses}
         maxChoruses={MAX_CHORUSES}
         onChoruses={(n) => changeArrangement({ choruses: n })}

@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { keyPrefersFlats, noteName } from '../music/chords'
 import { INSTRUMENTS, type InstrumentId } from '../music/instrument'
+import { createTapTempo, type TapTempo } from '../music/tapTempo'
 import { STYLES } from '../styles'
 
 const RING = 2 * Math.PI * 27 // circumference of the loading ring
@@ -28,6 +29,7 @@ interface TransportProps {
   bpm: number
   bpmRange: [number, number]
   onBpm: (bpm: number) => void
+  onTapTempo?: () => void
   choruses: number
   maxChoruses: number
   onChoruses: (n: number) => void
@@ -41,6 +43,16 @@ export function Transport(props: TransportProps) {
   const loading = readiness.kind === 'loading'
   const clampBpm = (v: number) => Math.max(bpmRange[0], Math.min(bpmRange[1], v))
   const concertKey = noteName(props.keyPc, keyPrefersFlats(props.keyPc))
+  const tapTempoRef = useRef<TapTempo | null>(null)
+  const handleTapTempo = () => {
+    if (props.onTapTempo) {
+      props.onTapTempo()
+      return
+    }
+    tapTempoRef.current ??= createTapTempo()
+    const next = tapTempoRef.current.tap()
+    if (next !== null) props.onBpm(clampBpm(next))
+  }
 
   return (
     <section className="transport" aria-label="Playback">
@@ -151,7 +163,15 @@ export function Transport(props: TransportProps) {
           <button aria-label="Faster" onClick={() => props.onBpm(clampBpm(bpm + 5))}>
             +
           </button>
-          <output className="stepper-value">{bpm}</output>
+          <button
+            type="button"
+            className="stepper-value"
+            aria-label={`Tap tempo, ${bpm} BPM`}
+            title="Tap to set the tempo (T)"
+            onClick={handleTapTempo}
+          >
+            {bpm}
+          </button>
         </div>
       </div>
 
