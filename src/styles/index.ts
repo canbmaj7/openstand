@@ -8,6 +8,7 @@ import { chaCha } from './library/cha-cha'
 import { country } from './library/country'
 import { cumbia } from './library/cumbia'
 import { funk } from './library/funk'
+import { gospel } from './library/gospel'
 import { gypsyJazz } from './library/gypsy-jazz'
 import { hipHop } from './library/hip-hop'
 import { jazzWaltz } from './library/jazz-waltz'
@@ -17,6 +18,7 @@ import { popRock } from './library/pop-rock'
 import { reggae } from './library/reggae'
 import { samba } from './library/samba'
 import { shuffle } from './library/shuffle'
+import { slowBlues } from './library/slow-blues'
 import { swingTwoFour } from './library/swing-two-four'
 import { tango } from './library/tango'
 import { upTempoSwing } from './library/up-tempo-swing'
@@ -41,7 +43,9 @@ export const STYLES: StyleDefinition[] = [
   popRock,
   funk,
   hipHop,
+  gospel,
   shuffle,
+  slowBlues,
   reggae,
   country,
   aksak,
