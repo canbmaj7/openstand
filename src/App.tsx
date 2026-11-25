@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadMuted, loadVolumes, saveMuted, saveVolumes } from './audio/mixerState'
 import { Player } from './audio/player'
 import { loadReverb, REVERB_KEY } from './audio/reverb'
+import { loadTuning, saveTuning } from './audio/tuning'
 import { arrange, BASE_BPM, CHANNELS, type Part } from './engine/arrange'
 import { auditionMidi } from './engine/audition'
 import { warmUpMidi } from './engine/warmup'
@@ -241,6 +242,7 @@ export default function App() {
   })
   const [masterMuted, setMasterMuted] = useState(false)
   const [reverb, setReverb] = useState(loadReverb)
+  const [tuning, setTuning] = useState(loadTuning)
   const [latencyOffset, setLatencyOffset] = useState(() => {
     try {
       const saved = Number(localStorage.getItem(LATENCY_KEY))
@@ -367,6 +369,11 @@ export default function App() {
     }
     if (readiness.kind === 'ready') playerRef.current?.setReverb(reverb)
   }, [reverb, readiness.kind])
+
+  useEffect(() => {
+    saveTuning(tuning)
+    if (readiness.kind === 'ready') playerRef.current?.setTuning(tuning)
+  }, [tuning, readiness.kind])
 
   useEffect(() => {
     try {
@@ -1057,7 +1064,7 @@ export default function App() {
                             choruses,
                             practice: practiceOptions(practice),
                             bpm,
-                            mixer: { volumes, muted, master, masterMuted, reverb },
+                            mixer: { volumes, muted, master, masterMuted, reverb, tuning },
                             soundBank: playerRef.current?.soundBank,
                             ramp: exportRamp,
                           },
@@ -1406,6 +1413,8 @@ export default function App() {
           onMasterMute={() => setMasterMuted((m) => !m)}
           reverb={reverb}
           onReverb={setReverb}
+          tuning={tuning}
+          onTuning={setTuning}
           sync={latencyOffset}
           onSync={setLatencyOffset}
           level={outputLevel}

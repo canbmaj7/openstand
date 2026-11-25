@@ -7,6 +7,7 @@ import {
   audioToWav,
 } from 'spessasynth_core'
 import { applyReverb, DEFAULT_REVERB } from './reverb'
+import { applyTuning } from './tuning'
 
 export const RENDER_SAMPLE_RATE = 44100
 const BLOCK_SIZE = 128
@@ -25,6 +26,7 @@ export interface RenderWavOptions {
   volumes: Record<number, number>
   masterGain: number
   reverb?: number
+  tuningCents?: number
   onProgress?: (ratio: number) => void
   signal?: AbortSignal
 }
@@ -77,7 +79,7 @@ async function renderPcmCore(
   soundBank: ArrayBuffer,
   options: RenderWavOptions,
 ): Promise<{ left: Float32Array; right: Float32Array }> {
-  const { volumes, masterGain, reverb = DEFAULT_REVERB, onProgress, signal } = options
+  const { volumes, masterGain, reverb = DEFAULT_REVERB, tuningCents = 0, onProgress, signal } = options
   throwIfAborted(signal)
 
   onProgress?.(0)
@@ -109,6 +111,7 @@ async function renderPcmCore(
       midiChannel.lockController(MIDIControllers.mainVolume, true)
     }
     applyReverb(synth, reverb)
+    applyTuning(synth, tuningCents)
 
     const left = new Float32Array(totalSamples)
     const right = new Float32Array(totalSamples)

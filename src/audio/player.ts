@@ -2,6 +2,7 @@ import { MIDIControllers } from 'spessasynth_core'
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib'
 import processorUrl from 'spessasynth_lib/dist/spessasynth_processor.min.js?url'
 import { applyReverb, DEFAULT_REVERB } from './reverb'
+import { applyTuning, centsForA4, clampA4, DEFAULT_A4 } from './tuning'
 
 export const SOUNDFONT_URL = '/soundfonts/openstand.sf3'
 const UNLOCK_EVENTS = ['pointerdown', 'touchend', 'keydown'] as const
@@ -40,6 +41,7 @@ export class Player {
   private seq: Sequencer | null = null
   private volumes = new Map<number, number>()
   private reverb = DEFAULT_REVERB
+  private tuning = DEFAULT_A4
   // Loads go one at a time, so a warm-up load can't replace the song the user asked for
   private loading: Promise<void> = Promise.resolve()
   private playRequested = false
@@ -143,6 +145,7 @@ export class Player {
 
     this.synth = synth
     this.seq = seq
+    this.applyTuning()
   }
 
   // Loads the MIDI and starts playing from the given time (seconds of MIDI time)
@@ -167,6 +170,7 @@ export class Player {
     this.removeUnlock()
     this.applyVolumes()
     this.applyReverb()
+    this.applyTuning()
     if (fromSeconds > 0) seq.currentTime = fromSeconds
     seq.play()
   }
@@ -265,6 +269,15 @@ export class Player {
 
   private applyReverb(): void {
     if (this.synth) applyReverb(this.synth, this.reverb)
+  }
+
+  setTuning(hz: number): void {
+    this.tuning = clampA4(hz)
+    this.applyTuning()
+  }
+
+  private applyTuning(): void {
+    if (this.synth) applyTuning(this.synth, centsForA4(this.tuning))
   }
 
   private requireSeq(): Sequencer {
