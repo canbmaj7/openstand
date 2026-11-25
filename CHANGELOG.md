@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Make the chart bigger or smaller with A− / A+ in the top bar; the size is remembered and used for printing (#80).
 - Reverb fader in the mixer, also used for the WAV export (#78).
 - Setlists: make your own lists from any tunes, reorder them, share them as one iReal Pro link, and play straight through (#71).
 - Download a chart as MusicXML from the Share menu, to open it in MuseScore, Finale, Dorico or Sibelius (#73).

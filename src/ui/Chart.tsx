@@ -20,6 +20,7 @@ interface ChartProps {
   selectedBar?: number | null // the bar being edited
   selectedRange?: [number, number] | null // contiguous selected bars in the editor
   plain?: boolean
+  scale?: number
   startAt?: string | null
   onBarClick?: (index: number, shiftKey?: boolean) => void
   onChordClick?: (chord: Chord, barIndex: number, chordIndex: number) => void
@@ -243,7 +244,7 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 }
 
 export function Chart(props: ChartProps) {
-  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, startAt, onBarClick, onChordClick, header } = props
+  const { chart, style, transpose, activeMeasure, activeSub = false, beatInBar, barBeats, range, selectedBar, selectedRange, plain, scale = 100, startAt, onBarClick, onChordClick, header } = props
   const keyPc = (chart.key + transpose + 12) % 12
   const layout = useMemo(() => rows(chart, transpose), [chart, transpose])
   const keyName = prettyKey(noteName(keyPc, keyPrefersFlats(keyPc))) + (chart.minor ? '−' : '')
@@ -308,7 +309,11 @@ export function Chart(props: ChartProps) {
   }, [activeMeasure])
 
   return (
-    <article className="sheet" aria-label={`${chart.title} chord chart`}>
+    <article
+      className="sheet"
+      style={{ '--chart-scale': String(scale / 100) } as CSSProperties}
+      aria-label={`${chart.title} chord chart`}
+    >
       {header ?? (
         <header className="sheet-head">
           <span className="sheet-meta">({style.id === chart.style && chart.sourceStyle ? chart.sourceStyle : style.name})</span>

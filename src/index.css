@@ -175,10 +175,27 @@ button:disabled {
 }
 
 .topbar-link:hover,
-.topbar-button:hover,
+.topbar-button:hover:not(:disabled),
 .tunes-toggle:hover {
   color: var(--ink);
   border-color: var(--ink-2);
+}
+
+.topbar-button:disabled {
+  opacity: 0.4;
+}
+
+.topbar-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar-scale-button {
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  padding: 0 8px;
 }
 
 .topbar-chord-font {
@@ -338,6 +355,48 @@ button:disabled {
 /* ---------- Lead sheet ---------- */
 
 .sheet {
+  --chart-scale: 1;
+  --sheet-scale: var(--chart-scale);
+  --sheet-head-gap: 40px;
+  --sheet-title-size: 44px;
+  --sheet-title-underline: 10px;
+  --sheet-meta-size: 19px;
+  --row-gap: 42px;
+  --bar-min-h: 84px;
+  --bar-pad-x: 10px;
+  --bar-scroll-margin: 32px;
+  --bar-time-pad: 44px;
+  --bar-groups-pad: 62px;
+  --bar-repeat-pad: 30px;
+  --bar-repeat-time-pad: 62px;
+  --bar-repeat-groups-pad: 80px;
+  --bar-repeat-time-left: 30px;
+  --repeat-size: 30px;
+  --bar-number-size: 11px;
+  --bar-number-top: -20px;
+  --mark-section-size: 20px;
+  --mark-section-top: -30px;
+  --mark-section-left: -14px;
+  --mark-section-min-w: 26px;
+  --mark-ending-size: 17px;
+  --mark-ending-top: -22px;
+  --mark-sign-size: 20px;
+  --mark-sign-top: -26px;
+  --mark-sign-left: 30px;
+  --mark-fermata-size: 18px;
+  --mark-fermata-top: -6px;
+  --mark-text-size: 16px;
+  --mark-text-bottom: -22px;
+  --mark-text-left: 8px;
+  --timesig-size: 26px;
+  --timesig-left: 12px;
+  --timesig-groups-size: 10px;
+  --highlight-inset-y: 14px;
+  --highlight-inset-x: 4px;
+  --chord-size: 50px;
+  --chord-pair-size: 50px;
+  --chord-dense-size: 36px;
+  --chord-nc-size: 28px;
   max-width: 1040px;
   min-height: 100%;
   margin: 0 auto;
@@ -354,21 +413,21 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: end;
-  gap: 24px;
-  margin-bottom: 40px;
+  gap: calc(24px * var(--sheet-scale));
+  margin-bottom: calc(var(--sheet-head-gap) * var(--sheet-scale));
 }
 
 .sheet-title {
   margin: 0;
-  font: 400 44px/1.1 var(--script);
+  font: 400 calc(var(--sheet-title-size) * var(--sheet-scale))/1.1 var(--script);
   text-align: center;
   text-decoration: underline;
   text-decoration-thickness: 2px;
-  text-underline-offset: 10px;
+  text-underline-offset: calc(var(--sheet-title-underline) * var(--sheet-scale));
 }
 
 .sheet-meta {
-  font-size: 19px;
+  font-size: calc(var(--sheet-meta-size) * var(--sheet-scale));
   color: var(--ink-2);
 }
 
@@ -378,7 +437,7 @@ button:disabled {
 
 .rows {
   display: grid;
-  row-gap: 42px;
+  row-gap: calc(var(--row-gap) * var(--sheet-scale));
 }
 
 /* A row of 16 cells, as on an iReal Pro chart; a 4/4 bar is usually 4 cells */
@@ -391,11 +450,14 @@ button:disabled {
   position: relative;
   display: grid;
   align-items: center;
+  min-width: 0;
   column-gap: 0.4em;
-  min-height: 84px;
-  padding: 0 10px;
+  /* Chords grow with the chart size only as far as the bar has room (cqi below) */
+  container-type: inline-size;
+  min-height: calc(var(--bar-min-h) * var(--sheet-scale));
+  padding: 0 calc(var(--bar-pad-x) * var(--sheet-scale));
   border-left: 1.5px solid var(--ink);
-  scroll-margin: 32px 0;
+  scroll-margin: calc(var(--bar-scroll-margin) * var(--sheet-scale)) 0;
 }
 
 .bar-no-left,
@@ -409,27 +471,27 @@ button:disabled {
 }
 
 .bar-with-time {
-  padding-left: 44px;
+  padding-left: calc(var(--bar-time-pad) * var(--sheet-scale));
 }
 
 .bar-with-groups {
-  padding-left: 62px;
+  padding-left: calc(var(--bar-groups-pad) * var(--sheet-scale));
 }
 
 .bar-repeat-start {
-  padding-left: 30px;
+  padding-left: calc(var(--bar-repeat-pad) * var(--sheet-scale));
 }
 
 .bar-repeat-start.bar-with-time {
-  padding-left: 62px;
+  padding-left: calc(var(--bar-repeat-time-pad) * var(--sheet-scale));
 }
 
 .bar-repeat-start.bar-with-groups {
-  padding-left: 80px;
+  padding-left: calc(var(--bar-repeat-groups-pad) * var(--sheet-scale));
 }
 
 .bar-repeat-start.bar-with-time .timesig {
-  left: 30px;
+  left: calc(var(--bar-repeat-time-left) * var(--sheet-scale));
 }
 
 .bar-double::after,
@@ -454,7 +516,7 @@ button:disabled {
   top: 50%;
   translate: 0 -50%;
   font-family: 'Petaluma Text';
-  font-size: 30px;
+  font-size: calc(var(--repeat-size) * var(--sheet-scale));
   line-height: 1;
 }
 
@@ -466,28 +528,24 @@ button:disabled {
   right: -2px;
 }
 
-.bar-dense .chord {
-  font-size: 0.72em;
-}
-
 .bar-number {
   position: absolute;
-  top: -20px;
+  top: calc(var(--bar-number-top) * var(--sheet-scale));
   left: -2px;
-  font: 500 11px/1 var(--mono);
+  font: 500 calc(var(--bar-number-size) * var(--sheet-scale))/1 var(--mono);
   color: var(--muted);
 }
 
 .mark-section {
   position: absolute;
-  top: -30px;
-  left: -14px;
-  min-width: 26px;
+  top: calc(var(--mark-section-top) * var(--sheet-scale));
+  left: calc(var(--mark-section-left) * var(--sheet-scale));
+  min-width: calc(var(--mark-section-min-w) * var(--sheet-scale));
   padding: 2px 6px 0;
   border: 2px solid var(--ink);
   border-radius: 3px 6px 2px 5px;
   background: var(--paper);
-  font-size: 20px;
+  font-size: calc(var(--mark-section-size) * var(--sheet-scale));
   line-height: 1.1;
   text-align: center;
 }
@@ -498,56 +556,56 @@ button:disabled {
 
 .mark-ending {
   position: absolute;
-  top: -22px;
+  top: calc(var(--mark-ending-top) * var(--sheet-scale));
   left: -1px;
   right: 30%;
   padding: 0 0 0 6px;
   border-top: 1.5px solid var(--ink);
   border-left: 1.5px solid var(--ink);
-  font-size: 17px;
+  font-size: calc(var(--mark-ending-size) * var(--sheet-scale));
   line-height: 1.2;
 }
 
 .mark-sign {
   position: absolute;
-  top: -26px;
-  left: 30px;
+  top: calc(var(--mark-sign-top) * var(--sheet-scale));
+  left: calc(var(--mark-sign-left) * var(--sheet-scale));
   font-family: 'Petaluma Text';
-  font-size: 20px;
+  font-size: calc(var(--mark-sign-size) * var(--sheet-scale));
   line-height: 1;
 }
 
 .mark-fermata {
   position: absolute;
-  top: -6px;
+  top: calc(var(--mark-fermata-top) * var(--sheet-scale));
   left: 50%;
   font-family: 'Petaluma Text';
-  font-size: 18px;
+  font-size: calc(var(--mark-fermata-size) * var(--sheet-scale));
   line-height: 1;
 }
 
 .mark-text {
   position: absolute;
-  bottom: -22px;
-  left: 8px;
-  font-size: 16px;
+  bottom: calc(var(--mark-text-bottom) * var(--sheet-scale));
+  left: calc(var(--mark-text-left) * var(--sheet-scale));
+  font-size: calc(var(--mark-text-size) * var(--sheet-scale));
   white-space: nowrap;
   color: var(--ink-2);
 }
 
 .timesig {
   position: absolute;
-  left: 12px;
+  left: calc(var(--timesig-left) * var(--sheet-scale));
   top: 50%;
   translate: 0 -50%;
   display: grid;
-  font-size: 26px;
+  font-size: calc(var(--timesig-size) * var(--sheet-scale));
   line-height: 0.9;
   text-align: center;
 }
 
 .timesig-groups {
-  font: 500 10px/1 var(--mono);
+  font: 500 calc(var(--timesig-groups-size) * var(--sheet-scale))/1 var(--mono);
   letter-spacing: -0.03em;
   color: var(--muted);
   margin-top: 3px;
@@ -599,7 +657,7 @@ button:disabled {
 /* The current bar is marked the way a player would: a highlighter stroke, drawn as the bar plays */
 .bar-highlight {
   position: absolute;
-  inset: 14px 4px;
+  inset: calc(var(--highlight-inset-y) * var(--sheet-scale)) calc(var(--highlight-inset-x) * var(--sheet-scale));
   z-index: 0;
   background: var(--highlighter);
   mix-blend-mode: var(--highlighter-blend);
@@ -615,8 +673,17 @@ button:disabled {
   display: inline-flex;
   align-items: baseline;
   white-space: nowrap;
-  font-size: 50px;
+  /* Shrinks freely; grows only as far as the bar has room */
+  font-size: max(calc(var(--chord-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-size) * var(--sheet-scale)), 40cqi));
   line-height: 1;
+}
+
+.bar-pair .chord {
+  font-size: max(calc(var(--chord-pair-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-pair-size) * var(--sheet-scale)), 32cqi));
+}
+
+.bar-dense .chord {
+  font-size: max(calc(var(--chord-dense-size) * min(var(--sheet-scale), 1)), min(calc(var(--chord-dense-size) * var(--sheet-scale)), 20cqi));
 }
 
 .chord-main {
@@ -638,7 +705,7 @@ button:disabled {
 }
 
 .chord.chord-start .chord-alt {
-  left: 12px;
+  left: calc(12px * var(--sheet-scale));
 }
 
 .chord.chord-sub-active .chord-main {
@@ -666,8 +733,8 @@ button:disabled {
   content: '▶';
   position: absolute;
   left: 0;
-  top: -10px;
-  font-size: 10px;
+  top: calc(-10px * var(--sheet-scale));
+  font-size: calc(10px * var(--sheet-scale));
   line-height: 1;
   color: var(--ink);
   pointer-events: none;
@@ -695,7 +762,7 @@ button:disabled {
 }
 
 .chord.chord-nc {
-  font-size: 28px;
+  font-size: calc(var(--chord-nc-size) * var(--sheet-scale));
 }
 
 .chord-unknown {
@@ -1561,11 +1628,11 @@ input.fader::-moz-range-thumb {
   }
 
   .sheet {
+    --chord-size: 36px;
+    --chord-pair-size: 36px;
+    --chord-dense-size: 26px;
+    --chord-nc-size: 22px;
     padding: 36px 32px 48px;
-  }
-
-  .chord {
-    font-size: 36px;
   }
 }
 
@@ -1592,6 +1659,7 @@ input.fader::-moz-range-thumb {
     padding: 0 9px;
   }
 
+  .topbar-scale-button,
   .topbar-chord-font {
     padding: 0 7px;
   }
@@ -1602,10 +1670,6 @@ input.fader::-moz-range-thumb {
 
   .topbar-spacer {
     display: none;
-  }
-
-  .bar-pair .chord {
-    font-size: 19px;
   }
 
   .topbar-link-text {
@@ -1636,92 +1700,63 @@ input.fader::-moz-range-thumb {
   }
 
   .sheet {
+    --sheet-head-gap: 28px;
+    --sheet-title-size: 32px;
+    --sheet-meta-size: 16px;
+    --row-gap: 26px;
+    --bar-min-h: 60px;
+    --bar-pad-x: 6px;
+    --bar-scroll-margin: 24px;
+    --bar-time-pad: 24px;
+    --bar-groups-pad: 42px;
+    --bar-repeat-pad: 16px;
+    --bar-repeat-time-pad: 36px;
+    --bar-repeat-groups-pad: 54px;
+    --bar-repeat-time-left: 16px;
+    --repeat-size: 20px;
+    --mark-section-top: -24px;
+    --mark-section-left: -8px;
+    --mark-section-min-w: 20px;
+    --mark-section-size: 15px;
+    --mark-sign-top: -20px;
+    --mark-sign-left: 18px;
+    --mark-sign-size: 15px;
+    --mark-text-bottom: -20px;
+    --mark-text-size: 13px;
+    --timesig-left: 6px;
+    --timesig-size: 18px;
+    --timesig-groups-size: 8px;
+    --chord-size: 25px;
+    --chord-pair-size: 19px;
+    --chord-dense-size: 15px;
+    --chord-nc-size: 18px;
     padding: 24px 14px 32px;
   }
 
   .sheet-head {
     grid-template-columns: 1fr 1fr;
     row-gap: 8px;
-    margin-bottom: 28px;
   }
 
   .sheet-title {
     grid-column: 1 / -1;
     grid-row: 1;
-    font-size: 32px;
-  }
-
-  .sheet-meta {
-    font-size: 16px;
-  }
-
-  .rows {
-    row-gap: 26px;
-  }
-
-  .bar {
-    min-height: 60px;
-    padding: 0 6px;
-    scroll-margin: 24px 0;
-  }
-
-  .bar-with-time {
-    padding-left: 24px;
-  }
-
-  .bar-with-groups {
-    padding-left: 42px;
-  }
-
-  .bar-repeat-start {
-    padding-left: 16px;
-  }
-
-  .bar-repeat-start.bar-with-time {
-    padding-left: 36px;
-  }
-
-  .bar-repeat-start.bar-with-groups {
-    padding-left: 54px;
-  }
-
-  .bar-repeat-start.bar-with-time .timesig {
-    left: 16px;
-  }
-
-  .glyph-repeat {
-    font-size: 20px;
-  }
-
-  .mark-section {
-    top: -24px;
-    left: -8px;
-    min-width: 20px;
-    font-size: 15px;
-  }
-
-  .mark-sign {
-    top: -20px;
-    left: 18px;
-    font-size: 15px;
-  }
-
-  .mark-text {
-    bottom: -20px;
-    font-size: 13px;
-  }
-
-  .timesig {
-    left: 6px;
-    font-size: 18px;
-  }
-
-  .timesig-groups {
-    font-size: 8px;
   }
 
   .chord {
-    font-size: 25px;
+    font-size: min(calc(var(--chord-size) * var(--sheet-scale)), 8.2vw);
+  }
+
+  .bar-pair .chord {
+    font-size: min(calc(var(--chord-pair-size) * var(--sheet-scale)), 5.2vw);
+  }
+
+  .bar-dense .chord {
+    font-size: min(calc(var(--chord-dense-size) * var(--sheet-scale)), 4vw);
+  }
+
+  .chord.chord-nc {
+    font-size: min(calc(var(--chord-nc-size) * var(--sheet-scale)), 5.5vw);
   }
 
   .transport {
@@ -1835,15 +1870,19 @@ input.fader::-moz-range-thumb {
     padding: 0 7px;
   }
 
+  .topbar-scale-button,
   .topbar-chord-font {
     padding: 0 5px;
   }
-}
 
-/* On the narrowest phones the logo mark alone is enough */
-@media (max-width: 360px) {
-  .wordmark-name {
+  /* No room on phones, and bars there are too narrow for bigger chords; pinch zoom works instead */
+  .topbar-scale {
     display: none;
+  }
+
+  .sheet {
+    /* Cap the effective scale on narrow phones so barline paddings and chords do not overflow */
+    --sheet-scale: min(var(--chart-scale), 1.3);
   }
 }
 
@@ -1905,6 +1944,8 @@ input.fader::-moz-range-thumb {
   }
 
   .sheet {
+    /* Keep the selected chart scale for printing, capped at 115% so the chart fits on a page */
+    --sheet-scale: min(var(--chart-scale, 1), 1.15);
     width: 100%;
     max-width: none;
     min-height: 0;
