@@ -1,8 +1,9 @@
-import { renderWavCore } from './renderCore'
+import { renderAudioCore, type AudioFormat } from './renderCore'
 
 export type WorkerRequest =
   | {
       type: 'render'
+      format?: AudioFormat
       midi: ArrayBuffer
       soundBank: ArrayBuffer
       volumes: Record<number, number>
@@ -13,7 +14,7 @@ export type WorkerRequest =
 
 export type WorkerResponse =
   | { type: 'progress'; ratio: number }
-  | { type: 'done'; wav: ArrayBuffer }
+  | { type: 'done'; data: ArrayBuffer }
   | { type: 'error'; message: string; name?: string }
 
 let activeController: AbortController | null = null
@@ -29,7 +30,8 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
   const controller = new AbortController()
   activeController = controller
 
-  void renderWavCore(new Uint8Array(data.midi), data.soundBank, {
+  void renderAudioCore(new Uint8Array(data.midi), data.soundBank, {
+    format: data.format ?? 'wav',
     volumes: data.volumes,
     masterGain: data.masterGain,
     reverb: data.reverb,
@@ -39,10 +41,13 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
       self.postMessage(msg)
     },
   }).then(
-    (wav) => {
+    (audio) => {
       if (activeController === controller) activeController = null
-      const buffer = new Uint8Array(wav).buffer
-      const msg: WorkerResponse = { type: 'done', wav: buffer }
+      const buffer =
+        audio.buffer instanceof ArrayBuffer && audio.byteOffset === 0 && audio.byteLength === audio.buffer.byteLength
+          ? audio.buffer
+          : audio.slice().buffer
+      const msg: WorkerResponse = { type: 'done', data: buffer }
       self.postMessage(msg, { transfer: [buffer] })
     },
     (err: unknown) => {

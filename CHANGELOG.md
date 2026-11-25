@@ -6,6 +6,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 ## Unreleased
 
 #### Added
+- Download the backing track as MP3 (192 kbps), next to WAV (#122).
 - Tap tempo: tap the tempo number (or press T) to set the tempo (#119).
 - Chord helper: a This tune view with diagrams for every chord in the chart; click one to study it (#118).
 - Second Line, Even 8ths and Smooth Jazz styles; iReal Pro tunes in these styles open in them (#114).
