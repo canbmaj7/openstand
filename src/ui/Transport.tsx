@@ -13,6 +13,7 @@ interface TransportProps {
   playing: boolean
   onToggle: () => void
   position: string
+  setlistStatus?: string | null
   notice?: string | null
   styleId: string
   extraStyles?: { id: string; name: string }[] // e.g. the style being made in the style lab
@@ -67,7 +68,12 @@ export function Transport(props: TransportProps) {
           ) : props.notice ? (
             <span className="readout-error">{props.notice}</span>
           ) : (
-            readiness.kind === 'ready' && props.position
+            readiness.kind === 'ready' && (
+              <>
+                <span>{props.position}</span>
+                {props.setlistStatus && <span className="readout-setlist">{props.setlistStatus}</span>}
+              </>
+            )
           )}
         </div>
       </div>
