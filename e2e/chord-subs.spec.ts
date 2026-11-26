@@ -24,7 +24,7 @@ test('chord substitutions render above the chord, enable in Practice, and play c
   const alt = page.locator('.chord-alt').first()
   await expect(alt).toBeVisible()
   const subChord = page.locator('.chord', { has: alt }).first()
-  await expect(subChord).toHaveAttribute('aria-label', /, or /)
+  await expect(subChord).toHaveAccessibleName(/, or /)
 
   // Alt chord text is smaller than the main chord
   const sizes = await subChord.evaluate((el) => {

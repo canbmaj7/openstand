@@ -148,7 +148,6 @@ export function ChordSymbol({
       ]
         .filter(Boolean)
         .join(' ')}
-      aria-label={label}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       data-opens={interactive ? 'chords' : undefined}
@@ -171,12 +170,13 @@ export function ChordSymbol({
           : undefined
       }
     >
+      <span className="sr-only">{label}</span>
       {alt && (
         <span className="chord-alt" aria-hidden="true">
           <ChordBody chord={alt} keyPc={keyPc} minor={minor} plain={plain} chordNames={chordNames} />
         </span>
       )}
-      <span className="chord-main" aria-hidden={hidden || undefined}>
+      <span className="chord-main" aria-hidden="true">
         <ChordBody chord={chord} keyPc={keyPc} minor={minor} plain={plain} chordNames={chordNames} />
       </span>
       {hidden && (
@@ -237,7 +237,8 @@ export function BarChord({
     .join(' ')
   if (hidden) {
     return (
-      <span className={`${baseClass} chord-hidden`} aria-label="Hidden chord">
+      <span className={`${baseClass} chord-hidden`}>
+        <span className="sr-only">Hidden chord</span>
         <span className="chord-hidden-content" aria-hidden="true">
           {symbol === null ? 'N.C.' : symbol}
         </span>

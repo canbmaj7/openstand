@@ -22,7 +22,7 @@ test('clicking a chord starts playback from that chord skipping count-in', async
 
   // Verify visual start point indicator and accessibility label while stopped
   await expect(targetChord).toHaveClass(/chord-start/)
-  await expect(targetChord).toHaveAttribute('aria-label', /start point/)
+  await expect(targetChord).toHaveAccessibleName(/start point/)
 
   // Press Play
   await play(page)

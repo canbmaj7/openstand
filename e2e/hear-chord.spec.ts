@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const chords = (page: Page) => page.locator('.chord[aria-label]')
+const chords = (page: Page) => page.locator('.chord:not(.chord-nc)')
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
