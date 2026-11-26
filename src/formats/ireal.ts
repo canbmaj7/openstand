@@ -308,12 +308,12 @@ function markSpacers(bars: ChartBar[], bracketBars: Set<number>): ChartBar[] {
         (prev.repeatEnd && next?.ending !== undefined))
     const rowPad =
       i > 0 &&
-      bracketBars.has(i) &&
+      (bracketBars.has(i) || prev.repeatEnd || prev.barline === 'double') &&
       !bar.barline &&
       !bar.directive &&
       !bar.end &&
       !bar.time &&
-      Boolean(next && (next.section || next.repeatStart || next.coda || next.segno))
+      Boolean(!next || next.section || next.repeatStart || next.coda || next.segno)
     return isBlank(bar) && !bar.repeatEnd && (closes || rowPad) ? { ...bar, spacer: true } : bar
   })
 }

@@ -82,6 +82,28 @@ function closer(bar: ChartBar): string {
   return ''
 }
 
+const isReaderBlank = (b: ChartBar) =>
+  b.chords.length === 0 && !b.section && !b.repeatStart && !b.ending && !b.coda && !b.segno && !b.repeatEnd
+
+// True when parseMusic's markSpacers would drop this blank bar or mark it as layout padding
+function wouldReadAsSpacer(bars: ChartBar[], i: number, prevClose: string, open: string): boolean {
+  const bar = bars[i]
+  const prev = bars[i - 1]
+  const next = bars[i + 1]
+  if (!prev || !isReaderBlank(bar)) return false
+  if (!['}', ']', 'Z'].includes(prevClose) && open !== '[') return false
+  const trailing = bars.slice(i + 1).every((b) => Boolean(b.spacer) && isReaderBlank(b))
+  const closes =
+    prevClose === 'Z' || /^d\.[cs]\./i.test(prev.directive ?? '') || (Boolean(prev.repeatEnd) && next?.ending !== undefined)
+  const rowPad =
+    !bar.barline &&
+    !bar.directive &&
+    !bar.end &&
+    !bar.time &&
+    Boolean(!next || next.section || next.repeatStart || next.coda || next.segno)
+  return trailing || closes || rowPad
+}
+
 export function chartToMusic(chart: Chart): string {
   const { bars } = chart
   let out = ''
@@ -111,13 +133,14 @@ export function chartToMusic(chart: Chart): string {
     let body: string
     if (bar.chords.length === 0) {
       // A blank bar holds the chord: the repeat sign does this when the previous bar had one chord.
-      // Where the band may arrive from elsewhere (a jump, a repeat), the bar stays blank.
+      // Where the band may arrive from elsewhere (a jump, a repeat), the bar stays blank unless the reader would treat it as row padding.
       const width = Math.max(1, bar.cells)
       const prev = bars[i - 1]
       const arrivedFrom =
         !prev || prev.repeatEnd || prev.barline || prev.directive || prev.end || bar.coda || bar.segno || bar.ending || bar.repeatStart
-      if (bar.spacer || held === null || arrivedFrom) body = ' '.repeat(width)
-      else if (prevChords.length === 1) body = 'x' + ' '.repeat(width - 1)
+      const spellHeld = !bar.spacer && held !== null && (!arrivedFrom || wouldReadAsSpacer(bars, i, prevClose, open))
+      if (!spellHeld) body = ' '.repeat(width)
+      else if (!arrivedFrom && prevChords.length === 1) body = 'x' + ' '.repeat(width - 1)
       else {
         const heldCell: WriteCell = heldSmall ? { symbol: held, small: true } : { symbol: held }
         const written = writeCells([heldCell, ...Array.from({ length: width - 1 }, () => undefined)], isSmall)

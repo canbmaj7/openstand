@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { parseIrealLinks, parseMusic, unscramble } from '../src/formats/ireal'
 import { chartToMusic, irealLink } from '../src/formats/irealWrite'
-import type { Chart, ChartBar } from '../src/music/chart'
+import { playbackOrder, type Chart, type ChartBar } from '../src/music/chart'
 
 const stripLayout = (b: ChartBar) => {
   const copy = { ...b }
@@ -186,5 +186,77 @@ describe('iReal Pro links', () => {
     }
     const [back] = parseIrealLinks(irealLink([chart]))[0].charts
     expect(back.bars.map(stripLayout)).toEqual(bars.map(stripLayout))
+  })
+
+  test('marks blank padding after } or ] before a section, repeat, coda, or segno as spacers, unlike mid-section blank bars', () => {
+    const music =
+      '{*AT44C   |F   |G   |C   }        ' +
+      '{*BF   |G   ]        ' +
+      '[*CC   |    |F   }    ' +
+      '[QD-7   |G7   Z'
+    const { bars, time } = parseMusic(music, [4, 4])
+
+    // Padding after } before {*B and after ] before [*C and after } before [Q are spacers
+    expect(bars[3]).toMatchObject({ repeatEnd: true })
+    expect(bars[4]).toMatchObject({ chords: [], spacer: true })
+    expect(bars[5]).toMatchObject({ section: 'B', repeatStart: true })
+    expect(bars[6]).toMatchObject({ barline: 'double' })
+    expect(bars[7]).toMatchObject({ chords: [], spacer: true })
+    expect(bars[8]).toMatchObject({ section: 'C' })
+    // Mid-section |    | stays a played blank bar (not a spacer)
+    expect(bars[9]).toMatchObject({ chords: [] })
+    expect(bars[9].spacer).toBeUndefined()
+    expect(bars[10]).toMatchObject({ repeatEnd: true })
+    expect(bars[11]).toMatchObject({ chords: [], spacer: true })
+    expect(bars[12]).toMatchObject({ coda: true })
+
+    // Trailing blank padding after } at the end of a chart is not played
+    const trailing = parseMusic('{*AT44C   |F   }        ', [4, 4])
+    expect(trailing.bars.filter((b) => !b.spacer)).toHaveLength(2)
+
+    // Round-trip preserves spacers and played bars
+    const rtMusic =
+      '{*AT44C   |F   |G   |C   }        ' +
+      '{*BF   |G   ]        ' +
+      '[*CC   |D-7   |F   }    ' +
+      '[QD-7   |G7   Z'
+    const parsed = parseMusic(rtMusic, [4, 4])
+    const chart: Chart = {
+      format: 'openstand-chart',
+      version: 1,
+      title: 'Repeat Padding Round-Trip',
+      style: 'medium-swing',
+      key: 0,
+      bpm: 120,
+      time: parsed.time,
+      bars: parsed.bars,
+    }
+    const back = parseMusic(chartToMusic(chart), time)
+    expect(back.bars.map((b) => Boolean(b.spacer))).toEqual(parsed.bars.map((b) => Boolean(b.spacer)))
+    expect(back.bars.filter((b) => !b.spacer).map(stripLayout)).toEqual(
+      parsed.bars.filter((b) => !b.spacer).map(stripLayout),
+    )
+  })
+
+  test('writes held chord explicitly for a real blank bar in a spacer-like position after ] or }', () => {
+    const { bars, time } = parseMusic('[*AT44C   |F G ][*BF   |C   Z', [4, 4])
+    const chart: Chart = {
+      format: 'openstand-chart',
+      version: 1,
+      title: 'Blank After Double',
+      style: 'medium-swing',
+      key: 0,
+      bpm: 120,
+      time,
+      bars: [...bars.slice(0, 2), { chords: [], cells: 4 }, ...bars.slice(2)],
+    }
+
+    const reparsed = parseMusic(chartToMusic(chart), time)
+    const back: Chart = { ...chart, time: reparsed.time, bars: reparsed.bars }
+
+    expect(playbackOrder(chart)).toHaveLength(5)
+    expect(playbackOrder(back)).toHaveLength(5)
+    expect(reparsed.bars[2].spacer).toBeUndefined()
+    expect(reparsed.bars[2].chords).toEqual([{ symbol: 'G', beats: 4 }])
   })
 })
