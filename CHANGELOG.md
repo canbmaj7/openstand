@@ -9,6 +9,7 @@ Dates are when the change reached `main`. Numbers in brackets are pull requests 
 - The chart shows sooner on first load: the audio engine now loads after the page (#142).
 
 #### Fixed
+- iReal Pro imports: repeated bars across a meter change get the new bar's beat count, blank row-padding before a new section or coda is treated as a layout spacer instead of playing an extra bar, and N0 / 2x markings round-trip cleanly.
 - Screen readers name chord cells by the same text shown on the chart (#158).
 - iReal Pro imports: R'n'B plays as Funk, MPB as Bossa Nova, Forró and Xote as Baião, Marchinha as Samba, instead of Medium Swing.
 - Style lab: an edited Written bass no longer plays the starting style's hidden lead-ins in shorter chords, e.g. two chords in a bar (#154).

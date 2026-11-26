@@ -112,12 +112,14 @@ interface PendingBar {
   cells: Cell[]
   marks: Omit<ChartBar, 'chords' | 'cells'>
   copyOf?: number // bar index whose chords this bar repeats
+  openedByBracket?: boolean
 }
 
 const CHORD_RE = /^([A-GW][b#]?)((?:[-^+ohø0-9]|sus|add|alt|b(?=\d)|#(?=\d)|\/(?![A-G])|\d)*)(\/[A-G][b#]?)?/
 
 export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar[]; time: TimeSignature } {
   const bars: ChartBar[] = []
+  const bracketBars = new Set<number>()
   let current: PendingBar = { cells: [], marks: {} }
   let firstTime: TimeSignature | null = null
   let barTime = time
@@ -131,10 +133,20 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
     if (!hasContent) return false
     const startCell = cellCount
     cellCount += Math.max(1, current.cells.length)
-    const chords = current.copyOf !== undefined ? (bars[current.copyOf]?.chords ?? []) : durations(current.cells, barTime)
+    let chords: BarChord[]
+    if (current.copyOf !== undefined) {
+      const copied = bars[current.copyOf]?.chords ?? []
+      const targetBeats = beatsPerBar(barTime)
+      const total = copied.reduce((sum, c) => sum + c.beats, 0)
+      const split = copied.length > 0 && Math.abs(total - targetBeats) > 1e-6 ? evenSplit(copied.length, barTime) : null
+      chords = copied.map((c, i) => (split ? { ...c, beats: split[i] } : { ...c }))
+    } else {
+      chords = durations(current.cells, barTime)
+    }
+    if (current.openedByBracket) bracketBars.add(bars.length)
     bars.push({
       ...current.marks,
-      chords: chords.map((c) => ({ ...c })),
+      chords,
       cells: Math.max(1, current.cells.length),
       rowStart: startCell % 16 === 0 || undefined,
     })
@@ -171,8 +183,9 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
       const times = /^(\d+)x$/i.exec(text)
       const target = current.cells.length || bars.length === 0 ? current.marks : bars[bars.length - 1]
       if (times) {
-        // "3x" sits in the bar that closes the repeat
-        target.repeatTimes = Number(times[1])
+        // "3x" sits in the bar that closes the repeat; 2x is the default
+        const n = Number(times[1])
+        if (n > 0 && n !== 2) target.repeatTimes = n
       } else if (/^(d\.[cs]\.|fine)/i.test(text)) {
         target.directive = text
       } else if (text) {
@@ -180,7 +193,8 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
       }
       s = s.slice(m[0].length)
     } else if ((m = /^N(\d)/.exec(s))) {
-      current.marks.ending = Number(m[1])
+      const n = Number(m[1])
+      if (n > 0) current.marks.ending = n
       s = s.slice(2)
     } else if (s[0] === '{') {
       closeBar()
@@ -197,7 +211,9 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
       }
       s = s.slice(1)
     } else if (s[0] === '[' || s[0] === '|') {
+      const openedByBracket = s[0] === '['
       closeBar()
+      if (openedByBracket) current.openedByBracket = true
       s = s.slice(1)
     } else if (s[0] === ']' || s[0] === 'Z') {
       const kind = s[0] === 'Z' ? 'final' : 'double'
@@ -272,11 +288,11 @@ export function parseMusic(music: string, time: TimeSignature): { bars: ChartBar
   }
   closeBar()
 
-  return { bars: markSpacers(bars), time: firstTime ?? time }
+  return { bars: markSpacers(bars, bracketBars), time: firstTime ?? time }
 }
 
 // Blank cells after a closing barline or a jump are layout space, not bars of music
-function markSpacers(bars: ChartBar[]): ChartBar[] {
+function markSpacers(bars: ChartBar[], bracketBars: Set<number>): ChartBar[] {
   const isBlank = (b: ChartBar) => b.chords.length === 0 && !b.section && !b.repeatStart && !b.ending && !b.coda && !b.segno
   while (bars.length && isBlank(bars[bars.length - 1]) && !bars[bars.length - 1].repeatEnd) {
     const last = bars.pop()!
@@ -290,7 +306,15 @@ function markSpacers(bars: ChartBar[]): ChartBar[] {
       (prev.barline === 'final' ||
         /^d\.[cs]\./i.test(prev.directive ?? '') ||
         (prev.repeatEnd && next?.ending !== undefined))
-    return isBlank(bar) && !bar.repeatEnd && closes ? { ...bar, spacer: true } : bar
+    const rowPad =
+      i > 0 &&
+      bracketBars.has(i) &&
+      !bar.barline &&
+      !bar.directive &&
+      !bar.end &&
+      !bar.time &&
+      Boolean(next && (next.section || next.repeatStart || next.coda || next.segno))
+    return isBlank(bar) && !bar.repeatEnd && (closes || rowPad) ? { ...bar, spacer: true } : bar
   })
 }
 
