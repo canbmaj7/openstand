@@ -96,7 +96,7 @@ export function chartToMusic(chart: Chart): string {
     if (bar.time) time = bar.time
     let open = ''
     if (bar.repeatStart) open = '{'
-    else if (prevClose === 'start' || (bar.section && !['}', ']', 'Z'].includes(prevClose))) open = '['
+    else if (prevClose === 'start' || ((bar.section || bar.spacer) && !['}', ']', 'Z'].includes(prevClose))) open = '['
     // A bar that opens with its own sign closes the previous one
     if (!open && prevClose === '') open = '|'
     out += open

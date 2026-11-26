@@ -1,5 +1,14 @@
 import { describe, expect, test } from 'vitest'
 import { parseIrealLinks, parseMusic, unscramble } from '../src/formats/ireal'
+import { chartToMusic, irealLink } from '../src/formats/irealWrite'
+import type { Chart, ChartBar } from '../src/music/chart'
+
+const stripLayout = (b: ChartBar) => {
+  const copy = { ...b }
+  delete (copy as Partial<ChartBar>).cells
+  delete copy.rowStart
+  return copy
+}
 
 // An original progression written in iReal Pro's text notation:
 // A section with first and second endings, a B section, and a final bar.
@@ -77,5 +86,105 @@ describe('iReal Pro links', () => {
   test('finds several links in pasted HTML', () => {
     const html = `<a href="${IREALBOOK}">one</a> and <a href="${IREALBOOK}">two</a>`
     expect(parseIrealLinks(html)).toHaveLength(2)
+  })
+
+  test('repeats bar with x right before a new section, repeat start, or end of string', () => {
+    const music = '[*AT44C   |x[*BF   |x{*AG   |x'
+    const { bars, time } = parseMusic(music, [4, 4])
+    expect(bars.map((b) => b.chords)).toEqual([
+      [{ symbol: 'C', beats: 4 }],
+      [{ symbol: 'C', beats: 4 }],
+      [{ symbol: 'F', beats: 4 }],
+      [{ symbol: 'F', beats: 4 }],
+      [{ symbol: 'G', beats: 4 }],
+      [{ symbol: 'G', beats: 4 }],
+    ])
+
+    const chart: Chart = {
+      format: 'openstand-chart',
+      version: 1,
+      title: 'Repeat Section Test',
+      style: 'medium-swing',
+      key: 0,
+      bpm: 120,
+      time,
+      bars,
+    }
+    const [back] = parseIrealLinks(irealLink([chart]))[0].charts
+    expect(back.bars.map((b) => b.chords)).toEqual(bars.map((b) => b.chords))
+  })
+
+  test('marks bracket-opened row padding before sections or codas as spacers, unlike mid-section blank bars', () => {
+    const music = '[*iT44C   [            {*AD-7   |    |G7   [        [*BF^7   [        [QC6   Z'
+    const { bars, time } = parseMusic(music, [4, 4])
+    expect(bars[0].chords).toEqual([{ symbol: 'C', beats: 4 }])
+    expect(bars[1]).toMatchObject({ chords: [], spacer: true })
+    expect(bars[2]).toMatchObject({ section: 'A', repeatStart: true })
+    expect(bars[3].chords).toEqual([])
+    expect(bars[3].spacer).toBeUndefined()
+    expect(bars[4].chords).toEqual([{ symbol: 'G7', beats: 4 }])
+    expect(bars[5]).toMatchObject({ chords: [], spacer: true })
+    expect(bars[6]).toMatchObject({ section: 'B' })
+    expect(bars[7]).toMatchObject({ chords: [], spacer: true })
+    expect(bars[8]).toMatchObject({ coda: true, barline: 'final' })
+
+    const rt = parseMusic(chartToMusic({ format: 'openstand-chart', version: 1, title: 'Spacers', style: 'medium-swing', key: 0, bpm: 120, time, bars: bars.map((b, i) => (i === 3 ? { ...b, chords: [{ symbol: 'D-7', beats: 4 }] } : b)) }), [4, 4])
+    expect(rt.bars.map((b) => Boolean(b.spacer))).toEqual(bars.map((b) => Boolean(b.spacer)))
+  })
+
+  test('fits repeated bars (x and r) to the new bar length on mid-tune time changes', () => {
+    const music = '[*AT44C   |T24x |T44x |D-7 G7 |T24x |T44F   |T12x |T68x |T44C   |G7   |T24r   |    Z'
+    const { bars, time } = parseMusic(music, [4, 4])
+    expect(bars.map((b) => b.chords)).toEqual([
+      [{ symbol: 'C', beats: 4 }],
+      [{ symbol: 'C', beats: 2 }],
+      [{ symbol: 'C', beats: 4 }],
+      [{ symbol: 'D-7', beats: 2 }, { symbol: 'G7', beats: 2 }],
+      [{ symbol: 'D-7', beats: 1 }, { symbol: 'G7', beats: 1 }],
+      [{ symbol: 'F', beats: 4 }],
+      [{ symbol: 'F', beats: 6 }],
+      [{ symbol: 'F', beats: 3 }],
+      [{ symbol: 'C', beats: 4 }],
+      [{ symbol: 'G7', beats: 4 }],
+      [{ symbol: 'C', beats: 2 }],
+      [{ symbol: 'G7', beats: 2 }],
+    ])
+
+    const chart: Chart = {
+      format: 'openstand-chart',
+      version: 1,
+      title: 'Time Repeat Test',
+      style: 'medium-swing',
+      key: 0,
+      bpm: 120,
+      time,
+      bars,
+    }
+    const [back] = parseIrealLinks(irealLink([chart]))[0].charts
+    expect(back.bars.map(stripLayout)).toEqual(bars.map(stripLayout))
+  })
+
+  test('ignores N0 endings and omits default 2x repeat counts for clean round-trip', () => {
+    const music = '{*AT44C   |N1G7   }N2F   }N0C<4.>   |D-7<2x> }G7<3x> Z'
+    const { bars, time } = parseMusic(music, [4, 4])
+    expect(bars[1].ending).toBe(1)
+    expect(bars[2].ending).toBe(2)
+    expect(bars[3].ending).toBeUndefined()
+    expect(bars[3].comment).toBe('4.')
+    expect(bars[4].repeatTimes).toBeUndefined()
+    expect(bars[5].repeatTimes).toBe(3)
+
+    const chart: Chart = {
+      format: 'openstand-chart',
+      version: 1,
+      title: 'Marks Test',
+      style: 'medium-swing',
+      key: 0,
+      bpm: 120,
+      time,
+      bars,
+    }
+    const [back] = parseIrealLinks(irealLink([chart]))[0].charts
+    expect(back.bars.map(stripLayout)).toEqual(bars.map(stripLayout))
   })
 })
