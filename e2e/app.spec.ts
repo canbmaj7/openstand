@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 // The main things a visitor does, in a clean browser with nothing saved.
 
 const labButton = (page: Page) => page.getByRole('button', { name: /^(style )?lab$/i })
-const chords = (page: Page) => page.locator('.chord[aria-label]')
+const chords = (page: Page) => page.locator('.chord:not(.chord-nc)')
 // A transport control by its visible label (the label element also holds the options' text)
 const control = (page: Page, label: string) =>
   page.locator('label.control', { has: page.locator('.label', { hasText: new RegExp(`^${label}$`) }) }).locator('select')
@@ -55,17 +55,17 @@ test('Space toggles playback after a pointer click but keeps keyboard button act
 })
 
 test('changing the key re-spells the chords', async ({ page }) => {
-  const before = await chords(page).first().getAttribute('aria-label')
+  const before = await chords(page).first().locator('.sr-only').textContent()
   const key = control(page, 'Key')
   const current = await key.inputValue()
   await key.selectOption(String((Number(current) + 2) % 12))
-  await expect(chords(page).first()).not.toHaveAttribute('aria-label', before!)
+  await expect(chords(page).first()).not.toHaveAccessibleName(before!)
 })
 
 test('clicking the selected chord again closes the chord helper', async ({ page }) => {
   const helper = page.getByLabel('Chord helper')
   const first = chords(page).first()
-  const sameSymbolElsewhere = page.locator('.chord[aria-label="F7"], .chord[aria-label="F7, start point"]').nth(1)
+  const sameSymbolElsewhere = chords(page).filter({ has: page.locator('.sr-only', { hasText: /^F7(, start point)?$/ }) }).nth(1)
   const another = chords(page).nth(1)
 
   await first.click()
@@ -287,10 +287,13 @@ test('chords iReal Pro lacks can be typed, are drawn and play', async ({ page })
     await expect(input).toHaveAttribute('aria-invalid', 'false')
     await input.press('Enter')
   }
-  for (const label of ['C5', 'Csus2', 'Co^7', 'C+^7', 'C^7sus', 'Cadd11'])
-    await expect(page.locator(`.chord[aria-label="${label}"]`).first()).toBeVisible()
+  for (const [i, label] of ['C5', 'Csus2', 'Co^7', 'C+^7', 'C^7sus', 'Cadd11'].entries()) {
+    const chord = page.locator(`[data-measure="${i}"] .chord`).first()
+    await expect(chord).toBeVisible()
+    await expect(chord.locator('.sr-only')).toHaveText(label)
+  }
   await page.getByRole('button', { name: /^Save/ }).click()
-  await expect(page.locator('.chord[aria-label="Co^7"]').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Co^7' }).first()).toBeVisible()
   await play(page)
   await page.waitForTimeout(1500)
   await stop(page)

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 const smaller = (page: Page) => page.getByRole('button', { name: 'Smaller chart' })
 const larger = (page: Page) => page.getByRole('button', { name: 'Larger chart' })
-const firstChord = (page: Page) => page.locator('.chord[aria-label]').first()
+const firstChord = (page: Page) => page.locator('.chord:not(.chord-nc)').first()
 
 // Bars grow with the chart size at every step; chords grow only as far as the bar has room
 const firstBar = (page: Page) => page.locator('.bar').first()

@@ -29,7 +29,7 @@ test('Hide chords = All hides all chords while playing, restores them on stop, a
   const count = await chartChords.count()
   expect(count).toBeGreaterThan(0)
   for (let i = 0; i < count; i++) {
-    await expect(chartChords.nth(i)).toHaveAttribute('aria-label', 'Hidden chord')
+    await expect(chartChords.nth(i).locator('.sr-only')).toHaveText('Hidden chord')
   }
 
   // Clicking a hidden chord must not open the chord helper
@@ -39,7 +39,7 @@ test('Hide chords = All hides all chords while playing, restores them on stop, a
   await page.getByRole('button', { name: 'Stop' }).click()
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
 
-  await expect(chartChords.first()).not.toHaveAttribute('aria-label', 'Hidden chord')
+  await expect(chartChords.first().locator('.sr-only')).not.toHaveText('Hidden chord')
 
   // Setting persists after page reload
   await page.reload()

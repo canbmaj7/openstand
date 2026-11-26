@@ -29,7 +29,7 @@ test('setting Count-in to Off skips count-in and starts immediately at Bar 1', a
 })
 
 test('ChordHelper switches to Ukulele view and renders 4-string diagrams', async ({ page }) => {
-  await page.locator('.chord[aria-label]').first().click()
+  await page.locator('.chord:not(.chord-nc)').first().click()
   const helper = page.getByLabel('Chord helper')
   await expect(helper).toBeVisible()
 
@@ -48,7 +48,7 @@ test('ChordHelper switches to Ukulele view and renders 4-string diagrams', async
   // Preference persists across reload
   await page.reload()
   await expect(page.getByRole('img', { name: /chord chart$/ }).or(page.locator('[aria-label$="chord chart"]')).first()).toBeVisible()
-  await page.locator('.chord[aria-label]').first().click()
+  await page.locator('.chord:not(.chord-nc)').first().click()
   await expect(helper.getByRole('button', { name: 'Ukulele' })).toHaveAttribute('aria-pressed', 'true')
   await expect(helper.locator('.chords-guitars svg[aria-label*="on ukulele"]')).toHaveCount(2)
 })
